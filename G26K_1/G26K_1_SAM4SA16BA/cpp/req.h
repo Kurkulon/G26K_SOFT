@@ -35,6 +35,7 @@ __packed struct RspMoto
 	u16 	mororStatus; 
 	u16		current;
 	u16		rpm;
+	u16		motoCounter;
 	u16 	crc;  
 };
 

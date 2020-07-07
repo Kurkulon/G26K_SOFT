@@ -83,6 +83,7 @@ static u16 motoTargetRPS = 0; // заданные обороты двигателя
 static u16 motoRPS = 0; // обороты двигателя, об/сек
 static u16 motoCur = 0; // ток двигателя, мА
 static u16 motoStat = 0; // статус двигателя: 0 - выкл, 1 - вкл
+static u16 motoCounter = 0; // счётчик оборотов двигателя 1/6 оборота
 
 u16 manRcvData[10];
 u16 manTrmData[50];
@@ -91,8 +92,14 @@ u16 manTrmData[50];
 static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
 
+static u16 memReqWord = 0x3D00;
+static u16 memReqMask = 0xFF00;
+
 static u16 numDevice = 0;
-static u16 verDevice = 0x103;
+static u16 verDevice = 0x100;
+
+static u16 numMemDevice = 0;
+static u16 verMemDevice = 0x100;
 
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
@@ -834,6 +841,7 @@ static void CallBackMotoReq(REQ *q)
 			motoRPS = rsp.rpm;
 			motoCur = rsp.current;
 			motoStat = rsp.mororStatus;
+			motoCounter = rsp.motoCounter;
 		};
 	};
 }
@@ -935,7 +943,7 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 15;
+	mtb->len1 = 17;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -948,32 +956,33 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	manTrmData[0] = manReqWord|0x20;
-	manTrmData[1] = GD(&fireCounter, u16, 0);
-	manTrmData[2] = GD(&fireCounter, u16, 1);
-	manTrmData[3] = voltage;
-	manTrmData[4] = numStations|(((u16)dspStatus)<<8);
-	manTrmData[5] = resistValue;
-	manTrmData[6] = (cpuTemp+5)/10;
-	manTrmData[7] = -ax;
-	manTrmData[8] = az;
-	manTrmData[9] = -ay;
-	manTrmData[10] = at;
-	manTrmData[11] = temperature;
+	manTrmData[0] = manReqWord|0x20;	//	1. ответное слово
+	manTrmData[1] = 0;					//	2. Время (0.1мс). младшие 2 байта
+	manTrmData[2] = 0;					//	3. Время. старшие 2 байта
+	manTrmData[3] = 0;					//	4. Время датчика Холла (0.1мс). младшие 2 байта
+	manTrmData[4] = 0;					//	5. Время датчика Холла. старшие 2 байта
+	manTrmData[5] = motoRPS;			//	6. Частота вращения двигателя (0.01 об/сек)
+	manTrmData[6] = motoCur;			//	7. Ток двигателя (мА)
+	manTrmData[7] = motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
+	manTrmData[8] = 0;					//	9. Частота вращения головки (0.01 об/сек)
+	manTrmData[9] = 0;					//	10. Счётчик оборотов головки (об)
+	manTrmData[10] = -ax;				//	11. AX (уе)
+	manTrmData[11] = az;				//	12. AY (уе)
+	manTrmData[12] = -ay;				//	13. AZ (уе)
+	manTrmData[13] = at;				//	14. AT (short 0.01 гр)
+	manTrmData[14] = (cpuTemp+5)/10;	//	15. Температура в приборе (short)(0.1гр)
  
 	mtb->data1 = manTrmData;
-	mtb->len1 = 13;
+	mtb->len1 = 15;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
-
-//	runMainMode = true;
 
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_30_(u16 *data, u16 len, MTB* mtb)
 {
 	__packed struct Req { u16 rw; u16 off; u16 len; };
 
@@ -1063,63 +1072,55 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_60(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 {
-	struct Rsp { u16 rw; };
-	
-	static Rsp rsp; 
+	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
 
-	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
-
+	manTrmData[0] = manReqWord|0x30;	
+ 
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
-
-	if (len < 3)
-	{
-		rspMan60.rw = manReqWord|0x60;
-		rspMan60.cnt = fireCounter;
-
-		mtb->data1 = (u16*)&rspMan60;
-		mtb->len1 = sizeof(rspMan60)/2;
-	}
-	else if (data[1] == 0)
-	{
-		rspMan60.rw = manReqWord|0x60;
-		rspMan60.cnt = fireCounter;
-
-		u16 maxlen = sizeof(rspMan60)/2;
-		u16 len = data[2]+1;
-
-		if (len > maxlen) len = maxlen;
-
-		mtb->data1 = (u16*)&rspMan60;
-		mtb->len1 = len;
-	}
-	else
-	{
-		rsp.rw = manReqWord|0x60;
-
-		mtb->data1 = (u16*)&rsp;
-		mtb->len1 = sizeof(rsp)/2;
-
-		if (sizeof(rspMan60)/2 > data[1])
-		{
-			u16 maxlen = sizeof(rspMan60)/2 - data[1] - 1;
-			u16 len = data[2];
-
-			if (len > maxlen) len = maxlen;
-
-			mtb->data2 = ((u16*)&rspMan60) + data[1]+1;
-			mtb->len2 = len;
-		};
-	};
 
 	return true;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
+
+	manTrmData[0] = manReqWord|0x40;	
+ 
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_50(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
+
+	manTrmData[0] = manReqWord|0x50;	
+ 
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
@@ -1221,13 +1222,229 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 		case 0: 	r = RequestMan_00(buf, len, mtb); break;
 		case 1: 	r = RequestMan_10(buf, len, mtb); break;
 		case 2: 	r = RequestMan_20(buf, len, mtb); break;
-		case 3: 
-		case 4: 
-		case 5: 	r = RequestMan_30(buf, len, mtb); break;
-		case 6: 	r = RequestMan_60(buf, len, mtb); break;
+		case 3:		r = RequestMan_30(buf, len, mtb); break;
+		case 4:		r = RequestMan_40(buf, len, mtb); break;
+		case 5: 	r = RequestMan_50(buf, len, mtb); break;
 		case 8: 	r = RequestMan_80(buf, len, mtb); break;
 		case 9:		r = RequestMan_90(buf, len, mtb); break;
 		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
+		
+		default:	bfURC++; 
+	};
+
+	return r;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_00(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask) | 0;
+	manTrmData[1] = numMemDevice;
+	manTrmData[2] = verMemDevice;
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 3;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_10(u16 *data, u16 len, MTB* mtb)
+{
+	//__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
+	//__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
+	
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask) | 0x10;
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_20(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask)|0x20;
+
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 20;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_30(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask)|0x30;
+
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_31(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask)|0x31;
+
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_32(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask)|0x32;
+
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_33(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask)|0x33;
+
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_80(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len < 3 || len > 4 || mtb == 0) return false;
+
+	switch (data[1])
+	{
+		case 1:
+
+			numMemDevice = data[2];
+
+			break;
+
+		case 2:
+
+			SetTrmBoudRate(data[2]-1);
+
+			break;
+	};
+
+	manTrmData[0] = (memReqWord & memReqMask) | 0x80;
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_90(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len < 1 || mtb == 0) return false;
+
+	manTrmData[0] = (memReqWord & memReqMask) | 0x90;
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMem_F0(u16 *data, u16 len, MTB* mtb)
+{
+	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
+
+	SaveParams();
+
+	manTrmData[0] = (memReqWord & memReqMask) | 0xF0;
+
+	mtb->data1 = manTrmData;
+	mtb->len1 = 1;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+static bool RequestMem(u16 *buf, u16 len, MTB* mtb)
+{
+	if (buf == 0 || len == 0 || mtb == 0) return false;
+
+	bool r = false;
+
+	byte i = buf[0]&0xFF;
+
+	switch (i)
+	{
+		case 0x00: 	r = RequestMem_00(buf, len, mtb); break;
+		case 0x10: 	r = RequestMem_10(buf, len, mtb); break;
+		case 0x20: 	r = RequestMem_20(buf, len, mtb); break;
+		case 0x30: 	r = RequestMem_30(buf, len, mtb); break;
+		case 0x31: 	r = RequestMem_31(buf, len, mtb); break;
+		case 0x32: 	r = RequestMem_32(buf, len, mtb); break;
+		case 0x33: 	r = RequestMem_33(buf, len, mtb); break;
+		case 0x80: 	r = RequestMem_80(buf, len, mtb); break;
+		case 0x90: 	r = RequestMem_90(buf, len, mtb); break;
+		case 0xF0: 	r = RequestMem_F0(buf, len, mtb); break;
 		
 		default:	bfURC++; 
 	};
@@ -1326,7 +1543,8 @@ static void UpdateMan()
 			{
 				tm.Reset();
 
-				if (mrb.OK && mrb.len > 0 && (manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb))
+				if (mrb.OK && mrb.len > 0 &&	(((manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb)) 
+										||		((manRcvData[0] & memReqMask) == memReqWord && RequestMem(manRcvData, mrb.len, &mtb))))
 				{
 					i++;
 				}

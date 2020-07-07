@@ -32,6 +32,7 @@ u32 fcurADC = 0;
 u16 vAP = 0;
 u32 fvAP = 0;
 u32 tachoCount = 0;
+u32 motoCounter = 0;
 
 u32 rpmCounter = 0;
 u32 rpmPrevTime = 0;
@@ -1243,6 +1244,7 @@ static __irq void TahoHandler()
 		HW::PIN_INT->IST = ist;
 
 		tachoCount++;
+		motoCounter++;
 
 		if (avrCurADC > 750)
 		{

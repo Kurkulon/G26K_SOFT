@@ -45,6 +45,7 @@ __packed struct RspMoto
 	u16 	mororStatus; 
 	u16		current;
 	u16		rpm;
+	u16		motoCounter;
 	u16 	crc;  
 };
 
@@ -78,6 +79,7 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	rsp.mororStatus = 1;
 	rsp.current = GetAvrCurrent();
 	rsp.rpm = GetRPM();
+	rsp.motoCounter = GetmotoCounter();
 	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
 
 	wb->data = &rsp;			 

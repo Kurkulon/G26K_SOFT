@@ -165,6 +165,14 @@ inline u16 GetRPM()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+inline u32 GetmotoCounter()
+{
+	extern u32 motoCounter;
+	return motoCounter;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //inline void OpenValve(u32 tacho, u32 time, u16 lim)
 //{
 //	StartValve(true, tacho, time, lim);
