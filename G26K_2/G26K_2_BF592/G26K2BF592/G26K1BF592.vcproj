@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<VisualStudioProject
+	ProjectType="Visual C++"
+	Version="8,00"
+	Name="G26K1BF592"
+	ProjectGUID="{78AB4CA0-E665-4E3C-98EB-BB35E12CD5F9}"
+	RootNamespace="G26K1BF592"
+	>
+	<Platforms>
+		<Platform
+			Name="Win32"
+		/>
+	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
+	<Configurations>
+		<Configuration
+			Name="Debug|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="0"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="wmake -h version=Debug"
+				ReBuildCommandLine="wmake -h -a version=Debug"
+				CleanCommandLine="@del /Q .\Debug\*.*"
+				Output="$(OutDir)\g26p.dxe"
+				PreprocessorDefinitions="_DEBUG;"
+				IncludeSearchPath="c:\Program Files (x86)\Analog Devices\VisualDSP 5.1\Blackfin\include;"
+				ForcedIncludes=""
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="0"
+			CharacterSet="2"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="wmake -h version=Release"
+				ReBuildCommandLine="wmake -h -a version=Release"
+				CleanCommandLine="@del /Q .\Release\*.*"
+				Output="$(OutDir)\g26p.dxe"
+				PreprocessorDefinitions=""
+				IncludeSearchPath="c:\Program Files (x86)\Analog Devices\VisualDSP 5.1\Blackfin\include;"
+				ForcedIncludes=""
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
+	</Configurations>
+	<References>
+	</References>
+	<Files>
+		<Filter
+			Name="Source Files"
+			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
+			>
+			<File
+				RelativePath=".\cpp\at25df021.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\ComPort.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\CRC16.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\hardware.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\heaptab.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\initcode.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\list.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\main.cpp"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Header Files"
+			Filter="h;hpp;hxx;hm;inl;inc;xsd"
+			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
+			>
+			<File
+				RelativePath=".\cpp\at25df021.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\BF592.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\ComPort.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\core.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\CRC16.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\hardware.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\list.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\types.h"
+				>
+			</File>
+		</Filter>
+		<File
+			RelativePath=".\makeobj"
+			>
+		</File>
+	</Files>
+	<Globals>
+	</Globals>
+</VisualStudioProject>
