@@ -11,14 +11,16 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define PPI_BUF_LEN 1024
+
 struct DSCPPI
 {
-	//DSCPPI	*next;
-	u16		*dst;
-	u16		maxLen;
+	DSCPPI	*next;
 	u16		len;
+	u16		offset;
 	u16		clkdiv;
-	bool	ready;
+	u16		busy;
+	u16		data[PPI_BUF_LEN];
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -27,20 +29,23 @@ extern void InitHardware();
 extern void UpdateHardware();
 extern void InitIVG(u32 IVG, u32 PID, void (*EVT)());
 
-inline u32 GetRTT() { return *pTIMER2_COUNTER; }
 
 //extern bool defPPI_Ready;
 
 //extern void SyncReadSPORT(void *dst1, void *dst2, u16 len1, u16 len2, u16 clkdiv, bool *ready0, bool *ready1);
 //extern void ReadPPI(void *dst);
 extern DSCPPI* GetDscPPI();
-inline void FreeDscPPI(DSCPPI* dsc) { dsc->ready = false; }
+extern void FreeDscPPI(DSCPPI* dsc);
 
 extern void WriteTWI(void *src, u16 len);
 extern void ReadTWI(void *dst, u16 len);
 
 extern void SetGain(byte v);
 
+#define MS2RT(x) ((x)*10)
+#define US2RT(x) ((x)/100)
+
+inline u32 GetRTT() { extern u32 mmsec; return mmsec; }
 
 struct RTM32
 {

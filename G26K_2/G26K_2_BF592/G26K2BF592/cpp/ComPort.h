@@ -5,12 +5,9 @@
 #include "core.h"
 
 
-#define COM_RS232 0
-#define COM_RS485 1
+//#define COM_RS232 0
+//#define COM_RS485 1
 
-#ifdef WIN32
-#include <windows.h>
-#endif
 
 class ComPort
 {
@@ -46,8 +43,6 @@ class ComPort
 
 
 
-#ifndef WIN32
-
 	word			_BaudRateRegister;
 
 	dword			_ModeRegister;
@@ -58,21 +53,6 @@ class ComPort
 	dword			_preReadTimeout;
 	dword			_postReadTimeout;
 
-
-#else
-
-	dword		_readBytes;
-	dword		_writeBytes;
-
-	HANDLE		_comHandle;
-	OVERLAPPED	_ovlRead;
-	OVERLAPPED	_ovlWrite;
-	COMMTIMEOUTS _cto;
-
-	static int		_portTableSize;
-	static dword	_portTable[16];
-
-#endif
 
 	void 		EnableTransmit(void* src, word count);
 	void 		DisableTransmit();
@@ -86,30 +66,12 @@ class ComPort
 	static ComPort *_objCom2;
 	static ComPort *_objCom3;
 
-#ifndef WIN32
-
 	word 		BoudToPresc(dword speed);
 	void		SetBoudRate(word presc);
 
-#else
-
-	void		BuildPortTable();
-
-#endif
-
-
   public:
 	  
-#ifndef WIN32
-
 	ComPort() : _connected(false), _status485(READ_END) {}
-
-#else
-
-	ComPort() : _connected(false), _status485(READ_END), _comHandle(INVALID_HANDLE_VALUE) {}
-	bool		Connect(const char* comPort, dword bps, byte parity);
-
-#endif
 
 	bool		Connect(dword speed, byte parity);
 	bool		Disconnect();

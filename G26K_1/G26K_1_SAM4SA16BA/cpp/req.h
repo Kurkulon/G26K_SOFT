@@ -41,18 +41,17 @@ __packed struct RspMoto
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqDsp01	// старт оцифровки
+__packed struct ReqDsp01	// чтение вектора
 {
-	byte 	len;
-	byte 	func;
-	byte 	mode; 
-	byte 	gain; 
+	u16 	rw;
+	u16 	mode; 
+	u16 	gain; 
 	u16 	st;	 
 	u16 	sl; 
 	u16 	sd; 
 	u16		thr;
 	u16		descr;
-	byte 	refgain; 
+	u16 	refgain; 
 	u16 	refst;	 
 	u16 	refsl; 
 	u16 	refsd; 
@@ -64,87 +63,53 @@ __packed struct ReqDsp01	// старт оцифровки
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct RspDsp01	// старт оцифровки
-{
-	byte adr;
-	byte func;
-	u16 crc;  
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct ReqDsp02	// чтение вектора
-{
-	byte 	len;
-	byte 	func;
-	byte 	mode; 
-	byte 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		thr;
-	u16		descr;
-	byte 	refgain; 
-	u16 	refst;	 
-	u16 	refsl; 
-	u16 	refsd; 
-	u16		refthr;
-	u16		refdescr;
-	u16 	crc; 
-};  
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct RspDsp02	// чтение вектора
+__packed struct RspDsp01	// чтение вектора
 {
 	u16 rw; 
-	u32 cnt; 
-	u16 gain; 
-	u16 st; 
-	u16 len; 
-	u16 delay; 
-	u16 data[1024]; 
-	u16 crc;
-};  
+	u32 time; 
+	u32 hallTime; 
+
+	__packed union
+	{
+		__packed struct { u16 motoCount; u16 headCount; u16 ax; u16 ay; u16 az; u16 at; u16 sensType; u16 angle; u16 gain; u16 st; u16 sl; u16 sd; u16 pakType; u16 pakLen; u16 data[2048]; } CM;
+		__packed struct { u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 dataLen; u16 data[2048];} IM;
+	};
+};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct  ReqDsp05	// запрос контрольной суммы и длины программы во флэш-памяти
 { 
-	byte 	len;
-	byte 	func;
-	word 	crc; 
+	u16		rw; 
+	u16 	crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct  RspDsp05	// запрос контрольной суммы и длины программы во флэш-памяти
 { 
-	byte 	adr;
-	byte 	func;
+	u16		rw; 
 	u16		flashLen; 
 	u16		flashCRC;
-	word 	crc; 
+	u16 	crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct  ReqDsp06	// запись страницы во флэш
 { 
-	byte 	len;
-	byte 	func;
+	u16		rw; 
 	u16		stAdr; 
 	u16		count; 
-	word	crc; 
 	byte	data[258]; 
+	u16		crc; 
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct  RspDsp06	// запись страницы во флэш
 { 
-	byte 	adr;
-	byte 	func;
+	u16		rw; 
 	u16		res; 
 	word	crc; 
 };  
@@ -153,8 +118,7 @@ __packed struct  RspDsp06	// запись страницы во флэш
 
 __packed struct  ReqDsp07	// перезагрузить блэкфин
 { 
-	byte 	len;
-	byte 	func;
+	u16		rw; 
 	word 	crc; 
 };  
 
@@ -322,16 +286,16 @@ public:
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct R02
+struct R01
 {
-	R02* next;
+	R01* next;
 
 //	bool memNeedSend;
 	ComPort::WriteBuffer	wb;
 	ComPort::ReadBuffer		rb;
 	REQ			q;
-	ReqDsp02	req[2];
-	RspDsp02	rsp;
+	ReqDsp01	req;
+	RspDsp01	rsp;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -341,7 +305,7 @@ struct RMEM
 {
 	RMEM* next;
 
-//	R02*	r02;
+//	R01*	r02;
 
 	ComPort::WriteBuffer	wb;
 	ComPort::ReadBuffer		rb;

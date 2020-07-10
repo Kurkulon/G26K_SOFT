@@ -17,21 +17,33 @@
 // 39 - PG7
 
 // Вектора прерываний
-// IVG7 - 
-// IVG8 - DMA0 (PPI)
-// IVG9 - PORTF PF4 SYNC
-// IVG10 - GPTIMER0 FIRE
-// IVG11 - 
-// IVG12 - TWI
+// IVG7		- 
+// IVG8 	- DMA0 (PPI)
+// IVG9 	- PORTF PF4 SYNC
+// IVG10 	- GPTIMER0 FIRE
+// IVG11 	- GPTIMER2 RTT
+// IVG12 	- TWI
+
+
+// CoreTimer - PPI delay
+
+// TIMER0 	- Fire
+// TIMER1 	- PPI CLK
+// TIMER2 	- RTT
+
+// UART0	- 
+// SPI0		- Boot flash
+// SPI1 	- 
+// TWI		- 
 
 #define IVG_CORETIMER		6
 #define IVG_PPI_DMA0		8
 #define IVG_PORTF_SYNC		9
 #define IVG_GPTIMER0_FIRE	10
+#define IVG_GPTIMER2_RTT	11
 #define IVG_TWI				12
 
 #define PPI_BUF_NUM 4
-#define PPI_BUF_LEN 1024
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -70,27 +82,46 @@ byte bitGain[16] = {0, 2, 3, 6, 7, 10, 11, 14, 15, 15, 15, 15, 15, 15, 15, 15 };
 static DSCPPI *curDscPPI = 0;
 static DSCPPI *lastDscPPI = 0;
 
-static u16 ppi_buf[PPI_BUF_LEN][PPI_BUF_NUM];
+//static u16 ppi_buf[PPI_BUF_LEN][PPI_BUF_NUM];
 
 static DSCPPI ppidsc[PPI_BUF_NUM];
-static u16 startIndPPI = 0;
-static u16 endIndPPI = 0;
+//static u16 startIndPPI = 0;
+//static u16 endIndPPI = 0;g118
 
 u16 ppiClkDiv = NS2CLK(400);
 u16 ppiLen = 1024;
 
 u32 ppiDelay = US2CCLK(10);
 
-//#pragma instantiate List<DSCPPI>
-//static List<DSCPPI> freePPI;
+u32 mmsec = 0; // 0.1 ms
+
+#pragma instantiate List<DSCPPI>
+static List<DSCPPI> freePPI;
+static List<DSCPPI> readyPPI;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+EX_INTERRUPT_HANDLER(RTT_ISR)
+{
+	if (*pTIMER_STATUS & TIMIL2)
+	{
+		*pTIMER_STATUS = TIMIL2; 
+
+		*pPORTGIO_TOGGLE = 1<<6;
+
+		mmsec++;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitRTT()
 {
-	*pTIMER2_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS;
-	*pTIMER2_PERIOD = 0xFFFFFFFF;
+	*pTIMER2_CONFIG = PERIOD_CNT|PWM_OUT|OUT_DIS|IRQ_ENA;
+	*pTIMER2_PERIOD = US2CLK(100);
+
+	InitIVG(IVG_GPTIMER2_RTT, PID_GP_Timer_2, RTT_ISR);
+
 	*pTIMER_ENABLE = TIMEN2;
 }
 
@@ -116,39 +147,39 @@ static void Init_PLL()
 
 DSCPPI* GetDscPPI()
 {
-	DSCPPI *dsc = &ppidsc[endIndPPI];
+	return readyPPI.Get();
+}
 
-	if (dsc->ready)
-	{
-		endIndPPI = (endIndPPI+1) & (PPI_BUF_NUM-1);
-	}
-	else
-	{
-		dsc = 0;
-	};
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	return dsc;
+void FreeDscPPI(DSCPPI* dsc)
+{
+	freePPI.Add(dsc);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void ReadPPI()
 {
-	curDscPPI = &ppidsc[startIndPPI]; startIndPPI = (startIndPPI+1) & (PPI_BUF_NUM-1);
-
-	curDscPPI->ready = false;
+	curDscPPI = freePPI.Get();
 
 	*pTIMER_DISABLE = TIMDIS1;
-	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
-	*pTIMER1_PERIOD = curDscPPI->clkdiv = ppiClkDiv;
-	*pTIMER1_WIDTH = ppiClkDiv>>1;
 
-	*pDMA0_START_ADDR = curDscPPI->dst;
-	*pDMA0_X_COUNT = curDscPPI->len = ppiLen;
-	*pDMA0_X_MODIFY = 2;
+	if (curDscPPI != 0)
+	{
+		curDscPPI->busy = false;
 
-	*pDMA0_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
-	*pPPI_CONTROL = FLD_SEL|PORT_CFG|POLC|DLEN_12|XFR_TYPE|PORT_EN;
+		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
+		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppiClkDiv;
+		*pTIMER1_WIDTH = ppiClkDiv>>1;
+
+		*pDMA0_START_ADDR = curDscPPI->data+curDscPPI->offset;
+		*pDMA0_X_COUNT = curDscPPI->len = ppiLen;
+		*pDMA0_X_MODIFY = 2;
+
+		*pDMA0_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+		*pPPI_CONTROL = FLD_SEL|PORT_CFG|POLC|DLEN_12|XFR_TYPE|PORT_EN;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -160,10 +191,12 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 		*pDMA0_IRQ_STATUS = DMA_DONE|DMA_ERR;
 		*pPPI_CONTROL = 0;
 		*pDMA0_CONFIG = 0;
-		curDscPPI->ready = true;
 
 		*pTIMER_DISABLE = TIMDIS1;
 		*pPORTFIO_CLEAR = 1<<9; // SYNC 
+
+		curDscPPI->busy = false;
+		readyPPI.Add(curDscPPI);
 
 		ReadPPI();
 	};
@@ -196,55 +229,34 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 	*pPORTFIO_CLEAR = 1<<4;
 	*pPORTGIO_TOGGLE = 1<<7;
 
-	*pTIMER_ENABLE = TIMEN0; 
+	*pTIMER_ENABLE = TIMEN0; // Start Fire Pulse
 
-	if (curDscPPI != 0 && !curDscPPI->ready)
+	if (curDscPPI != 0)
 	{
-		//*pTIMER_ENABLE = TIMEN1;
-
-		if (ppiDelay == 0)
-		{ 
-			*pTCNTL = 0;
-			*pTIMER_ENABLE = TIMEN1;
-		}
-		else
+		if (!curDscPPI->busy)
 		{
-			*pTSCALE = 0;
-			*pTCOUNT = ppiDelay;
-			*pTCNTL = TINT|TMPWR|TMREN;
+			curDscPPI->busy = true;
+
+			if (ppiDelay == 0)
+			{ 
+				*pTCNTL = 0;
+				*pTIMER_ENABLE = TIMEN1;
+			}
+			else
+			{
+				*pTSCALE = 0;
+				*pTCOUNT = ppiDelay;
+				*pTCNTL = TINT|TMPWR|TMREN;
+			};
 		};
+	}
+	else
+	{
+		ReadPPI();
 	};
 
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/*bool AddReq_PPI(DSCPPI *d)
-{
-	d->next = 0;
-	d->ready = false;
-
-	cli();
-
-	if (lastDscPPI == 0)
-	{
-		lastDscPPI = d;
-
-		sti(~0);
-
-		ReadPPI(d);
-	}
-	else
-	{
-		lastDscPPI->next = d;
-		lastDscPPI = d;
-
-		sti(~0);
-	};
-
-	return true;
-}*/
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitPPI()
 {
@@ -260,7 +272,7 @@ static void InitPPI()
 	*pIMASK |= EVT_IVG8; 
 	*pSIC_IMASK |= 1<<PID_DMA0_PPI;
 
-	InitIVG(0, 0, PPI_ISR);
+	//InitIVG(0, 0, PPI_ISR);
 	//*pEVT6 = (void*)TIMER_PPI_ISR;
 	//*pIMASK |= EVT_IVTMR; 
 }
@@ -273,11 +285,9 @@ static void InitFire()
 	{
 		DSCPPI &dsc = ppidsc[i];
 
-		dsc.ready = false;
-		dsc.maxLen = ArraySize(ppi_buf[i]);
-		dsc.dst = ppi_buf[i];
+		dsc.busy = false;
 
-		//freePPI.Add(&dsc);
+		freePPI.Add(&dsc);
 	};
 
 	*pPORTF_FER |= PF9;

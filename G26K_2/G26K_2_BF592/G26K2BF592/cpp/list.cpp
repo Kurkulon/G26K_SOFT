@@ -16,8 +16,6 @@ template <class T> T* List<T>::Get()
 		{
 			last = 0;
 		};
-
-		counter--;
 	};
 
 	return r;
@@ -41,8 +39,6 @@ template <class T> void List<T>::Add(T* r)
 		last->next = r;
 		last = r;
 	};
-
-	counter++;
 
 	r->next = 0;
 }

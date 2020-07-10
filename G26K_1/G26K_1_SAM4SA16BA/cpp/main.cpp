@@ -46,17 +46,17 @@ static RequestQuery qmoto(&commoto);
 static RequestQuery qdsp(&comdsp);
 //static RequestQuery qmem(&commem);
 
-static R02 r02[8];
+static R01 r02[8];
 
-static R02* manVec = 0;
-static R02* curManVec = 0;
+static R01* manVec = 0;
+static R01* curManVec = 0;
 
 static RspMan60 rspMan60;
 
 //static byte curRcv[3] = {0};
 //static byte curVec[3] = {0};
 
-static List<R02> freeR02;
+static List<R01> freeR01;
 
 //static RMEM rmem[4];
 //static List<RMEM> lstRmem;
@@ -88,6 +88,8 @@ static u16 motoCounter = 0; // счётчик оборотов двигателя 1/6 оборота
 u16 manRcvData[10];
 u16 manTrmData[50];
 
+const u16 dspReqWord = 0x1300;
+const u16 dspReqMask = 0xFF00;
 
 static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
@@ -515,42 +517,9 @@ void CallBackRcvReqFire(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateDspReq01(byte n, u16 vc)
+void CallBackRcvReq01(REQ *q)
 {
-	static ReqDsp01 req[3];
-	static ComPort::WriteBuffer wb;
-	static REQ q;
-
-	q.CallBack = CallBackRcvReqFire;
-	q.rb = 0;
-	q.wb = &wb;
-	q.ready = false;
-	q.tryCount = 0;
-	
-	wb.data = req;
-	wb.len = sizeof(req);
-	
-	req[2].len		= req[1].len	= req[0].len	= sizeof(ReqDsp01) - 1;
-	req[2].func 	= req[1].func	= req[0].func	= 1;
-	req[2].mode		= req[1].mode	= req[0].mode	= 0;
-	req[2].gain		= req[1].gain	= req[0].gain	= 0;
-	req[2].st		= req[1].st		= req[0].st		= 0;
-	req[2].sl		= req[1].sl		= req[0].sl		= 0;
-	req[2].sd		= req[1].sd		= req[0].sd		= 0;
-	req[2].thr		= req[1].thr	= req[0].thr	= 0;
-	req[2].descr	= req[1].descr	= req[0].descr	= 0;
-	req[2].crc		= req[1].crc	= req[0].crc	= GetCRC16(&req[0].func, sizeof(ReqDsp01)-3);
-
-	return &q;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CallBackRcvReq02(REQ *q)
-{
-	RspDsp02 &rsp = *((RspDsp02*)q->rb->data);
-//	ReqDsp02 &req = *((ReqDsp02*)q->wb->data);
+	RspDsp01 &rsp = *((RspDsp01*)q->rb->data);
 	 
 	bool crcOK = q->crcOK;
 
@@ -562,14 +531,14 @@ void CallBackRcvReq02(REQ *q)
 	{
 		if (q->rb->recieved)
 		{
-			if ((rsp.rw & manReqMask) != manReqWord || (rsp.len*8+16) != q->rb->len)
-			{
-				lenErr02++;
-			}
-			else
-			{
-				crcErr02++;
-			};
+			//if ((rsp.rw & manReqMask) != manReqWord || (rsp.len*8+16) != q->rb->len)
+			//{
+			//	lenErr02++;
+			//}
+			//else
+			//{
+			//	crcErr02++;
+			//};
 		}
 		else
 		{
@@ -586,11 +555,11 @@ void CallBackRcvReq02(REQ *q)
 		{
 			dspStatus &= ~1; 
 
-			R02* r = (R02*)q->ptr;
+			R01* r = (R01*)q->ptr;
 		
 			if (r != 0)
 			{
-				freeR02.Add(r); 
+				freeR01.Add(r); 
 			};
 		};
 	};
@@ -598,23 +567,23 @@ void CallBackRcvReq02(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-R02* CreateRcvReq02(u16 tryCount)
+R01* CreateDspReq01(u16 tryCount)
 {
-	R02 *r02 = freeR02.Get();
+	R01 *r01 = freeR01.Get();
 
-	if (r02 == 0) return 0;
+	if (r01 == 0) return 0;
 
-	R02 &r = *r02;
+	R01 &r = *r01;
 
-	ReqDsp02 *req = r.req;
-	RspDsp02 &rsp = r.rsp;
+	ReqDsp01 &req = r.req;
+	RspDsp01 &rsp = r.rsp;
 	
 	ComPort::WriteBuffer &wb = r.wb;
 	ComPort::ReadBuffer	 &rb = r.rb;
 	
 	REQ &q = r.q;
 
-	q.CallBack = CallBackRcvReq02;
+	q.CallBack = CallBackRcvReq01;
 	q.rb = &rb;
 	q.wb = &wb;
 	q.preTimeOut = MS2RT(1);
@@ -625,27 +594,34 @@ R02* CreateRcvReq02(u16 tryCount)
 	q.checkCRC = true;
 	q.updateCRC = false;
 	
-	wb.data = req;
-	wb.len = sizeof(r.req);
+	wb.data = &req;
+	wb.len = sizeof(req);
 
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req[1].len	= req[0].len	= sizeof(ReqDsp02) - 1;
-	req[2].func 	= req[1].func	= req[0].func	= 1;
-	req[2].mode		= req[1].mode	= req[0].mode	= 0;
-	req[2].gain		= req[1].gain	= req[0].gain	= 0;
-	req[2].st		= req[1].st		= req[0].st		= 0;
-	req[2].sl		= req[1].sl		= req[0].sl		= 0;
-	req[2].sd		= req[1].sd		= req[0].sd		= 0;
-	req[2].thr		= req[1].thr	= req[0].thr	= 0;
-	req[2].descr	= req[1].descr	= req[0].descr	= 0;
-	req[2].crc		= req[1].crc	= req[0].crc	= GetCRC16(&req[0].func, sizeof(ReqDsp02)-3);
+	req.rw			= dspReqWord|1;
+	req.mode 		= 0;
+	req.gain 		= gain;
+	req.st	 		= sampleTime;
+	req.sl 			= sampleLen;
+	req.sd 			= sampleDelay;
+	req.thr			= deadTime;
+	req.descr		= descriminant;
+	req.refgain 	= gainRef;
+	req.refst		= sampleTimeRef;
+	req.refsl 		= sampleLenRef;
+	req.refsd 		= sampleDelayRef;
+	req.refthr		= deadTimeRef;
+	req.refdescr	= descriminantRef;
 
-	return r02;
+	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
+
+	return r01;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackRcvReq05(REQ *q)
@@ -688,10 +664,10 @@ REQ* CreateRcvReq05(u16 tryCount)
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 
-	req[1].len	= req[0].len	= sizeof(ReqDsp05) - 1;
-	req[1].func = req[0].func	= 5;
+	//req[1].len	= req[0].len	= sizeof(ReqDsp05) - 1;
+	//req[1].func = req[0].func	= 5;
 
-	req[1].crc = req[0].crc = GetCRC16(&req[0].func, sizeof(ReqDsp05)-3);
+	//req[1].crc = req[0].crc = GetCRC16(&req[0].func, sizeof(ReqDsp05)-3);
 
 	return &q;
 }
@@ -735,8 +711,7 @@ REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 
-	req.len	= sizeof(req) - sizeof(req.data) - 1;
-	req.func = 6;
+	req.rw = dspReqWord|6;
 
 	u16 max = sizeof(req.data)-2;
 
@@ -753,7 +728,7 @@ REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 	req.stAdr = stAdr;
 	req.count = count+count2;
 
-	req.crc = GetCRC16(&req.func, sizeof(req)-sizeof(req.data)-3);
+	//req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	byte *d = req.data;
 	byte *s = (byte*)data;
@@ -775,13 +750,15 @@ REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 		};
 	};
 
-	u16 crc = GetCRC16(req.data, req.count);
+	u16 len = sizeof(req) - 2 - sizeof(req.data) + req.count;
+
+	u16 crc = GetCRC16(&req, len);
 
 	d[0] = crc;
 	d[1] = crc>>8;
 
 	wb.data = &req;
-	wb.len = req.len+1 + req.count+2;
+	wb.len = len+2;
 
 	return &q;
 }
@@ -790,7 +767,7 @@ REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 
 REQ* CreateRcvReq07()
 {
-	static ReqDsp07 req[2];
+	static ReqDsp07 req;
 	static ComPort::WriteBuffer wb;
 	static REQ q;
 
@@ -804,16 +781,15 @@ REQ* CreateRcvReq07()
 	q.checkCRC = false;
 	q.updateCRC = false;
 	
-	wb.data = req;
+	wb.data = &req;
 	wb.len = sizeof(req);
 	
 	//rb.data = &rsp;
 	//rb.maxLen = sizeof(rsp);
 
-	req[1].len	= req[0].len	= sizeof(ReqDsp07) - 1;
-	req[1].func = req[0].func	= 7;
+	req.rw	= dspReqWord|7;
 
-	req[1].crc = req[0].crc = GetCRC16(&req[0].func, sizeof(ReqDsp07)-3);
+	req.crc = GetCRC16(&req, sizeof(ReqDsp07)-2);
 
 	return &q;
 }
@@ -888,7 +864,7 @@ static void InitRmemList()
 {
 	for (u16 i = 0; i < ArraySize(r02); i++)
 	{
-		freeR02.Add(&r02[i]);
+		freeR01.Add(&r02[i]);
 	};
 }
 
@@ -1008,13 +984,13 @@ static bool RequestMan_30_(u16 *data, u16 len, MTB* mtb)
 
 	u16 sz = 6 + /*r02->rsp.len*4*/ sampleLen*4;
 
-	R02 *r02 = curManVec;
+	R01 *r02 = curManVec;
 
 	if (len < 3)
 	{
 		if (r02 != 0)
 		{
-			freeR02.Add(r02);
+			freeR01.Add(r02);
 
 			curManVec = 0;
 		};
@@ -1035,7 +1011,7 @@ static bool RequestMan_30_(u16 *data, u16 len, MTB* mtb)
 	{
 		if (r02 != 0)
 		{
-			freeR02.Add(r02);
+			freeR01.Add(r02);
 
 			curManVec = 0;
 		};
@@ -1460,7 +1436,7 @@ static void MainMode()
 
 	static byte rcv = 0;
 //	static REQ *req = 0;
-	static R02 *r02 = 0;
+	static R01 *r01 = 0;
 //	static RTM32 rt;
 //	static TM32 rt2;
 
@@ -1470,11 +1446,11 @@ static void MainMode()
 	{
 		case 0:
 
-			r02 = CreateRcvReq02(1);
+			r01 = CreateDspReq01(1);
 
-			if (r02 != 0)
+			if (r01 != 0)
 			{
-				qdsp.Add(&r02->q);
+				qdsp.Add(&r01->q);
 
 				mainModeState++;
 			};
@@ -1483,21 +1459,21 @@ static void MainMode()
 
 		case 1:
 
-			if (r02->q.ready)
+			if (r01->q.ready)
 			{
-				if (r02->q.crcOK)
+				if (r01->q.crcOK)
 				{
-					u16 rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
-					
-					if (r02->rsp.rw != rw || r02->rsp.cnt != fireCounter)
-					{
-						r02->rsp.rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
-						r02->rsp.cnt = fireCounter;
-					};
+					//u16 rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
+					//
+					//if (r01->rsp.rw != rw || r02->rsp.cnt != fireCounter)
+					//{
+					//	r01->rsp.rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
+					//	r01->rsp.cnt = fireCounter;
+					//};
 
 					//CreateMemReq02(*r02, crc);
 
-					//freeR02.Add(r02);
+					//freeR01.Add(r02);
 
 					manCounter++;
 				};

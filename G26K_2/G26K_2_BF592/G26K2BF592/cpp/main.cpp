@@ -8,7 +8,7 @@ static ComPort com;
 //static ComPort::WriteBuffer wb;
 //
 
-static u16 data[1024];
+//static u16 data[1024];
 
 //static u16 spd[1024*13];
 
@@ -30,8 +30,8 @@ struct Cmd
 	byte ready; 
 };
 
-static Cmd cmdreq = {0, 0, 52, 255, 25*2000, 0, 0, 0};
-static Cmd cmdrsp;
+//static Cmd cmdreq = {0, 0, 52, 255, 25*2000, 0, 0, 0};
+//static Cmd cmdrsp;
 
 //static u16 spd2[512*2];
 //
@@ -65,7 +65,7 @@ static u16 sampleLen = 512;
 static u16 gain = 0;
 
 
-static void SaveParams();
+//static void SaveParams();
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -391,7 +391,7 @@ static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	if (wb == 0) return false;
 
-	SaveParams();
+	//SaveParams();
 
 	rsp[0] = manReqWord|0xF0;
  
@@ -517,91 +517,6 @@ static void Update()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void SaveParams()
-{
-	u16 buf[12];
-
-	ERROR_CODE result;
-
-	buf[0] = buf[6] = sampleDelay;
-	buf[1] = buf[7] = sampleTime;
-	buf[2] = buf[8] = sampleLen;
-	buf[3] = buf[9] = gain;
-	buf[4] = buf[10] = numDevice;
-	buf[5] = buf[11] = GetCRC16(buf, 10);
-
-	result = EraseBlock(0x20000);
-	result = at25df021_Write((byte*)buf, 0x20000, sizeof(buf), false);
-
-	result = EraseBlock(0x21000);
-	result = at25df021_Write((byte*)buf, 0x21000, sizeof(buf), false);
-
-	result = EraseBlock(0x22000);
-	result = at25df021_Write((byte*)buf, 0x22000, sizeof(buf), false);
-
-	result = EraseBlock(0x23000);
-	result = at25df021_Write((byte*)buf, 0x23000, sizeof(buf), false);
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void LoadParams()
-{
-	u16 buf[12];
-
-	ERROR_CODE result;
-
-	u32 stAdr = 0x20000;
-
-
-	bool crc = false;
-
-	for (byte n = 0; n < 4; n++, stAdr += 0x1000)
-	{
-		result = at25df021_Read((byte*)buf, stAdr, sizeof(buf));
-
-		if (result == NO_ERR)
-		{
-			u16 *p = buf;
-
-			for (byte i = 0; i < 2; i++)
-			{
-				if (GetCRC16(p, 12) == 0)
-				{
-					sampleDelay = p[0];
-					sampleTime = p[1];
-					sampleLen = p[2];
-					gain = p[3];
-					numDevice = p[4];
-
-					crc = true;
-
-					break;
-				}
-				else
-				{
-					p += 6;
-				};
-			};
-		};
-
-		if (crc) break;
-	};
-
-	if(!crc)
-	{
-		sampleDelay = 600;
-		sampleTime = 8;
-		sampleLen = 512;
-		gain = 0;
-		numDevice = 1;
-
-		SaveParams();
-	};
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 #pragma optimize_for_speed
 
 i16 TestProcessData(u16 *data, u16 len)
@@ -635,13 +550,13 @@ static void UpdateProcessData()
 	{
 		*pPORTGIO_SET = 1<<5;
 
-		TestProcessData(dsc->dst, dsc->len);
+		TestProcessData(dsc->data, dsc->len);
 
 		FreeDscPPI(dsc);
 
 		*pPORTGIO_CLEAR = 1<<5;
 
-		idle();
+		//idle();
 	};
 }
 
@@ -656,13 +571,13 @@ int main( void )
 
 	static u32 pt = 0;
 
-	static RTM32 tm;
+	//static RTM32 tm;
 
 	InitHardware();
 
-	LoadParams();
+	//LoadParams();
 
-	com.Connect(1000000, 2);
+	com.Connect(6250000, 0);
 
 //	InitNetAdress();
 

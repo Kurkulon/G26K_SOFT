@@ -20,8 +20,6 @@ extern dword millisecondsCount;
 
 bool ComPort::Connect(dword speed, byte parity)
 {
-#ifndef WIN32
-
 	if (_connected)
 	{
 		return false;
@@ -53,16 +51,6 @@ bool ComPort::Connect(dword speed, byte parity)
 	_status485 = READ_END;
 
 	return _connected = true;
-
-#else
-
-    char buf[256];
-
-    wsprintf(buf, "COM%u", port+1);
-
-    return Connect(buf, speed, parity);
-
-#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -78,11 +66,7 @@ bool ComPort::Disconnect()
 
 	_status485 = READ_END;
 
-#ifndef WIN32
 	_connected = false;
-#else
-	_connected = false;
-#endif
 
 	return true;
 }
@@ -126,8 +110,6 @@ void ComPort::SetBoudRate(word presc)
 
 void ComPort::EnableTransmit(void* src, word count)
 {
-#ifndef WIN32
-
 	*pPORTFIO_SET = MASKRTS;
 	*pDMA8_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
@@ -141,22 +123,6 @@ void ComPort::EnableTransmit(void* src, word count)
 
 	*pUART0_IER = ETBEI;
 
-
-
-#else
-
-	_ovlWrite.hEvent = 0;
-	_ovlWrite.Internal = 0;
-	_ovlWrite.InternalHigh = 0;
-	_ovlWrite.Offset = 0;
-	_ovlWrite.OffsetHigh = 0;
-	_ovlWrite.Pointer = 0;
-
-	WriteFile(_comHandle, src, count, &_writeBytes, &_ovlWrite);
-    SetCommMask(_comHandle, EV_TXEMPTY);
-
-#endif
-
 	_status485 = WRITEING;
 }
 
@@ -164,21 +130,15 @@ void ComPort::EnableTransmit(void* src, word count)
 
 void ComPort::DisableTransmit()
 {
-#ifndef WIN32
-	
 	*pDMA8_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
 	*pPORTFIO_CLEAR = MASKRTS;
-
-#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::EnableReceive(void* dst, word count)
 {
-#ifndef WIN32
-
 	*pPORTFIO_CLEAR = MASKRTS;
 	*pDMA7_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
@@ -194,19 +154,6 @@ void ComPort::EnableReceive(void* dst, word count)
 	count = *pUART0_LSR;
 	*pUART0_IER = ERBFI;
 
-#else
-
-	_ovlRead.hEvent = 0;
-	_ovlRead.Internal = 0;
-	_ovlRead.InternalHigh = 0;
-	_ovlRead.Offset = 0;
-	_ovlRead.OffsetHigh = 0;
-	_ovlRead.Pointer = 0;
-
-	ReadFile(_comHandle, dst, count, &_readBytes, &_ovlRead);
-
-#endif
-
 	_status485 = WAIT_READ;
 }
 
@@ -214,13 +161,9 @@ void ComPort::EnableReceive(void* dst, word count)
 
 void ComPort::DisableReceive()
 {
-#ifndef WIN32
-
 	*pDMA7_CONFIG = 0;	// Disable transmit and receive
 	*pUART0_IER = 0;
 	*pPORTFIO_CLEAR = MASKRTS;
-
-#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -242,11 +185,7 @@ bool ComPort::Update()
 	{
 		case WRITEING:
 
-#ifndef WIN32
 			if (*pUART0_LSR & TEMT)
-#else
-			if (HasOverlappedIoCompleted(&_ovlWrite))
-#endif
 			{
 				_pWriteBuffer->transmited = true;
 				_status485 = READ_END;
@@ -260,8 +199,6 @@ bool ComPort::Update()
 			break;
 
 		case WAIT_READ:
-
-#ifndef WIN32
 
 			if ((_prevDmaCounter-*pDMA7_CURR_X_COUNT) == 0)
 			{
@@ -281,20 +218,7 @@ bool ComPort::Update()
 				_status485 = READING;
 			};
 
-#else
-			if (HasOverlappedIoCompleted(&_ovlRead))
-			{
-				bool c = GetOverlappedResult(_comHandle, &_ovlRead, &_readBytes, false);
-				_pReadBuffer->len = _readBytes;
-				_pReadBuffer->recieved = _pReadBuffer->len > 0 && c;
-				_status485 = READ_END;
-				r = false;
-			};
-#endif
-
 			break;
-
-#ifndef WIN32
 
 		case READING:
 
@@ -325,8 +249,6 @@ bool ComPort::Update()
 
 			break;
 
-#endif
-
 		case READ_END:
 
 			r = false;
@@ -343,25 +265,11 @@ bool ComPort::Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword post
 {
 	if (_status485 != READ_END || readBuffer == 0)
 	{
-//		cputs("ComPort::Read falure\n\r");	
 		return false;
 	};
-
-#ifndef WIN32
 
 	_preReadTimeout = preTimeout;
 	_postReadTimeout = postTimeout;
-
-#else
-    _cto.ReadIntervalTimeout = postTimeout/32;
-	_cto.ReadTotalTimeoutConstant = preTimeout/32;
-
-    if (!SetCommTimeouts(_comHandle, &_cto))
-    {
-		return false;
-	};
-
-#endif
 
 	_pReadBuffer = readBuffer;
 	_pReadBuffer->recieved = false;
@@ -370,8 +278,6 @@ bool ComPort::Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword post
 	_prevDmaCounter = _pReadBuffer->maxLen;
 
 	EnableReceive(_pReadBuffer->data, _pReadBuffer->maxLen);
-
-//	cputs("ComPort::Read start\n\r");	
 
 	return true;
 }
@@ -394,107 +300,4 @@ bool ComPort::Write(ComPort::WriteBuffer *writeBuffer)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#ifdef WIN32
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-int  ComPort::_portTableSize = 0;
-dword ComPort::_portTable[16];
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool ComPort::Connect(const char* comPort, dword bps, byte parity)
-{
-    if (_comHandle != INVALID_HANDLE_VALUE)
-    {
-        return false;
-    };
-
-	_comHandle = CreateFile(comPort, GENERIC_READ|GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
-
-    if (_comHandle == INVALID_HANDLE_VALUE)
-    {
-		return false;
-    };
-
-    DCB dcb;
-
-    if (!GetCommState(_comHandle, &dcb))
-    {
-        Disconnect();
-		return false;
-    };
-
-    dcb.DCBlength = sizeof(dcb);
-    dcb.BaudRate = bps;
-    dcb.ByteSize = 8;
-    dcb.Parity = parity;
-    dcb.fParity = (parity > 0);
-    dcb.StopBits = ONESTOPBIT;
-    dcb.fBinary = true;
-    dcb.fDtrControl = DTR_CONTROL_DISABLE;
-    dcb.fRtsControl = RTS_CONTROL_DISABLE;
-	dcb.fOutxCtsFlow = false;
-	dcb.fOutxDsrFlow = false;
-    dcb.fDsrSensitivity = false;
-
-	if (!SetCommState(_comHandle, &dcb))
-    {
-        Disconnect();
-		return false;
-    };
-
-    _cto.ReadIntervalTimeout = 2;
-	_cto.ReadTotalTimeoutMultiplier = 0;
-	_cto.ReadTotalTimeoutConstant = -1;
-	_cto.WriteTotalTimeoutConstant = 0;
-	_cto.WriteTotalTimeoutMultiplier = 0;
-
-    if (!SetCommTimeouts(_comHandle, &_cto))
-    {
-        Disconnect();
-    	return false;
-    };
-
-	printf("Connect to %s speed = %u\r\n", comPort, bps);
-
-	return _connected = true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void ComPort::BuildPortTable()
-{
-    if (_portTableSize != 0)
-    {
-        return;
-    };
-
-    char buf[256];
-
-    COMMCONFIG cc;
-    DWORD lcc = sizeof(cc);
-
-    int k = 0;
-
-    for (int i = 1; i < 17; i++)
-    {
-        wsprintf(buf, "COM%i", i);
-
-        lcc = sizeof(cc);
-
-        if (GetDefaultCommConfig(buf, &cc, &lcc))
-        {
-            _portTable[k++] = i;
-        };
-
-    };
-
-    _portTableSize = k;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#endif
 
