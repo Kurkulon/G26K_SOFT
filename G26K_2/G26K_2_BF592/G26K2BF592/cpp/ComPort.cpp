@@ -119,7 +119,7 @@ void ComPort::EnableTransmit(void* src, word count)
 	*pDMA8_X_MODIFY = 1;
 	*pDMA8_CONFIG = FLOW_STOP|WDSIZE_8|SYNC|DMAEN;
 
-	_startTransmitTime = GetRTT();
+	_startTransmitTime = GetCycles32();
 
 	*pUART0_IER = ETBEI;
 
@@ -148,7 +148,7 @@ void ComPort::EnableReceive(void* dst, word count)
 	*pDMA7_X_MODIFY = 1;
 	*pDMA7_CONFIG = WNR|FLOW_STOP|WDSIZE_8|SYNC|DMAEN;
 
-	_startReceiveTime = GetRTT();
+	_startReceiveTime = GetCycles32();
 
 	count = *pUART0_RBR;
 	count = *pUART0_LSR;
@@ -179,7 +179,7 @@ bool ComPort::Update()
 		_status485 = READ_END;
 	};
 
-	stamp = GetRTT();
+	stamp = GetCycles32();
 
 	switch (_status485)
 	{

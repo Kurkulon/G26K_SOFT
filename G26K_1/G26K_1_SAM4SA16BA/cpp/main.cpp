@@ -48,8 +48,10 @@ static RequestQuery qdsp(&comdsp);
 
 static R01 r02[8];
 
-static R01* manVec = 0;
-static R01* curManVec = 0;
+static R01* manVec40 = 0;
+static R01* curManVec40 = 0;
+static R01* manVec50 = 0;
+static R01* curManVec50 = 0;
 
 static RspMan60 rspMan60;
 
@@ -88,7 +90,7 @@ static u16 motoCounter = 0; // счётчик оборотов двигателя 1/6 оборота
 u16 manRcvData[10];
 u16 manTrmData[50];
 
-const u16 dspReqWord = 0x1300;
+const u16 dspReqWord = 0xAD00;
 const u16 dspReqMask = 0xFF00;
 
 static u16 manReqWord = 0xAD00;
@@ -517,18 +519,26 @@ void CallBackRcvReqFire(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackRcvReq01(REQ *q)
+void CallBackDspReq01(REQ *q)
 {
 	RspDsp01 &rsp = *((RspDsp01*)q->rb->data);
 	 
-	bool crcOK = q->crcOK;
-
-	if (crcOK)
+	if (rsp.rw == (dspReqWord|0x40))
 	{
+		q->crcOK = (q->rb->len == (rsp.CM.sl*2 + 19*2));
+
+		dspStatus |= 1;
+	}
+	else if (rsp.rw == (dspReqWord|0x50))
+	{
+		q->crcOK = (q->rb->len == (rsp.IM.dataLen*2 + 11*2));
+
 		dspStatus |= 1;
 	}
 	else
 	{
+		q->crcOK = false;
+
 		if (q->rb->recieved)
 		{
 			//if ((rsp.rw & manReqMask) != manReqWord || (rsp.len*8+16) != q->rb->len)
@@ -583,7 +593,7 @@ R01* CreateDspReq01(u16 tryCount)
 	
 	REQ &q = r.q;
 
-	q.CallBack = CallBackRcvReq01;
+	q.CallBack = CallBackDspReq01;
 	q.rb = &rb;
 	q.wb = &wb;
 	q.preTimeOut = MS2RT(1);
@@ -591,7 +601,7 @@ R01* CreateDspReq01(u16 tryCount)
 	q.ready = false;
 	q.tryCount = tryCount;
 	q.ptr = &r;
-	q.checkCRC = true;
+	q.checkCRC = false;
 	q.updateCRC = false;
 	
 	wb.data = &req;
@@ -624,7 +634,7 @@ R01* CreateDspReq01(u16 tryCount)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackRcvReq05(REQ *q)
+void CallBackDspReq05(REQ *q)
 {
 	if (!q->crcOK) 
 	{
@@ -640,7 +650,7 @@ void CallBackRcvReq05(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq05(u16 tryCount)
+REQ* CreateDspReq05(u16 tryCount)
 {
 	static ReqDsp05 req[2];
 	static RspDsp05 rsp;
@@ -648,7 +658,7 @@ REQ* CreateRcvReq05(u16 tryCount)
 	static ComPort::ReadBuffer rb;
 	static REQ q;
 
-	q.CallBack = CallBackRcvReq05;
+	q.CallBack = CallBackDspReq05;
 	q.preTimeOut = US2RT(500);
 	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
@@ -674,7 +684,7 @@ REQ* CreateRcvReq05(u16 tryCount)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackRcvReq06(REQ *q)
+void CallBackDspReq06(REQ *q)
 {
 	if (!q->crcOK) 
 	{
@@ -690,7 +700,7 @@ void CallBackRcvReq06(REQ *q)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u16 tryCount)
+REQ* CreateDspReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u16 tryCount)
 {
 	static ReqDsp06 req;
 	static RspDsp06 rsp;
@@ -698,7 +708,7 @@ REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 	static ComPort::ReadBuffer rb;
 	static REQ q;
 
-	q.CallBack = CallBackRcvReq06;
+	q.CallBack = CallBackDspReq06;
 	q.preTimeOut = MS2RT(10);
 	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
@@ -765,7 +775,7 @@ REQ* CreateRcvReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* CreateRcvReq07()
+REQ* CreateDspReq07()
 {
 	static ReqDsp07 req;
 	static ComPort::WriteBuffer wb;
@@ -958,7 +968,7 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_30_(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 {
 	__packed struct Req { u16 rw; u16 off; u16 len; };
 
@@ -982,64 +992,64 @@ static bool RequestMan_30_(u16 *data, u16 len, MTB* mtb)
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
-	u16 sz = 6 + /*r02->rsp.len*4*/ sampleLen*4;
-
-	R01 *r02 = curManVec;
+	R01 *r01 = curManVec40;
+	
+	u16 sz = 19 + r01->rsp.CM.sl;
 
 	if (len < 3)
 	{
-		if (r02 != 0)
+		if (r01 != 0)
 		{
-			freeR01.Add(r02);
+			freeR01.Add(r01);
 
-			curManVec = 0;
+			curManVec40 = 0;
 		};
 		
-		r02 = manVec;
+		r01 = manVec40;
 
-		if (r02 != 0 && r02->rsp.rw == req.rw)
+		if (r01 != 0 && r01->rsp.rw == req.rw)
 		{
-			curManVec = r02;
+			curManVec40 = r01;
 
-			manVec = 0;
+			manVec40 = 0;
 
-			mtb->data2 = ((u16*)&r02->rsp)+1;
+			mtb->data2 = ((u16*)&r01->rsp)+1;
 			mtb->len2 = sz;
 		};
 	}
 	else if (data[1] == 0)
 	{
-		if (r02 != 0)
+		if (r01 != 0)
 		{
-			freeR01.Add(r02);
+			freeR01.Add(r01);
 
-			curManVec = 0;
+			curManVec40 = 0;
 		};
 
-		r02 = manVec;
+		r01 = manVec40;
 
-		if (r02 != 0 && r02->rsp.rw == req.rw)
+		if (r01 != 0 && r01->rsp.rw == req.rw)
 		{
-			curManVec = r02;
+			curManVec40 = r01;
 
-			manVec = 0;
+			manVec40 = 0;
 
 			u16 len = data[2];
 
 			if (len > sz) len = sz;
 
-			mtb->data2 = ((u16*)&r02->rsp)+1;
+			mtb->data2 = ((u16*)&r01->rsp)+1;
 			mtb->len2 = len;
 		};
 	}
-	else if (sz >= data[1] && r02 != 0)
+	else if (sz >= data[1] && r01 != 0)
 	{
 		u16 maxlen = sz - data[1];
 		u16 len = data[2];
 
 		if (len > maxlen) len = maxlen;
 
-		mtb->data2 = (u16*)&r02->rsp + data[1]+1;
+		mtb->data2 = (u16*)&r01->rsp + data[1]+1;
 		mtb->len2 = len;
 	};
 
@@ -1053,22 +1063,6 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
 
 	manTrmData[0] = manReqWord|0x30;	
- 
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
-	mtb->data2 = 0;
-	mtb->len2 = 0;
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
-{
-	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
-
-	manTrmData[0] = manReqWord|0x40;	
  
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -1463,19 +1457,40 @@ static void MainMode()
 			{
 				if (r01->q.crcOK)
 				{
-					//u16 rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
-					//
-					//if (r01->rsp.rw != rw || r02->rsp.cnt != fireCounter)
-					//{
-					//	r01->rsp.rw = manReqWord | ((3+fireType) << 4) | (rcv - 1);
-					//	r01->rsp.cnt = fireCounter;
-					//};
+					if ((r01->rsp.rw & 0xFF) == 0x40)
+					{
+						r01->rsp.CM.ax = -ax;
+						r01->rsp.CM.ay = az;
+						r01->rsp.CM.az = -ay;
+						r01->rsp.CM.at = at;
 
-					//CreateMemReq02(*r02, crc);
+						if (manVec40 != 0)
+						{
+							freeR01.Add(manVec40);
+						};
+						
+						manVec40 = r01;
+					}
+					else if ((r01->rsp.rw & 0xFF) == 0x50)
+					{
+						r01->rsp.IM.ax = -ax;
+						r01->rsp.IM.ay = az;
+						r01->rsp.IM.az = -ay;
+						r01->rsp.IM.at = at;
 
-					//freeR01.Add(r02);
-
+						if (manVec50 != 0)
+						{
+							freeR01.Add(manVec50);
+						};
+						
+						manVec50 = r01;
+					};
+				
 					manCounter++;
+				}
+				else
+				{
+					freeR01.Add(r01);
 				};
 
 				mainModeState = 0;
@@ -1838,7 +1853,7 @@ static void FlashRcv()
 	flashLen = sizeof(flashPages)+2;
 	flashCRC = GetCRC16(flashPages, flashLen-2);
 
-	req = CreateRcvReq05(2);
+	req = CreateDspReq05(2);
 
 	qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
 
@@ -1863,7 +1878,7 @@ static void FlashRcv()
 				{
 					len = 256;
 
-					req = CreateRcvReq06(adr, len, p, 0, 0, 2);
+					req = CreateDspReq06(adr, len, p, 0, 0, 2);
 				}
 				else
 				{
@@ -1871,11 +1886,11 @@ static void FlashRcv()
 
 					if (len > 2)
 					{
-						req = CreateRcvReq06(adr, len-2, p, sizeof(flashCRC), &flashCRC, 2);
+						req = CreateDspReq06(adr, len-2, p, sizeof(flashCRC), &flashCRC, 2);
 					}
 					else
 					{
-						req = CreateRcvReq06(adr, sizeof(flashCRC), &flashCRC, 0, 0, 2);
+						req = CreateDspReq06(adr, sizeof(flashCRC), &flashCRC, 0, 0, 2);
 					};
 				};
 
@@ -1886,7 +1901,7 @@ static void FlashRcv()
 				adr += len;
 			};
 
-			req = CreateRcvReq07();
+			req = CreateDspReq07();
 
 			qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
 		};
@@ -1908,7 +1923,7 @@ int main()
 	
 	Init_time();
 
-	LoadVars();
+	//LoadVars();
 
 //	InitNumStations();
 

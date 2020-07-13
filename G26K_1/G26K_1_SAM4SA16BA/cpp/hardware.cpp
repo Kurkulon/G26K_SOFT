@@ -828,25 +828,25 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 {
 	u32 t = (u32)samplePerRound * RPS;
 	
-	t = ((u32)(MCK * 12.5) + t/2) / t;
+	t = ((u32)(MCK * 0.78125) + t/2) / t;
 
 	if (t > 0xFFFF) t = 0xFFFF;
 
 	//u16 r = (samplePerRound + 36) / 72;
 	
 	u32 r = (u32)RPS * pulsesPerHeadRound;
-	r = ((u32)(MCK * 3.125) + r/2) / r;
+	r = ((u32)(MCK * 0.78125) + r/2) / r;
 	if (r > 0xFFFF) r = 0xFFFF;
 
 	SyncTmr.IER = CPCS;
-	SyncTmr.CMR = WAVE|TIMER_CLOCK2|WAVSEL_UP_RC|ACPA_CLEAR|ACPC_SET|ASWTRG_SET;
-	SyncTmr.RA = 10/*us*/	* (MCK / 1000) / 8000;
+	SyncTmr.CMR = WAVE|TIMER_CLOCK4|WAVSEL_UP_RC|ACPA_CLEAR|ACPC_SET|ASWTRG_SET;
+	SyncTmr.RA = (10/*us*/	* (MCK / 1000) + 64000) / 128000;
 	SyncTmr.RC = t;
 	SyncTmr.CCR = ((t != 0) ? CLKEN : CLKDIS) | SWTRG;
 
 	//RotBMR = 0xC;
 	RotTmr.IER = CPCS;
-	RotTmr.CMR = CPCTRG|TIMER_CLOCK3;
+	RotTmr.CMR = CPCTRG|TIMER_CLOCK4;
 	RotTmr.RC = r;
 	RotTmr.CCR = ((r != 0) ? CLKEN : CLKDIS) | SWTRG;
 }
@@ -876,14 +876,14 @@ static void Init_Sync_Rot()
 
 	SyncTmr.IER = CPCS;
 	//SyncTmr.IDR = ~0;
-	SyncTmr.CMR = WAVE|TIMER_CLOCK2|WAVSEL_UP_RC|ACPA_CLEAR|ACPC_SET;
-	SyncTmr.RA = 10/*us*/	* (MCK / 1000) / 8000;
-	SyncTmr.RC = 60/*us*/	* (MCK / 1000) / 8000;
+	SyncTmr.CMR = WAVE|TIMER_CLOCK4|WAVSEL_UP_RC|ACPA_CLEAR|ACPC_SET;
+	SyncTmr.RA = 10/*us*/	* (MCK / 1000) / 128000;
+	SyncTmr.RC = 60/*us*/	* (MCK / 1000) / 128000;
 	SyncTmr.CCR = CLKEN|SWTRG;
 
 	//RotBMR = 0xC;
 	RotTmr.IER = CPCS;
-	RotTmr.CMR = CPCTRG|TIMER_CLOCK3;
+	RotTmr.CMR = CPCTRG|TIMER_CLOCK4;
 	RotTmr.RC = 0xFFFF;
 	RotTmr.CCR = CLKEN|SWTRG; 
 }
@@ -896,7 +896,7 @@ void InitHardware()
 	InitManRecieve();
 	Init_Sync_Rot();
 
-	Set_Sync_Rot(210, 547);
+	Set_Sync_Rot(210, 32);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

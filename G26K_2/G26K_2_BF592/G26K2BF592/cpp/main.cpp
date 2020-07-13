@@ -2,7 +2,7 @@
 #include "ComPort.h"
 #include "CRC16.h"
 #include "at25df021.h"
-
+#include "list.h"
 
 static ComPort com;
 //static ComPort::WriteBuffer wb;
@@ -49,7 +49,7 @@ struct Cmd
 //static byte gain[3] = { 7, 7, 7 };
 //static byte netAdr = 1;
 
-static u16 manReqWord = 0xA900;
+static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
 
 static u16 numDevice = 1;
@@ -64,6 +64,9 @@ static u16 sampleTime = 8;
 static u16 sampleLen = 512;
 static u16 gain = 0;
 
+static List<DSCPPI> processedPPI;
+
+static DSCPPI *curDscPPI = 0;
 
 //static void SaveParams();
 
@@ -199,24 +202,6 @@ static void UpdateFire()
 }
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_00(u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	static u16 rsp[3];
-
-	if (wb == 0) return false;
-
-	rsp[0] = manReqWord;
-	rsp[1] = numDevice;
-	rsp[2] = verDevice;
-
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
 	//1.1 Запрос параметров
@@ -224,179 +209,52 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	//	------
 
 	static u16 rsp[6];
-
+	
 	if (wb == 0) return false;
 
-	rsp[0] = manReqWord|0x10;	// 	1. ответное слово
-	rsp[1] = gain;				//	2. КУ
-	rsp[2] = sampleTime;		//	3. Шаг оцифровки
-	rsp[3] = sampleLen;			//	4. Длина оцифровки
-	rsp[4] = sampleDelay;		//	5. Задержка оцифровки
-	rsp[5] = 0;					//	6. Фильтр
-
-	wb->data = rsp;			 
-	wb->len = sizeof(rsp);	 
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_20(u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	static u16 rsp[8];
-
-	if (wb == 0) return false;
-
-	startFire = true;
-
-	rsp[0] = manReqWord|0x20;			//	1. ответное слово	
-	rsp[1] = GD(&manCounter, u16, 0);	//	2. счётчик. младшие 2 байта
-	rsp[2] = GD(&manCounter, u16, 1);	//	3. счётчик. старшие 2 байта
-	rsp[3] = 4;							//	4. статус
-	rsp[4] = 5;							//	5. AX
-	rsp[5] = 6;							//	6. AY
-	rsp[6] = 7;							//	7. AZ
-	rsp[7] = 8;							//	8. AT
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_30(u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-//	static u16 rsp[6+512];
-
-	if (wb == 0) return false;
-
-	byte num = data[0] & 15;
-
-	if (num > 12) { num = 12; };
-
-	//Req30 &req = req30[num];
-
-	//rsp[0] = data[0];			// 	1. ответное слово
-	//rsp[1] = 1;				 	//	2. КУ
-	//rsp[2] = 2;		 			//	3. Шаг оцифровки
-	//rsp[3] = 512;			 	//	4. Длина оцифровки
-	//rsp[4] = 0;					//	5. Задержка оцифровки
-	//rsp[5] = 0;					//	6. Фильтр
-	//rsp[6] = 0;					//	7-?. данные (до 2048шт)
-
-	//req.rw = data[0];			// 	1. ответное слово
-	//req.gain = 1;				 	//	2. КУ
-	//req.st = 8;		 			//	3. Шаг оцифровки
-	//req.sl = 512;			 	//	4. Длина оцифровки
-	//req.sd = 0;					//	5. Задержка оцифровки
-	//req.flt = 0;					//	6. Фильтр
-//	rsp[6] = 0;					//	7-?. данные (до 2048шт)
-
-	//wb->data = &req;
-	//wb->len = req.sl*2 + sizeof(req) - sizeof(req.data);
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_80(u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	static u16 rsp[1];
-
-	if (wb == 0 || len < 3) return false;
-
-	switch (data[1])
+	if (curDscPPI != 0)
 	{
-		case 1:
+		FreeDscPPI(curDscPPI);
 
-			numDevice = data[2];
-
-			break;
+		curDscPPI = 0;
 	};
 
-	rsp[0] = manReqWord|0x80;
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
+	curDscPPI = processedPPI.Get();
 
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_90(u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	static u16 rsp[1];
-
-	if (wb == 0 || len < 3) return false;
-
-	switch (data[1])
+	if (curDscPPI == 0)
 	{
-		case 1:
+		rsp[0] = data[0];
 
-			gain = data[2] & 0xF;
+		wb->data = rsp;			 
+		wb->len = 1*2;	 
+	}
+	else
+	{
+		u16 *rsp = curDscPPI->data;
 
-			break;
-
-		case 2:
-
-			sampleTime = data[2];
-
-			break;
-
-		case 3:
-
-			sampleLen = data[2];
-
-			if (sampleLen < 64)
-			{
-				sampleLen = 64;
-			}
-			else if (sampleLen > 1024)
-			{
-				sampleLen = 1024;
-			};
-
-			break;
-
-		case 4:
-
-			sampleDelay = data[2];
-
-			break;
-
-		case 5:
-
-			break;
-
+		rsp[0] = manReqWord|0x40;		//1. ответное слово
+		//rsp[1] = 0;						//2. Время (0.1мс). младшие 2 байта
+		//rsp[2] = 0;						//3. Время. старшие 2 байта
+		//rsp[3] = 0;						//4. Время датчика Холла (0.1мс). младшие 2 байта
+		//rsp[4] = 0;						//5. Время датчика Холла. старшие 2 байта
+		rsp[5] = 0;						//6. Счётчик оборотов двигателя (1/6 об)
+		rsp[6] = 0;						//7. Счётчик оборотов головки (об)
+		rsp[7] = 0;						//8. AX (уе)
+		rsp[8] = 0;						//9. AY (уе)
+		rsp[9] = 0;						//10. AZ (уе)
+		rsp[10] = 0;					//11. AT (short 0.01 гр)
+		rsp[11] = 0;					//12. Тип датчика (0 - измерительный датчик, 1 - опорный датчик)
+		rsp[12] = 0;					//13. Угол поворота (0.01гр)(ushort)
+		rsp[13] = 0;					//14. КУ
+		rsp[14] = curDscPPI->clkdiv;	//15. Шаг оцифровки
+		rsp[15] = curDscPPI->len;		//16. Длина оцифровки (макс 2028)
+		rsp[16] = 0;					//17. Задержка оцифровки  
+		rsp[17] = 0;					//18. Упаковка
+		rsp[18] = 0;					//19. Размер упакованных данных
+	
+		wb->data = rsp;			 
+		wb->len = (19 + curDscPPI->len)*2;	 
 	};
-
-	rsp[0] = manReqWord|0x90;
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestMan_F0(u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	static u16 rsp[1];
-
-	if (wb == 0) return false;
-
-	//SaveParams();
-
-	rsp[0] = manReqWord|0xF0;
- 
-	wb->data = rsp;
-	wb->len = sizeof(rsp);
 
 	return true;
 }
@@ -420,19 +278,11 @@ static bool RequestMan(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 
 	u16 len = (rb->len)>>1;
 
-	t = (t>>4) & 0xF;
+	t &= 0xFF;
 
 	switch (t)
 	{
-		case 0: 	r = RequestMan_00(p, len, wb); break;
 		case 1: 	r = RequestMan_10(p, len, wb); break;
-		case 2: 	r = RequestMan_20(p, len, wb); break;
-		case 3: 	r = RequestMan_30(p, len, wb); break;
-		case 8: 	r = RequestMan_80(p, len, wb); break;
-		case 9:		r = RequestMan_90(p, len, wb); break;
-		case 0xF:	r = RequestMan_F0(p, len, wb); break;
-		
-//		default:	bfURC++; 
 	};
 
 	return r;
@@ -455,7 +305,7 @@ static void UpdateBlackFin()
 
 			rb.data = buf;
 			rb.maxLen = sizeof(buf);
-			com.Read(&rb, (u32)-1, 10000);
+			com.Read(&rb, ~0, US2CCLK(10));
 			i++;
 
 			break;
@@ -464,7 +314,7 @@ static void UpdateBlackFin()
 
 			if (!com.Update())
 			{
-				if (rb.recieved && rb.len > 0)
+				if (rb.recieved && rb.len > 0 && GetCRC16(rb.data, rb.len) == 0)
 				{
 					if (RequestMan(&wb, &rb))
 					{
@@ -488,6 +338,13 @@ static void UpdateBlackFin()
 
 			if (!com.Update())
 			{
+				if (curDscPPI != 0)
+				{
+					FreeDscPPI(curDscPPI);
+					
+					curDscPPI = 0;
+				};
+
 				i = 0;
 			};
 
@@ -552,7 +409,7 @@ static void UpdateProcessData()
 
 		TestProcessData(dsc->data, dsc->len);
 
-		FreeDscPPI(dsc);
+		processedPPI.Add(dsc);
 
 		*pPORTGIO_CLEAR = 1<<5;
 
@@ -588,6 +445,8 @@ int main( void )
 		u32 t = GetCycles32();
 
 		*pPORTFIO_TOGGLE = 1<<8;
+
+		Update();
 
 		if ((t - pt) >= US2CCLK(500))
 		{

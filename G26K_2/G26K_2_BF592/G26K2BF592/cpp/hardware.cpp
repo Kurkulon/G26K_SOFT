@@ -90,6 +90,7 @@ static DSCPPI ppidsc[PPI_BUF_NUM];
 
 u16 ppiClkDiv = NS2CLK(400);
 u16 ppiLen = 1024;
+u16 ppiOffset = 19;
 
 u32 ppiDelay = US2CCLK(10);
 
@@ -173,7 +174,7 @@ static void ReadPPI()
 		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppiClkDiv;
 		*pTIMER1_WIDTH = ppiClkDiv>>1;
 
-		*pDMA0_START_ADDR = curDscPPI->data+curDscPPI->offset;
+		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
 		*pDMA0_X_COUNT = curDscPPI->len = ppiLen;
 		*pDMA0_X_MODIFY = 2;
 
@@ -236,6 +237,11 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 		if (!curDscPPI->busy)
 		{
 			curDscPPI->busy = true;
+
+			u32 t = GetRTT();
+
+			curDscPPI->data[1] = t;
+			curDscPPI->data[2] = t>>16;
 
 			if (ppiDelay == 0)
 			{ 
