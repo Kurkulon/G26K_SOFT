@@ -206,9 +206,9 @@ static u16 curCal = CUR_CAL_MAXON;
 static i32 maxOut = 0;
 static i32 limOut = 0;
 
-const u16 _minDuty = 100;//400;
-const u16 _maxDuty = 350;//400;
-const u16 maxDuty = 400;
+//const u16 _minDuty = 100;//400;
+//const u16 _maxDuty = 350;//400;
+const u16 maxDuty = 1000;
 //u16 duty = 0, curd = 0;
 
 static i32 Kp = 1000000/*2000000*/, Ki = 2000/*4000*/, Kd = 500000;
@@ -1130,8 +1130,8 @@ static void InitPWM()
 	SCT->REGMODE_L = 0;
 
 	SCT->MATCHREL_L[0] = maxDuty; 
-	SCT->MATCHREL_L[1] = 410;
-	SCT->MATCHREL_L[2] = 500; 
+	SCT->MATCHREL_L[1] = 1050;
+	SCT->MATCHREL_L[2] = 1250; 
 	SCT->MATCH_L[3] = 0; 
 	SCT->MATCH_L[4] = 0;
 
@@ -1246,10 +1246,10 @@ static __irq void TahoHandler()
 		tachoCount++;
 		motoCounter++;
 
-		if (avrCurADC > 750)
-		{
-			if (tachoPLL > 0) tachoPLL -= 1;
-		};
+		//if (avrCurADC > 2750)
+		//{
+		//	if (tachoPLL > 0) tachoPLL -= 1;
+		//};
 
 		if (tachoPLL > 0) { tachoPLL -= 1; };
 
@@ -1387,7 +1387,7 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (curADC > 1000)
+		if (curADC > 8000)
 		{
 			if (tachoPLL > 0) tachoPLL -= 1;
 		}

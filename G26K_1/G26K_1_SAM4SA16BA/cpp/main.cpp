@@ -86,6 +86,9 @@ static u16 motoRPS = 0; // обороты двигател€, об/сек
 static u16 motoCur = 0; // ток двигател€, мј
 static u16 motoStat = 0; // статус двигател€: 0 - выкл, 1 - вкл
 static u16 motoCounter = 0; // счЄтчик оборотов двигател€ 1/6 оборота
+static u16 cmSPR = 32;		//  оличество волновых картин на оборот головки в режиме цементомера
+static u16 imSPR = 32;		//  оличество точек на оборот головки в режиме имиджера
+static u16 curSPR = 32;		//  оличество импульсов излучател€ на оборот в текущем режиме
 
 u16 manRcvData[10];
 u16 manTrmData[50];
@@ -994,9 +997,9 @@ static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 
 	R01 *r01 = curManVec40;
 	
-	u16 sz = 19 + r01->rsp.CM.sl;
+	u16 sz = 18 + r01->rsp.CM.sl;
 
-	if (len < 3)
+	if (len < 3 || data[1] == 0)
 	{
 		if (r01 != 0)
 		{
@@ -1014,32 +1017,19 @@ static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 			manVec40 = 0;
 
 			mtb->data2 = ((u16*)&r01->rsp)+1;
-			mtb->len2 = sz;
-		};
-	}
-	else if (data[1] == 0)
-	{
-		if (r01 != 0)
-		{
-			freeR01.Add(r01);
 
-			curManVec40 = 0;
-		};
+			if (len < 3)
+			{
+				mtb->len2 = sz;
+			}
+			else
+			{
+				u16 len = data[2];
 
-		r01 = manVec40;
+				if (len > sz) len = sz;
 
-		if (r01 != 0 && r01->rsp.rw == req.rw)
-		{
-			curManVec40 = r01;
-
-			manVec40 = 0;
-
-			u16 len = data[2];
-
-			if (len > sz) len = sz;
-
-			mtb->data2 = ((u16*)&r01->rsp)+1;
-			mtb->len2 = len;
+				mtb->len2 = len;
+			};
 		};
 	}
 	else if (sz >= data[1] && r01 != 0)
@@ -1062,8 +1052,12 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
 
-	manTrmData[0] = manReqWord|0x30;	
+	manTrmData[0] = data[0];	
  
+	motoTargetRPS = (data[0]&15) * 100;
+		
+	Set_Sync_Rot(motoTargetRPS, curSPR);
+
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
 	mtb->data2 = 0;
@@ -1463,6 +1457,7 @@ static void MainMode()
 						r01->rsp.CM.ay = az;
 						r01->rsp.CM.az = -ay;
 						r01->rsp.CM.at = at;
+						r01->rsp.CM.pakType = 1;
 
 						if (manVec40 != 0)
 						{
@@ -1913,10 +1908,6 @@ static void FlashRcv()
 
 int main()
 {
-//	static byte i = 0;
-
-	EnableRecieverPower();
-
 	InitHardware();
 
 	EnableDSP();

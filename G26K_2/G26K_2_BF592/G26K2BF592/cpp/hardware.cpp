@@ -75,7 +75,7 @@ void InitIVG(u32 IVG, u32 PID, void (*EVT)())
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-byte bitGain[16] = {0, 2, 3, 6, 7, 10, 11, 14, 15, 15, 15, 15, 15, 15, 15, 15 };
+byte bitGain[16] = {0, 2, 10, 6, 14, 3, 11, 7, 15, 15, 15, 15, 15, 15, 15, 15 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -89,7 +89,7 @@ static DSCPPI ppidsc[PPI_BUF_NUM];
 //static u16 endIndPPI = 0;g118
 
 u16 ppiClkDiv = NS2CLK(400);
-u16 ppiLen = 1024;
+u16 ppiLen = 16;
 u16 ppiOffset = 19;
 
 u32 ppiDelay = US2CCLK(10);
@@ -99,6 +99,32 @@ u32 mmsec = 0; // 0.1 ms
 #pragma instantiate List<DSCPPI>
 static List<DSCPPI> freePPI;
 static List<DSCPPI> readyPPI;
+
+static ReqDsp01 dspVars;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetDspVars(const ReqDsp01 *v)
+{
+	//u32 i = cli();
+
+	dspVars = *v;
+
+	//sti(i);
+
+	ppiClkDiv = dspVars.st * (NS2CLK(50));
+
+	if (ppiClkDiv == 0) ppiClkDiv = 1;
+
+	ppiLen = dspVars.sl;
+
+	if (ppiLen < 16) ppiLen = 16;
+
+	ppiDelay = dspVars.sd * (NS2CLK(50));
+	
+	if (ppiDelay > US2CLK(500)) ppiDelay = US2CLK(500);
+
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -172,7 +198,7 @@ static void ReadPPI()
 
 		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
 		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppiClkDiv;
-		*pTIMER1_WIDTH = ppiClkDiv>>1;
+		*pTIMER1_WIDTH = curDscPPI->clkdiv>>1;
 
 		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
 		*pDMA0_X_COUNT = curDscPPI->len = ppiLen;
@@ -238,12 +264,17 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 		{
 			curDscPPI->busy = true;
 
-			u32 t = GetRTT();
+			u32 t = dspVars.mmsecTime;
 
 			curDscPPI->data[1] = t;
 			curDscPPI->data[2] = t>>16;
 
-			if (ppiDelay == 0)
+			t = dspVars.hallTime;
+
+			curDscPPI->data[3] = t;
+			curDscPPI->data[4] = t>>16;
+
+			if (curDscPPI->delay == 0)
 			{ 
 				*pTCNTL = 0;
 				*pTIMER_ENABLE = TIMEN1;
@@ -251,7 +282,7 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 			else
 			{
 				*pTSCALE = 0;
-				*pTCOUNT = ppiDelay;
+				*pTCOUNT = curDscPPI->delay;
 				*pTCNTL = TINT|TMPWR|TMREN;
 			};
 		};
@@ -264,24 +295,24 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void InitPPI()
-{
-	*pTIMER_DISABLE = TIMDIS1;
-	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
-	*pTIMER1_PERIOD = 5;
-	*pTIMER1_WIDTH = 2;
-
-	*pPPI_CONTROL = 0;
-	*pDMA0_CONFIG = 0;
-
-	*pEVT8 = (void*)PPI_ISR;
-	*pIMASK |= EVT_IVG8; 
-	*pSIC_IMASK |= 1<<PID_DMA0_PPI;
-
-	//InitIVG(0, 0, PPI_ISR);
-	//*pEVT6 = (void*)TIMER_PPI_ISR;
-	//*pIMASK |= EVT_IVTMR; 
-}
+//static void InitPPI()
+//{
+//	*pTIMER_DISABLE = TIMDIS1;
+//	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
+//	*pTIMER1_PERIOD = 5;
+//	*pTIMER1_WIDTH = 2;
+//
+//	*pPPI_CONTROL = 0;
+//	*pDMA0_CONFIG = 0;
+//
+//	*pEVT8 = (void*)PPI_ISR;
+//	*pIMASK |= EVT_IVG8; 
+//	*pSIC_IMASK |= 1<<PID_DMA0_PPI;
+//
+//	//InitIVG(0, 0, PPI_ISR);
+//	//*pEVT6 = (void*)TIMER_PPI_ISR;
+//	//*pIMASK |= EVT_IVTMR; 
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -308,21 +339,6 @@ static void InitFire()
 	*pDMA0_CONFIG = 0;
 
 	InitIVG(IVG_PPI_DMA0, PID_DMA0_PPI, PPI_ISR);
-	//*pEVT8 = (void*)PPI_ISR;
-	//*pIMASK |= EVT_IVG8; 
-	//*pSIC_IMASK |= EVT_IVG8;
-
-
-	//*pEVT11 = (void*)FIRE_PPI_ISR;
-	//*pIMASK |= EVT_IVG11; 
-	//*pSIC_IMASK |= 1<<PID_GP_Timer_0;
-
-	//*pEVT6 = (void*)TIMER_PPI_ISR;
-	//*pIMASK |= EVT_IVTMR; 
-
-	//*pTSCALE = 0;
-	//*pTPERIOD = US2CCLK(500);
-	//*pTCNTL = TAUTORLD|TINT|TMPWR|TMREN;
 
 	InitIVG(IVG_PORTF_SYNC, PID_Port_F_Interrupt_A, SYNC_ISR);
 

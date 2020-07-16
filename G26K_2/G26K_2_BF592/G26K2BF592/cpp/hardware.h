@@ -19,15 +19,72 @@ struct DSCPPI
 	u16		len;
 	u16		offset;
 	u16		clkdiv;
+	u16		delay;
 	u16		busy;
 	u16		data[PPI_BUF_LEN];
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//#pragma pack(1)
+
+struct ReqDsp01	// чтение вектора
+{
+	u16 	rw;
+	u16 	mode; 
+	u32 	mmsecTime; 
+	u32		hallTime; 
+	u16		motoCount; 
+	u16		headCount;
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16		sensType; 
+	u16		angle;
+	u16 	gain; 
+	u16 	st;	 
+	u16 	sl; 
+	u16 	sd; 
+	u16		thr;
+	u16		descr;
+	u16 	refgain; 
+	u16 	refst;	 
+	u16 	refsl; 
+	u16 	refsd; 
+	u16		refthr;
+	u16		refdescr;
+
+	u16 	crc;  
+};
+
+//#pragma pack()
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//#pragma pack(1)
+
+struct RspDsp01	// чтение вектора
+{
+	u16 rw; 
+	u32 time; 
+	u32 hallTime; 
+
+	union
+	{
+		struct { u16 motoCount; u16 headCount; u16 ax; u16 ay; u16 az; u16 at; u16 sensType; u16 angle; u16 gain; u16 st; u16 sl; u16 sd; u16 pakType; u16 pakLen; u16 data[2048]; } CM;
+		struct { u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 dataLen; u16 data[2048];} IM;
+	};
+};
+
+//pragma pack()
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 extern void InitHardware();
 extern void UpdateHardware();
 extern void InitIVG(u32 IVG, u32 PID, void (*EVT)());
+extern void SetDspVars(const ReqDsp01 *v);
 
 
 //extern bool defPPI_Ready;

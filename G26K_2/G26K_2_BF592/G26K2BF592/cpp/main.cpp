@@ -5,49 +5,19 @@
 #include "list.h"
 
 static ComPort com;
-//static ComPort::WriteBuffer wb;
-//
 
-//static u16 data[1024];
+//struct Cmd
+//{
+//	byte cmd; 
+//	byte chnl; 
+//	byte clk; 
+//	byte disTime; 
+//	u16 enTime; 
+//	byte chkSum; 
+//	byte busy; 
+//	byte ready; 
+//};
 
-//static u16 spd[1024*13];
-
-//static byte twiBuffer[14] = {0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xAA,0xBB,0xCC,0xDD,0xEE};
-
-//struct Req30 { u16 rw; u16 gain; u16 st; u16 sl; u16 sd; u16 flt; u16 data[1024]; };
-
-//static Req30 req30[13];
-
-struct Cmd
-{
-	byte cmd; 
-	byte chnl; 
-	byte clk; 
-	byte disTime; 
-	u16 enTime; 
-	byte chkSum; 
-	byte busy; 
-	byte ready; 
-};
-
-//static Cmd cmdreq = {0, 0, 52, 255, 25*2000, 0, 0, 0};
-//static Cmd cmdrsp;
-
-//static u16 spd2[512*2];
-//
-//static i16 ch1[512];
-//static i16 ch2[512];
-//static i16 ch3[512];
-//static i16 ch4[512];
-
-//static bool ready1 = false, ready2 = false;
-
-//static u32 CRCOK = 0;
-//static u32 CRCER = 0;
-
-//static byte sampleTime[3] = { 19, 19, 9};
-//static byte gain[3] = { 7, 7, 7 };
-//static byte netAdr = 1;
 
 static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
@@ -204,11 +174,9 @@ static void UpdateFire()
 
 static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	//1.1 Запрос параметров
-	//	0xA910
-	//	------
-
 	static u16 rsp[6];
+
+	SetDspVars((ReqDsp01*)data);
 	
 	if (wb == 0) return false;
 
@@ -232,25 +200,25 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	{
 		u16 *rsp = curDscPPI->data;
 
-		rsp[0] = manReqWord|0x40;		//1. ответное слово
-		//rsp[1] = 0;						//2. Время (0.1мс). младшие 2 байта
-		//rsp[2] = 0;						//3. Время. старшие 2 байта
-		//rsp[3] = 0;						//4. Время датчика Холла (0.1мс). младшие 2 байта
-		//rsp[4] = 0;						//5. Время датчика Холла. старшие 2 байта
-		rsp[5] = 0;						//6. Счётчик оборотов двигателя (1/6 об)
-		rsp[6] = 0;						//7. Счётчик оборотов головки (об)
-		rsp[7] = 0;						//8. AX (уе)
-		rsp[8] = 0;						//9. AY (уе)
-		rsp[9] = 0;						//10. AZ (уе)
-		rsp[10] = 0;					//11. AT (short 0.01 гр)
-		rsp[11] = 0;					//12. Тип датчика (0 - измерительный датчик, 1 - опорный датчик)
-		rsp[12] = 0;					//13. Угол поворота (0.01гр)(ushort)
-		rsp[13] = 0;					//14. КУ
-		rsp[14] = curDscPPI->clkdiv;	//15. Шаг оцифровки
-		rsp[15] = curDscPPI->len;		//16. Длина оцифровки (макс 2028)
-		rsp[16] = 0;					//17. Задержка оцифровки  
-		rsp[17] = 0;					//18. Упаковка
-		rsp[18] = 0;					//19. Размер упакованных данных
+		rsp[0] = manReqWord|0x40;					//1. ответное слово
+		//rsp[1] = 0;								//2. Время (0.1мс). младшие 2 байта
+		//rsp[2] = 0;								//3. Время. старшие 2 байта
+		//rsp[3] = 0;								//4. Время датчика Холла (0.1мс). младшие 2 байта
+		//rsp[4] = 0;								//5. Время датчика Холла. старшие 2 байта
+		rsp[5] = 0;									//6. Счётчик оборотов двигателя (1/6 об)
+		rsp[6] = 0;									//7. Счётчик оборотов головки (об)
+		rsp[7] = 0;									//8. AX (уе)
+		rsp[8] = 0;									//9. AY (уе)
+		rsp[9] = 0;									//10. AZ (уе)
+		rsp[10] = 0;								//11. AT (short 0.01 гр)
+		rsp[11] = 0;								//12. Тип датчика (0 - измерительный датчик, 1 - опорный датчик)
+		rsp[12] = 0;								//13. Угол поворота (0.01гр)(ushort)
+		rsp[13] = 0;								//14. КУ
+		rsp[14] = curDscPPI->clkdiv/NS2CLK(50);		//15. Шаг оцифровки
+		rsp[15] = curDscPPI->len;					//16. Длина оцифровки (макс 2028)
+		rsp[16] = 0;								//17. Задержка оцифровки  
+		rsp[17] = 1;								//18. Упаковка
+		rsp[18] = 0;								//19. Размер упакованных данных
 	
 		wb->data = rsp;			 
 		wb->len = (19 + curDscPPI->len)*2;	 
@@ -295,7 +263,7 @@ static void UpdateBlackFin()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static byte buf[1024];
+	static u32 buf[128];
 
 	ResetWDT();
 
@@ -413,7 +381,7 @@ static void UpdateProcessData()
 
 		*pPORTGIO_CLEAR = 1<<5;
 
-		//idle();
+		idle();
 	};
 }
 

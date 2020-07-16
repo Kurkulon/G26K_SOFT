@@ -45,6 +45,16 @@ __packed struct ReqDsp01	// чтение вектора
 {
 	u16 	rw;
 	u16 	mode; 
+	u32 	mmsecTime; 
+	u32		hallTime; 
+	u16		motoCount; 
+	u16		headCount;
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16		sensType; 
+	u16		angle;
 	u16 	gain; 
 	u16 	st;	 
 	u16 	sl; 

@@ -1,9 +1,11 @@
 #include "list.h"
 
-
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 template <class T> T* List<T>::Get()
 {
+	u32 i = cli();
+
 	T* r = first;
 
 	if (r != 0)
@@ -18,6 +20,8 @@ template <class T> T* List<T>::Get()
 		};
 	};
 
+	sti(i);
+
 	return r;
 }
 
@@ -30,6 +34,8 @@ template <class T> void List<T>::Add(T* r)
 		return;
 	};
 
+	u32 i = cli();
+
 	if (last == 0)
 	{
 		first = last = r;
@@ -41,6 +47,8 @@ template <class T> void List<T>::Add(T* r)
 	};
 
 	r->next = 0;
+
+	sti(i);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
