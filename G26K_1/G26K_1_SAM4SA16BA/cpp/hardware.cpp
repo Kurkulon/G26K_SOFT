@@ -826,7 +826,11 @@ static __irq void RotTrmIRQ()
 
 void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 {
-	u32 t = (u32)samplePerRound * RPS;
+	u32 t = RPS;
+
+	if (t == 0) t = 100;
+
+	t *= samplePerRound;
 	
 	t = ((u32)(MCK * 0.78125) + t/2) / t;
 

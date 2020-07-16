@@ -45,6 +45,28 @@
 
 #define PPI_BUF_NUM 4
 
+#define PIN_GAIN_EN		1
+#define PIN_GAIN_0		3
+#define PIN_GAIN_1		2
+#define PIN_GAIN_2		0
+#define PIN_A0			4
+
+#define GAIN_EN		(1 << PIN_GAIN_EN)	
+#define GAIN_0		(1 << PIN_GAIN_0)
+#define GAIN_1		(1 << PIN_GAIN_1)
+#define GAIN_2		(1 << PIN_GAIN_2)
+#define A0			(1 << PIN_A0)
+
+#define GAIN_M0		(0)
+#define GAIN_M1		(GAIN_EN)
+#define GAIN_M2		(GAIN_EN|GAIN_0)	
+#define GAIN_M3		(GAIN_EN|GAIN_1)	
+#define GAIN_M4		(GAIN_EN|GAIN_1|GAIN_0)	
+#define GAIN_M5		(GAIN_EN|GAIN_2)	
+#define GAIN_M6		(GAIN_EN|GAIN_2|GAIN_0)	
+#define GAIN_M7		(GAIN_EN|GAIN_2|GAIN_1)	
+#define GAIN_M8		(GAIN_EN|GAIN_2|GAIN_1|GAIN_0)
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -75,7 +97,7 @@ void InitIVG(u32 IVG, u32 PID, void (*EVT)())
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-byte bitGain[16] = {0, 2, 10, 6, 14, 3, 11, 7, 15, 15, 15, 15, 15, 15, 15, 15 };
+byte bitGain[16] = {GAIN_M0, GAIN_M1, GAIN_M2, GAIN_M3, GAIN_M4, GAIN_M5, GAIN_M6, GAIN_M7, GAIN_M8, GAIN_M8, GAIN_M8, GAIN_M8, GAIN_M8, GAIN_M8, GAIN_M8, GAIN_M8 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

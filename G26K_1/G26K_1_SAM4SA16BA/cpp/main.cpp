@@ -959,7 +959,7 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	manTrmData[11] = az;				//	12. AY (уе)
 	manTrmData[12] = -ay;				//	13. AZ (уе)
 	manTrmData[13] = at;				//	14. AT (short 0.01 гр)
-	manTrmData[14] = (cpuTemp+5)/10;	//	15. Температура в приборе (short)(0.1гр)
+	manTrmData[14] = cpuTemp;			//	15. Температура в приборе (short)(0.1гр)
  
 	mtb->data1 = manTrmData;
 	mtb->len1 = 15;
