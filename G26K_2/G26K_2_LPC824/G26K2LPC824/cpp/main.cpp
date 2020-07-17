@@ -225,7 +225,7 @@ int main()
 
 //	OpenValve(1000, -1);
 
-	SetDutyPWMDir(100);
+	//SetDutyPWMDir(100);
 
 //	static byte i = 0;
 

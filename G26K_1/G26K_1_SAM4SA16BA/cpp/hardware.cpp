@@ -5,9 +5,9 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define GEAR_RATIO 12
+#define GEAR_RATIO 12.25
 
-const u16 pulsesPerHeadRound = GEAR_RATIO * 6;
+const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
 
 #define L1 2
 #define H1 1
@@ -16,10 +16,17 @@ const u16 pulsesPerHeadRound = GEAR_RATIO * 6;
 
 #define PIN_SYNC	26
 #define PIN_ROT		8
+#define PIN_SHAFT	7
 
 #define SYNC	(1<<PIN_SYNC)
 #define ROT		(1<<PIN_ROT)
+#define SHAFT	(1<<PIN_SHAFT)
 #define PIO_SYNCROT		HW::PIOA
+#define PIO_SHAFT		HW::PIOA
+
+#define PID_SHAFT	HW::PID::PIOA_M
+#define IRQ_SHAFT	HW::PID::PIOA_I
+
 
 #define PIN_NRST_DSP		29
 #define PIO_NRST_DSP		HW::PIOA
@@ -59,6 +66,13 @@ u16 trmHalfPeriod = BOUD2CLK(20833)/2;
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
+
+static u32 shaftCounter = 0;
+static u32 shaftPrevTime = 0;
+static u32 shaftCount = 0;
+static u32 shaftTime = 0;
+u16 shaftRPS = 0;
+u16 curShaftCounter = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -811,13 +825,13 @@ static __irq void RotTrmIRQ()
 
 	HW::PIOA->BCLR(15);
 
-	if (rotCount >= pulsesPerHeadRound)
-	{
-		SyncTmr.CCR = SWTRG;
-		rotCount = 0;
-		
-		HW::PIOA->BSET(15);
-	};
+	//if (rotCount >= pulsesPerHeadRound)
+	//{
+	//	SyncTmr.CCR = SWTRG;
+	//	rotCount = 0;
+	//	
+	//	HW::PIOA->BSET(15);
+	//};
 
 	u32 tmp = RotTmr.SR;
 }
@@ -838,7 +852,7 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 
 	//u16 r = (samplePerRound + 36) / 72;
 	
-	u32 r = (u32)RPS * pulsesPerHeadRound;
+	u32 r = ((u32)RPS * pulsesPerHeadRoundFix4) >> 4;
 	r = ((u32)(MCK * 0.78125) + r/2) / r;
 	if (r > 0xFFFF) r = 0xFFFF;
 
@@ -894,13 +908,79 @@ static void Init_Sync_Rot()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static __irq void ShaftIRQ()
+{
+	u32 t = PIO_SHAFT->ISR;
+
+	if (t & SHAFT)
+	{
+		shaftCounter++;
+		curShaftCounter++;
+
+		u32 tm = GetMilliseconds();
+		u32 dt = tm - shaftPrevTime;
+
+		if (dt >= 1000)
+		{
+			shaftPrevTime = tm;
+			shaftCount = shaftCounter;
+			shaftTime = dt;
+			shaftCounter = 0;
+		};
+
+		SyncTmr.CCR = SWTRG;
+		rotCount = 0;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateShaft()
+{
+	if (shaftCount != 0)
+	{
+		shaftRPS = shaftCount * 100000 / shaftTime;
+		
+		shaftCount = 0;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitShaft()
+{
+	using namespace HW;
+
+	PMC->PCER0 = PID_SHAFT;
+
+	VectorTableExt[IRQ_SHAFT] = ShaftIRQ;
+	CM4::NVIC->ICPR[0] = PID_SHAFT;
+	CM4::NVIC->ISER[0] = PID_SHAFT;	
+
+	PIO_SHAFT->IFER = SHAFT;
+	PIO_SHAFT->AIMER = SHAFT;
+	PIO_SHAFT->ESR = SHAFT;
+	PIO_SHAFT->REHLSR = SHAFT;
+	PIO_SHAFT->IER = SHAFT;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void InitHardware()
 {
 	InitManTransmit();
 	InitManRecieve();
 	Init_Sync_Rot();
+	InitShaft();
 
 	Set_Sync_Rot(210, 32);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void UpdateHardware()
+{
+	UpdateShaft();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

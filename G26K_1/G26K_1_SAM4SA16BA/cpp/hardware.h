@@ -12,6 +12,8 @@ extern void InitHardware();
 extern void UpdateHardware();
 extern void EnableDSP();	
 extern void DisableDSP();	
+inline u16 GetShaftRPS() { extern u16 shaftRPS; return shaftRPS; }
+inline u16 GetShaftCount() { extern u16 curShaftCounter; return curShaftCounter; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

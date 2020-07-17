@@ -953,8 +953,8 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	manTrmData[5] = motoRPS;			//	6. Частота вращения двигателя (0.01 об/сек)
 	manTrmData[6] = motoCur;			//	7. Ток двигателя (мА)
 	manTrmData[7] = motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
-	manTrmData[8] = 0;					//	9. Частота вращения головки (0.01 об/сек)
-	manTrmData[9] = 0;					//	10. Счётчик оборотов головки (об)
+	manTrmData[8] = GetShaftRPS();		//	9. Частота вращения головки (0.01 об/сек)
+	manTrmData[9] = GetShaftCount();	//	10. Счётчик оборотов головки (об)
 	manTrmData[10] = -ax;				//	11. AX (уе)
 	manTrmData[11] = az;				//	12. AY (уе)
 	manTrmData[12] = -ay;				//	13. AZ (уе)
@@ -1627,6 +1627,7 @@ static void UpdateSlow()
 		CALL( spi.Update()			);
 		CALL( UpdateMoto()			);
 		CALL( UpdateTempCPU()		);
+		CALL( UpdateHardware()		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;

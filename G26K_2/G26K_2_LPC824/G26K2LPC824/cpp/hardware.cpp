@@ -209,6 +209,7 @@ static i32 limOut = 0;
 //const u16 _minDuty = 100;//400;
 //const u16 _maxDuty = 350;//400;
 const u16 maxDuty = 1000;
+static u16 limDuty = 1000;
 //u16 duty = 0, curd = 0;
 
 static i32 Kp = 1000000/*2000000*/, Ki = 2000/*4000*/, Kd = 500000;
@@ -446,7 +447,7 @@ static i32 SetDutyCurrent(u16 cur)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+/*
 static void PID_Update()
 {
 	//static dword pt = GetMilliseconds();//, pt2 = GetMilliseconds();
@@ -510,7 +511,7 @@ static void PID_Update()
 
 	e2 = e1; e1 = e;
 }
-
+*/
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1178,24 +1179,26 @@ static void InitPWM()
 
 void SetDutyPWM(u16 v)
 {
+	if (v > limDuty) v = limDuty;
+
 	HW::SCT->MATCHREL_L[0] = (v < maxDuty) ? v : maxDuty;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetDutyPWMDir(i32 v)
-{
-	if (v < 0)
-	{
-		v = -v; dir = false;
-	}
-	else
-	{
-		dir = true;
-	};
-
-	HW::SCT->MATCHREL_L[0] = (v < maxDuty) ? v : maxDuty;
-}
+//void SetDutyPWMDir(i32 v)
+//{
+//	if (v < 0)
+//	{
+//		v = -v; dir = false;
+//	}
+//	else
+//	{
+//		dir = true;
+//	};
+//
+//	HW::SCT->MATCHREL_L[0] = (v < maxDuty) ? v : maxDuty;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1246,7 +1249,7 @@ static __irq void TahoHandler()
 		tachoCount++;
 		motoCounter++;
 
-		//if (avrCurADC > 2750)
+		//if (avrCurADC > 1000)
 		//{
 		//	if (tachoPLL > 0) tachoPLL -= 1;
 		//};
@@ -1266,7 +1269,7 @@ static __irq void TahoHandler()
 
 			//if ((t1 - prevR1) > dt1 && tachoPLL > 0) { tachoPLL -= 1; };
 
-			SetDutyPWMDir(tachoPLL<<6);
+			SetDutyPWM(tachoPLL<<6);
 		};
 
 		rpmCounter++;
@@ -1327,7 +1330,7 @@ static void TahoSync()
 		}
 		else
 		{
-			SetDutyPWMDir(tachoPLL);
+			SetDutyPWM(tachoPLL);
 		};
 
 		if (rpmCount != 0)
@@ -1387,13 +1390,18 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (curADC > 8000)
+		if (avrCurADC > 1000)
 		{
-			if (tachoPLL > 0) tachoPLL -= 1;
+			if (limDuty > 0) limDuty -= 1;
 		}
-		else if (tachoPLL < 0x7FFFFFFF)
-		{ 
-			tachoPLL += 1; 
+		else 
+		{
+			if (limDuty < maxDuty) limDuty += 1;
+
+			if (tachoPLL < 0x7FFFFFFF)
+			{ 
+				tachoPLL += 1; 
+			};
 		};
 
 		//u16 t1 = GetMillisecondsLow();
@@ -1408,7 +1416,7 @@ __irq void ROT_Handler()
 		{
 			tachoCount = 900;
 
-			SetDutyPWMDir(tachoPLL<<6);
+			SetDutyPWM(tachoPLL<<6);
 		};
 
 		HW::PIN_INT->IST = 8;
