@@ -1390,7 +1390,7 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (avrCurADC > 1000)
+		if (avrCurADC > 2500)
 		{
 			if (limDuty > 0) limDuty -= 1;
 		}

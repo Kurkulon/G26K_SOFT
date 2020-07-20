@@ -59,7 +59,7 @@ inline void ManZero()		{ HW::PIOA->SODR = H2; HW::PIOA->CODR = L1; __nop(); __no
 #define PID_ROTTMR	HW::PID::TC1_M
 #define IRQ_ROTTMR	HW::PID::TC1_I
 
-static const u16 manboud[4] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
+static const u16 manboud[5] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333), BOUD2CLK(104166) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
 
 
 u16 trmHalfPeriod = BOUD2CLK(20833)/2;
@@ -78,7 +78,9 @@ u16 curShaftCounter = 0;
 
 void SetTrmBoudRate(byte i)
 {
-	trmHalfPeriod = manboud[i&3]/2;
+	if (i > 4) i = 4;
+
+	trmHalfPeriod = manboud[i]/2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

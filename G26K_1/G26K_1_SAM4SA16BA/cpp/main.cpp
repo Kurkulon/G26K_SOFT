@@ -999,8 +999,10 @@ static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 	
 	u16 sz = 18 + r01->rsp.CM.sl;
 
-	if (len < 3 || data[1] == 0)
+	if (len == 1 || (len == 3 && data[1] == 0))
 	{
+		HW::PIOA->SODR = 1<<19;
+
 		if (r01 != 0)
 		{
 			freeR01.Add(r01);
@@ -1010,7 +1012,7 @@ static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 		
 		r01 = manVec40;
 
-		if (r01 != 0 && r01->rsp.rw == req.rw)
+		if (r01 != 0/* && r01->rsp.rw == req.rw*/)
 		{
 			curManVec40 = r01;
 
@@ -1020,7 +1022,9 @@ static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 
 			if (len < 3)
 			{
+		HW::PIOA->CODR = 1<<19;
 				mtb->len2 = sz;
+		HW::PIOA->SODR = 1<<19;
 			}
 			else
 			{
@@ -1031,8 +1035,10 @@ static bool RequestMan_40(u16 *data, u16 len, MTB* mtb)
 				mtb->len2 = len;
 			};
 		};
+
+		HW::PIOA->CODR = 1<<19;
 	}
-	else if (sz >= data[1] && r01 != 0)
+	else if (len == 3 && sz >= data[1] && r01 != 0)
 	{
 		u16 maxlen = sz - data[1];
 		u16 len = data[2];
