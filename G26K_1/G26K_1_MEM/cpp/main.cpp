@@ -1,46 +1,49 @@
-#include "ComPort.h"
-#include "time.h"
-#include "CRC16.h"
-#include "req.h"
 #include "hardware.h"
-
+//#include "options.h"
+#include "emac.h"
+#include "xtrap.h"
+#include "flash.h"
+#include "CRC16.h"
+#include "ComPort.h"
+#include "CRC16_CCIT.h"
+#include "req.h"
 #include "list.h"
 
-#include "twi.h"
+#ifdef CPU_SAME53	
+#elif defined(CPU_XMC48)
+#endif
 
-#include "PointerCRC.h"
+#define VERSION			0x0202
 
-#include "SPI.h"
+//#pragma O3
+//#pragma Otime
 
-//ComPort commem;
-ComPort comdsp;
-//ComPort combf;
-ComPort commoto;
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//ComPort::WriteBuffer wb;
-//ComPort::ReadBuffer rb;
 
-static const u32 flashPages[] = {
-//#include "G26P.LDR.H"
-};
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+u32 fps;
+i16 tempClock = 0;
+i16 cpu_temp = 0;
 
-//static bool runMainMode = false;
+//inline u16 ReverseWord(u16 v) { __asm	{ rev16 v, v };	return v; }
 
-u16 flashLen = 0;
-u16 flashCRC = 0;
+static void* eepromData = 0;
+static u16 eepromWriteLen = 0;
+static u16 eepromReadLen = 0;
+static u16 eepromStartAdr = 0;
 
-u16 dspFlashLen;
-u16 dspFlashCRC;
+static MTB mtb;
 
-u32 fc = 0;
+static u16 manBuf[16];
 
-//static u32 bfCRCOK = 0;
-//static u32 bfCRCER = 0;
-static u32 bfURC = 0;
-//static u32 bfERC = 0;
+u16 manRcvData[10];
+u16 manTrmData[50];
 
-//static bool waitSync = false;
-//static bool startFire = false;
+u16 txbuf[128 + 512 + 16];
+
+static ComPort comdsp;
+static ComPort commoto;
 
 static RequestQuery qmoto(&commoto);
 static RequestQuery qdsp(&comdsp);
@@ -90,8 +93,6 @@ static u16 cmSPR = 32;		// Количество волновых картин на оборот головки в режиме
 static u16 imSPR = 32;		// Количество точек на оборот головки в режиме имиджера
 static u16 curSPR = 32;		// Количество импульсов излучателя на оборот в текущем режиме
 
-u16 manRcvData[10];
-u16 manTrmData[50];
 
 const u16 dspReqWord = 0xAD00;
 const u16 dspReqMask = 0xFF00;
@@ -111,20 +112,7 @@ static u16 verMemDevice = 0x100;
 static u32 manCounter = 0;
 static u32 fireCounter = 0;
 
-static u16 reqVoltage = 800;
-static byte reqFireCountM = 3;
-static byte reqFireCountXY = 2;
-
-static u16 adcValue = 0;
-static U32u filtrValue;
-static u16 resistValue = 0;
-static byte numStations = 0;
-static u16 voltage = 0;
-i16 temperature = 0;
-i16 cpuTemp = 0;
-
 static byte mainModeState = 0;
-
 static byte dspStatus = 0;
 
 //static u32 rcvCRCOK = 0;
@@ -139,387 +127,40 @@ static u32 crcErr04 = 0;
 static u32 notRcv02 = 0;
 static u32 lenErr02 = 0;
 
-static byte savesCount = 0;
-
-static TWI	twi;
-
-//static DSCTWI dsc;
-static byte framBuf[100];
-
-//static u16 maxOff = 0;
-
-static void UpdateI2C();
-
-inline void SaveParams() { savesCount = 1; }
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-//Response rsp;
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static SPI spi;
-static SPI::Buffer	bufAccel; 
-//static SPI::Buffer	bufGyro;
-
 static i16 ax = 0, ay = 0, az = 0, at = 0;
-
-//static i32 ang_x = 0, ang_y = 0, ang_z = 0;
-
-static u8 txAccel[25] = { 0 };
-static u8 rxAccel[25];
-
-//static u8 txGyro[25] = { 0 };
-//static u8 rxGyro[25];
-
-//static u8 gyro_WHO_AM_I = 0;
-
-//static i32 gx = 0, gy = 0, gz = 0;
-//static i32 fgx = 6100000, fgy = -5000000, fgz = 4180000;
-//static i32 gYaw = 0, gPitch = 0, gRoll = 0;
-//static i16 gt = 0;
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CallBackAccel(SPI::Buffer *b)
-{
-	//DataPointer p(b->rxp);
-
-	//union { float f; u16 w[2]; } u;
-
-	//p.b += 1;
-
-	//for (byte i = 0; i < 8; i++)
-	//{
-	//	u.f = (u16)(__rev(*p.d) >> 15) * 0.0003814697265625*1.00112267 - 0.00319055 - valueADC1[i];
-
-	//	valueADC1[i] += u.f * (((u.w[1] & 0x7f80) < 0x3c00) ? 0.01 : 0.1);
-	//	p.b += 3;
-	//};
-
-	//UpdatePWM();
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CallBackGyro(SPI::Buffer *b)
-{
-	//DataPointer p(b->rxp);
-
-	//union { float f; u16 w[2]; } u;
-
-	//p.b += 1;
-
-	//for (byte i = 0; i < 8; i++)
-	//{
-	//	u.f = (u16)(__rev(*p.d) >> 15) * 0.0003814697265625*1.00112267 - 0.00319055 - valueADC2[i];
-
-	//	valueADC2[i] += u.f * (((u.w[1] & 0x7f80) < 0x3c00) ? 0.01 : 0.1);
-	//	p.b += 3;
-	//};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static void InitADC16()
-//{
-//	using namespace HW;
-//
-//	//PMC->PCER0 = PID::SPI0_M;
-//
-//	//SPI0->CR = 1; 
-//	//SPI0->MR = 0xFF010005;
-//	//SPI0->CSR[0] = 0x00095482;
-//
-//	bufADC1.txp = &txADC1;
-//	bufADC1.rxp = &rxADC1;
-//	bufADC1.count = 25;
-//	bufADC1.CSR = 0x00092302;
-//	bufADC1.DLYBCS = 0x9;
-//	bufADC1.PCS = 1;
-//	bufADC1.pCallBack = CallBackADC1;
-//
-//	bufADC2.txp = &txADC2;
-//	bufADC2.rxp = &rxADC2;
-//	bufADC2.count = 25;
-//	bufADC2.CSR = 0x00092302;
-//	bufADC2.DLYBCS = 0x9;
-//	bufADC2.PCS = 0;
-//	bufADC2.pCallBack = CallBackADC2;
-//
-//	spi.AddRequest(&bufADC1);
-//	spi.AddRequest(&bufADC2);
-//
-//}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void SendAccelBuf(u16 count)
-{
-	bufAccel.txp = &txAccel;
-	bufAccel.rxp = &rxAccel;
-	bufAccel.count = count;
-	bufAccel.CSR = 0x00091402;
-	bufAccel.DLYBCS = 0x9;
-	bufAccel.PCS = 0;
-	bufAccel.pCallBack = 0;
-	bufAccel.pio = HW::PIOA;
-	bufAccel.mask = 1<<24;
-	
-	spi.AddRequest(&bufAccel);
-}
-
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void AccelReadReg(byte reg)
-{
-	txAccel[0] = reg;
-
-	SendAccelBuf(2);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void AccelWriteReg(byte reg, byte v)
-{
-	txAccel[0] = reg;
-	txAccel[1] = v;
-
-	SendAccelBuf(2);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateAccel()
-{
-	static byte i = 0; 
-	static i16 x = 0, y = 0, z = 0, t = 0;
-	static i32 fx = 0, fy = 0, fz = 0, ft = 0;
-
-	static TM32 tm;
-
-	switch (i)
-	{
-		case 0:
-
-			tm.Reset();
-			i++;
-
-			break;
-
-		case 1:
-
-			if (tm.Check(35))
-			{
-				AccelReadReg(0x58); // INT_STATUS
-
-				i++;
-			};
-
-			break;
-
-		case 2:
-
-			if (bufAccel.ready)
-			{
-				AccelWriteReg(7, 0); // CTRL Set PORST to zero
-
-				i++;
-			};
-
-			break;
-
-		case 3:
-
-			if (bufAccel.ready)
-			{
-				tm.Reset();
-
-				i++;
-			};
-
-			break;
-
-		case 4:
-
-			if (tm.Check(10))
-			{
-				AccelReadReg(0x25); // X_MSB 
-
-				i++;
-			};
-
-			break;
-
-		case 5:
-
-			if (bufAccel.ready)
-			{
-				z = rxAccel[1] << 8;
-
-				AccelReadReg(0x20); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 6:
-
-			if (bufAccel.ready)
-			{
-				z |= rxAccel[1];
-
-//				z /= 4;
-
-				fz += (((i32)z * 65536) - fz) / 16;
-
-				az = (i32)fz / 23617;
-
-				AccelReadReg(0x15); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 7:
-
-			if (bufAccel.ready)
-			{
-				x = rxAccel[1] << 8;
-
-				AccelReadReg(0x10); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 8:
-
-			if (bufAccel.ready)
-			{
-				x |= rxAccel[1];
-
-				//x /= 4;
-
-				fx += (((i32)x * 65536) - fx) / 16;
-
-				ax = (i32)fx / 23617;
-
-				AccelReadReg(0x1C); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 9:
-
-			if (bufAccel.ready)
-			{
-				y = rxAccel[1] << 8;
-
-				AccelReadReg(0x19); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 10:
-
-			if (bufAccel.ready)
-			{
-				y |= rxAccel[1];
-
-				//y /= 4;
-
-				fy += (((i32)y * 65536) - fy) / 16;
-
-				ay = (i32)fy / 23617;
-
-//				ang_y = ArcTan(gx, gz);
-
-				AccelReadReg(0x4C); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 11:
-
-			if (bufAccel.ready)
-			{
-				t = (rxAccel[1] & 0x3F) << 8;
-
-				AccelReadReg(0x49); // X_MSB
-
-				i++;
-			};
-
-			break;
-
-		case 12:
-
-			if (bufAccel.ready)
-			{
-				t |= rxAccel[1];
-
-				ft += (((i32)t * 65536) - ft) / 32;
-
-//				t /= 16;
-
-				at = (ft - 512 * 65536 * 16) / 33554 + 2300;
-
-				i = 4;
-			};
-
-			break;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void CopyData(void *src, void *dst, u16 len)
-{
-	T_HW::S_USART &u = *HW::USART1;
-
-	u.CR = 0x1A0;	// Disable transmit and receive, reset status
-
-	u.MR = 0x89C0; // LOCAL_LOOPBACK, SYNC, No parity, 
-	u.BRGR = 30;
-	u.PDC.TPR = src;
-	u.PDC.TCR = len;
-	u.PDC.RPR = dst;
-	u.PDC.RCR = len;
-
-	u.PDC.PTCR = 0x101;
-
-	u.CR = 0x150;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-inline bool CheckCopyDataComplete()
-{
-	T_HW::S_USART &u = *HW::USART1;
-
-	return 	u.PDC.TCR == 0 && u.PDC.RCR == 0;
-}
+i16 temperature = 0;
+i16 cpuTemp = 0;
+i16 temp = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackRcvReqFire(REQ *q)
+static void Response_0(u16 rw, MTB &mtb)
 {
-//	waitSync = true;;
+	__packed struct Rsp {u16 rw; u16 device; u16 session; u32 rcvVec; u32 rejVec; u32 wrVec; u32 errVec; u16 wrAdr[3]; u16 numDevice; u16 version; u16 temp; byte status; byte flags; RTC rtc; };
+
+	Rsp &rsp = *((Rsp*)&txbuf);
+
+	rsp.rw = rw;
+	rsp.device = GetDeviceID();  
+	rsp.session = FLASH_Session_Get();	  
+	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
+	rsp.rejVec = FLASH_Vectors_Rejected_Get();
+	rsp.wrVec = FLASH_Vectors_Saved_Get();
+	rsp.errVec = FLASH_Vectors_Errors_Get();
+	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
+	rsp.temp = temp*5/2;
+	rsp.status = FLASH_Status();
+
+	GetTime(&rsp.rtc);
+
+	mtb.data1 = txbuf;
+	mtb.len1 = sizeof(rsp)/2;
+	mtb.data2 = 0;
+	mtb.len2 = 0;
 }
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CallBackDspReq01(REQ *q)
@@ -910,24 +551,6 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 
 	u16* p = manTrmData+1;
 
-	*(p++) =  reqVoltage;
-	*(p++) =  reqFireCountM;
-	*(p++) =  reqFireCountXY;
-
-	//for (byte i = 0; i < 3; i++)
-	//{
-	//	*(p++) =  gain[0][i];
-	//	*(p++) =  gain[1][i];
-	//	*(p++) =  gain[2][i];
-	//	*(p++) =  gain[3][i];
-	//	*(p++) =  gain[4][i];
-	//	*(p++) =  gain[5][i];
-	//	*(p++) =  gain[6][i];
-	//	*(p++) =  gain[7][i];
-	//	*(p++) =  sampleTime[i];
-	//	*(p++) =  sampleLen[i];
-	//	*(p++) =  sampleDelay[i];
-	//};
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
 
@@ -958,8 +581,8 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	manTrmData[10] = -ax;				//	11. AX (уе)
 	manTrmData[11] = az;				//	12. AY (уе)
 	manTrmData[12] = -ay;				//	13. AZ (уе)
-	manTrmData[13] = at;				//	14. AT (short 0.01 гр)
-	manTrmData[14] = cpuTemp;			//	15. Температура в приборе (short)(0.1гр)
+	manTrmData[13] = tempClock;			//	14. AT (short 0.01 гр)
+	manTrmData[14] = temp;				//	15. Температура в приборе (short)(0.1гр)
  
 	mtb->data1 = manTrmData;
 	mtb->len1 = 15;
@@ -1005,8 +628,6 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
-		HW::PIOA->SODR = 1<<19;
-
 		if (r01 != 0)
 		{
 			freeR01.Add(r01);
@@ -1028,12 +649,8 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 			if (reqlen == 1)
 			{
-				HW::PIOA->CODR = 1<<19;
-				
 				mtb->len2 = sz;
 				prevLen = sz;
-				
-				HW::PIOA->SODR = 1<<19;
 			}
 			else 
 			{
@@ -1048,8 +665,6 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 				prevLen = len;
 			};
 		};
-
-		HW::PIOA->CODR = 1<<19;
 	}
 	else 
 	{
@@ -1219,8 +834,6 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 		case 8: 	r = RequestMan_80(buf, len, mtb); break;
 		case 9:		r = RequestMan_90(buf, len, mtb); break;
 		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
-		
-		default:	bfURC++; 
 	};
 
 	return r;
@@ -1436,14 +1049,86 @@ static bool RequestMem(u16 *buf, u16 len, MTB* mtb)
 		case 0x80: 	r = RequestMem_80(buf, len, mtb); break;
 		case 0x90: 	r = RequestMem_90(buf, len, mtb); break;
 		case 0xF0: 	r = RequestMem_F0(buf, len, mtb); break;
-		
-		default:	bfURC++; 
 	};
 
 	return r;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMan()
+{
+	static MTB mtb;
+	static MRB mrb;
+
+	static byte i = 0;
+
+	static RTM tm;
+
+
+//	u16 c;
+
+	switch (i)
+	{
+		case 0:
+
+			mrb.data = manRcvData;
+			mrb.maxLen = 3;
+			RcvManData(&mrb);
+
+			i++;
+
+			break;
+
+		case 1:
+
+			ManRcvUpdate();
+
+			if (mrb.ready)
+			{
+				tm.Reset();
+
+				if (mrb.OK && mrb.len > 0 &&	(((manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb)) 
+										||		((manRcvData[0] & memReqMask) == memReqWord && RequestMem(manRcvData, mrb.len, &mtb))))
+				{
+					i++;
+				}
+				else
+				{
+					i = 0;
+				};
+			}
+			else if (mrb.len > 0)
+			{
+
+			};
+
+			break;
+
+		case 2:
+
+			if (tm.Check(US2RT(100)))
+			{
+				SendManData(&mtb);
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (mtb.ready)
+			{
+				i = 0;
+			};
+
+			break;
+
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void MainMode()
 {
@@ -1523,62 +1208,87 @@ static void MainMode()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateMan()
+static void UpdateTemp()
 {
-	static MTB mtb;
-	static MRB mrb;
-
 	static byte i = 0;
 
-	static RTM32 tm;
+	static DSCI2C dsc, dsc2;
 
+	static byte reg = 0;
+	static u16 rbuf = 0;
+	static byte buf[10];
 
-//	u16 c;
+	static TM32 tm;
 
 	switch (i)
 	{
 		case 0:
 
-			mrb.data = manRcvData;
-			mrb.maxLen = 3;
-			RcvManData(&mrb);
+			if (tm.Check(100))
+			{
+				buf[0] = 0x11;
 
-			i++;
+				dsc.adr = 0x68;
+				dsc.wdata = buf;
+				dsc.wlen = 1;
+				dsc.rdata = &rbuf;
+				dsc.rlen = 2;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				if (I2C_AddRequest(&dsc))
+				{
+					i++;
+				};
+			};
 
 			break;
 
 		case 1:
 
-			ManRcvUpdate();
-
-			if (mrb.ready)
+			if (dsc.ready)
 			{
-				tm.Reset();
-
-				if (mrb.OK && mrb.len > 0 &&	(((manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb)) 
-										||		((manRcvData[0] & memReqMask) == memReqWord && RequestMem(manRcvData, mrb.len, &mtb))))
+				if (dsc.ack && dsc.readedLen == dsc.rlen)
 				{
-					i++;
+					i32 t = (i16)ReverseWord(rbuf);
+					
+					t = (t * 10 + 128) / 256;
+
+					if (t < (-600))
+					{
+						t += 2560;
+					};
+
+					tempClock = t;
 				}
 				else
 				{
-					i = 0;
+					tempClock = -2730;
 				};
-			}
-			else if (mrb.len > 0)
-			{
 
+				i++;
 			};
 
 			break;
 
 		case 2:
 
-			if (tm.Check(US2RT(100)))
-			{
-				SendManData(&mtb);
+			buf[0] = 0x0E;
+			buf[1] = 0x20;
+			buf[2] = 0xC8;
 
+			dsc2.adr = 0x68;
+			dsc2.wdata = buf;
+			dsc2.wlen = 3;
+			dsc2.rdata = 0;
+			dsc2.rlen = 0;
+			dsc2.wdata2 = 0;
+			dsc2.wlen2 = 0;
+
+			if (I2C_AddRequest(&dsc2))
+			{
 				i++;
 			};
 
@@ -1586,101 +1296,59 @@ static void UpdateMan()
 
 		case 3:
 
-			if (mtb.ready)
+			if (dsc2.ready)
 			{
-				i = 0;
+				buf[0] = 0;
+
+				dsc.adr = 0x49;
+				dsc.wdata = buf;
+				dsc.wlen = 1;
+				dsc.rdata = &rbuf;
+				dsc.rlen = 2;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				if (I2C_AddRequest(&dsc))
+				{
+					i++;
+				};
 			};
 
 			break;
 
+		case 4:
+
+			if (dsc.ready)
+			{
+				if (dsc.ack && dsc.readedLen == dsc.rlen)
+				{
+					i32 t = (i16)ReverseWord(rbuf);
+
+					temp = (t * 10 + 64) / 128;
+				}
+				else
+				{
+					temp = -2730;
+				};
+
+				HW::SCU_GENERAL->DTSCON = SCU_GENERAL_DTSCON_START_Msk;
+
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if (HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RDY_Msk)
+			{
+				cpu_temp = ((i32)(HW::SCU_GENERAL->DTSSTAT & SCU_GENERAL_DTSSTAT_RESULT_Msk) - 605) * 1000 / 205;
+
+				i = 0;
+			};
+
+			break;
 	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateTempCPU()
-{
-	static TM32 tm;
-
-	if (tm.Check(103))
-	{
-		cpuTemp = (((i32)HW::ADC->CDR[15] - 1787) * 5617*5) / 16384 + 270;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitTempCPU()
-{
-	using namespace HW;
-
-	PMC->PCER0 = PID::ADC_M;
-
-	ADC->MR = 0x0001FF80;
-	ADC->ACR = 0x10;
-	ADC->CHER = 1<<15;
-	ADC->CR = 2;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateMoto()
-{
-	static TM32 tm;
-
-	if (tm.Check(101))
-	{
-		qmoto.Add(CreateMotoReq());
-	}
-	else
-	{
-		qmoto.Update();
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateSlow()
-{
-	static byte i = 0;
-
-	#define CALL(p) case (__LINE__-S): p; break;
-
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( UpdateI2C()			);
-		CALL( UpdateAccel()			);
-		CALL( spi.Update()			);
-		CALL( UpdateMoto()			);
-		CALL( UpdateTempCPU()		);
-		CALL( UpdateHardware()		);
-	};
-
-	i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	#undef CALL
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateMisc()
-{
-	static byte i = 0;
-
-	#define CALL(p) case (__LINE__-S): p; break;
-
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( MainMode()			);
-		CALL( UpdateMan()			);
-		CALL( UpdateSlow()			);
-	};
-
-	i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	#undef CALL
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1694,8 +1362,11 @@ static void UpdateParams()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( qdsp.Update()		);
-		CALL( UpdateMisc()		);
+		CALL( UpdateTemp()		);
+		CALL( UpdateMan(); 		);
+		CALL( FLASH_Update();	);
+		CALL( UpdateTraps();	);
+		CALL( I2C_Update();		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1703,293 +1374,111 @@ static void UpdateParams()
 	#undef CALL
 }
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void LoadVars()
-{
-	static DSCTWI dsc;
-
-	twi.Init(1);
-
-	PointerCRC p(framBuf);
-
-	dsc.MMR = 0x500200;
-	dsc.IADR = 0;
-	dsc.CWGR = 0x7575;
-	dsc.data = framBuf;
-	dsc.len = sizeof(framBuf);
-
-	if (twi.Read(&dsc))
-	{
-		while (twi.Update());
-	};
-
-	bool c = false;
-
-	for (byte i = 0; i < 2; i++)
-	{
-		p.CRC.w = 0xFFFF;
-		numDevice = p.ReadW();
-		gain = p.ReadB();
-		sampleTime = p.ReadW();
-		sampleLen = p.ReadW();
-		sampleDelay = p.ReadW();
-		deadTime = p.ReadW();
-		descriminant =  p.ReadW();
-
-		gainRef = p.ReadB();
-		sampleTimeRef = p.ReadW();
-		sampleLenRef = p.ReadW();
-		sampleDelayRef = p.ReadW();
-		deadTimeRef = p.ReadW();
-		descriminantRef =  p.ReadW();
-
-		p.ReadW();
-
-		if (p.CRC.w == 0) { c = true; break; };
-	};
-
-	if (!c)
-	{
-		numDevice = 0;
-
-		gain = 0;
-		sampleTime = 5;
-		sampleLen = 1024;
-		sampleDelay = 200;
-		deadTime = 300;
-		descriminant = 100;
-
-		gainRef = 0;
-		sampleTimeRef = 5;
-		sampleLenRef = 1024;
-		sampleDelayRef = 200;
-		deadTimeRef = 300;
-		descriminantRef = 100;
-
-		savesCount = 2;
-	};
-}
-
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateI2C()
+static void UpdateMisc()
 {
-	PointerCRC p(framBuf);
-
 	static byte i = 0;
-	static TM32 tm;
-	static DSCTWI dsc;
-	static u16 tempBuf;
 
-	switch (i)
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
 	{
-		case 0:
-
-			if (savesCount > 0)
-			{
-				i++;
-			}
-			else if (tm.Check(107))
-			{
-				i = 3;
-			};
-
-			break;
-
-		case 1:
-
-			dsc.MMR = 0x500200;
-			dsc.IADR = 0;
-			dsc.CWGR = 0x07575; 
-			dsc.data = framBuf;
-			dsc.len = sizeof(framBuf);
-
-			for (byte j = 0; j < 2; j++)
-			{
-				p.CRC.w = 0xFFFF;
-
-				p.WriteW(numDevice);
-
-				p.WriteB(gain);
-				p.WriteW(sampleTime);
-				p.WriteW(sampleLen);
-				p.WriteW(sampleDelay);
-				p.WriteW(deadTime);
-				p.WriteW(descriminant);
-
-				p.WriteB(gainRef);
-				p.WriteW(sampleTimeRef);
-				p.WriteW(sampleLenRef);
-				p.WriteW(sampleDelayRef);
-				p.WriteW(deadTimeRef);
-				p.WriteW(descriminantRef);
-
-				p.WriteW(p.CRC.w);
-			};
-
-			i = (twi.Write(&dsc)) ? (i+1) : 0;
-
-			break;
-
-		case 2:
-
-			if (!twi.Update())
-			{
-				savesCount--;
-				i = 0;
-			};
-
-			break;
-
-		case 3:
-
-			dsc.MMR = 0x491100;
-			dsc.IADR = 0;
-			dsc.CWGR = 0x07575; 
-			dsc.data = &tempBuf;
-			dsc.len = sizeof(tempBuf);
-
-			i = (twi.Read(&dsc)) ? (i+1) : 0;
-
-			break;
-
-		case 4:
-
-			if (!twi.Update())
-			{
-				temperature = (dsc.rlen == 2) ? (((i16)ReverseWord(tempBuf) * 5 + 32) / 64) : cpuTemp;
-
-				i = 0;
-			};
-
-			break;
+		CALL( UpdateEMAC();		);
+		CALL( UpdateParams();	);
 	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void FlashRcv()
+static void Update()
 {
-	REQ *req = 0;
+	static byte i = 0;
 
-	flashLen = sizeof(flashPages)+2;
-	flashCRC = GetCRC16(flashPages, flashLen-2);
+	#define CALL(p) case (__LINE__-S): p; break;
 
-	req = CreateDspReq05(2);
-
-	qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
-
-	if (req->crcOK)
+	enum C { S = (__LINE__+3) };
+	switch(i++)
 	{
-		RspDsp05 *rsp = (RspDsp05*)req->rb->data;
-
-		dspFlashLen = rsp->flashLen;
-		dspFlashCRC = rsp->flashCRC;
-
-		if (rsp->flashCRC != 0 || rsp->flashLen != flashLen)
-		{
-			u16 count = flashLen;
-			u16 adr = 0;
-			byte *p = (byte*)flashPages;
-
-			while (count > 0)
-			{
-				u16 len;
-				
-				if (count > 256)
-				{
-					len = 256;
-
-					req = CreateDspReq06(adr, len, p, 0, 0, 2);
-				}
-				else
-				{
-					len = count;
-
-					if (len > 2)
-					{
-						req = CreateDspReq06(adr, len-2, p, sizeof(flashCRC), &flashCRC, 2);
-					}
-					else
-					{
-						req = CreateDspReq06(adr, sizeof(flashCRC), &flashCRC, 0, 0, 2);
-					};
-				};
-
-				qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
-
-				count -= len;
-				p += len;
-				adr += len;
-			};
-
-			req = CreateDspReq07();
-
-			qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
-		};
+		CALL( NAND_Idle();		);
+		CALL( UpdateMisc();		);
 	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
 }
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef CPU_SAME53
+
+	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
+	#define FPS_PIN_CLR()	HW::PIOA->BCLR(25)
+
+#elif defined(CPU_XMC48)
+
+	#define FPS_PIN_SET()	HW::P2->BSET(13)
+	#define FPS_PIN_CLR()	HW::P2->BCLR(13)
+
+#endif
+
+//static ComPort com1;
 
 int main()
 {
+	static bool c = true;
+
+	static byte buf[100];
+
+	volatile byte * const FLD = (byte*)0x60000000;	
+
+//	RTM32 tm;
+//	Dbt db(100);
+
+	//__breakpoint(0);
+
 	InitHardware();
 
-	EnableDSP();
-	
-	Init_time();
+	InitEMAC();
 
-	//LoadVars();
+	InitTraps();
 
-//	InitNumStations();
+	FLASH_Init();
 
-	InitRmemList();
-
-	InitTempCPU();
-
-//	commem.Connect(0, 6250000, 0);
-	commoto.Connect(2, 1562500, 0);
-	comdsp.Connect(3, 6250000, 0);
-
-//	FlashRcv();
-
-//	InitRcv();
-
-
-//	com1.Write(&wb);
-
-	u32 fps = 0;
+	u32 fc = 0;
 
 	TM32 tm;
+//	RTM rtm;
 
-//	__breakpoint(0);
+	tm.pt = 0;
 
 
-	while(1)
+//	ComPort::WriteBuffer wb;
+
+//	com1.ConnectSync(0, 2000000, 2, 2);
+
+	while (1)
 	{
-		HW::PIOA->SODR = 1UL<<23;
+		FPS_PIN_SET();
 
-		UpdateParams();
+		Update();
 
-		HW::PIOA->CODR = 1UL<<23;
+		FPS_PIN_CLR();
 
-		fps++;
-
+		fc++;
 
 		if (tm.Check(1000))
 		{ 
-			UpdateTempCPU();
-//			qtrm.Add(CreateTrmReq03());
-			fc = fps; fps = 0; 
-//			startFire = true;
-//			com1.TransmitByte(0);
+			fps = fc; fc = 0; 
+
+			//HW::ResetWDT();
 		};
 
-	};
-
+	}; // while (1)
 }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

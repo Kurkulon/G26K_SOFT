@@ -373,13 +373,13 @@ static void UpdateProcessData()
 
 	if (dsc != 0)
 	{
-		*pPORTGIO_SET = 1<<5;
+		//*pPORTGIO_SET = 1<<5;
 
 		TestProcessData(dsc->data, dsc->len);
 
 		processedPPI.Add(dsc);
 
-		*pPORTGIO_CLEAR = 1<<5;
+		//*pPORTGIO_CLEAR = 1<<5;
 
 		idle();
 	};
@@ -420,7 +420,7 @@ int main( void )
 		{
 			pt += US2CCLK(500);
 
-			*pPORTGIO_TOGGLE = 1<<4;
+			*pPORTGIO_CLEAR = 1<<5;
 
 			SetGain(0);
 		};
