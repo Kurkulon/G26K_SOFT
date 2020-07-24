@@ -272,6 +272,10 @@ u16 curShaftCounter = 0;
 	#define PIO_ENVCORE			HW::P2
 	#define PIN_ENVCORE			11 
 	#define ENVCORE				(1<<PIN_ENVCORE) 
+	
+	#define PIN_RESET			11
+	#define PIO_RESET			HW::P0
+	#define RESET				(1<<PIN_RESET)
 
 
 	// SDA_0_0 P1.5
@@ -520,8 +524,10 @@ u16 curShaftCounter = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void EnableVCORE()	{ PIO_ENVCORE->CLR(ENVCORE); }
-inline void DisableVCORE()	{ PIO_ENVCORE->SET(ENVCORE); }
+inline 	void EnableVCORE()	{ PIO_ENVCORE->CLR(ENVCORE); 	}
+inline 	void DisableVCORE()	{ PIO_ENVCORE->SET(ENVCORE); 	}
+		void EnableDSP()	{ PIO_RESET->CLR(RESET); 		}
+		void DisableDSP()	{ PIO_RESET->SET(RESET); 		}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -49,15 +49,16 @@ extern dword millisecondsCount;
 	#define __TCSR (TDEN(1)|TDSSM(1))
 
 	ComPort::ComBase	ComPort::_bases[3] = { 
-		{false, 1, HW::USIC0_CH0,	 HW::P1, 1<<0,	PID_USIC0, HW::DMA0, 2, 0 }, 
-		{false, 4, HW::USIC2_CH1,	 HW::P1, 1<<8,	PID_USIC2, HW::DMA0, 0, 9 },
-		{false, 2, HW::USIC0_CH1,	 HW::P1, 1<<13, PID_USIC0, HW::DMA0, 1, 2 }
+	//		used	dsel	USIC_CH			port_RTS	pin_RTS		USIC PID	INPR_SRx	GPDMA		dmaCh	DLR
+		{	false, 	1, 		HW::USIC0_CH0,	HW::P1, 	1<<0,		PID_USIC0,  0,			HW::DMA0, 	0, 		0 	}, 
+		{	false, 	2, 		HW::USIC0_CH1,	HW::P1, 	1<<13,		PID_USIC0, 	1,			HW::DMA0, 	1, 		2 	},
+		{	false, 	4, 		HW::USIC2_CH1,	HW::P1, 	1<<8,		PID_USIC2,	1,			HW::DMA1, 	0, 		9 	}
 	};
 
 	static u32 parityMask[3] = { PM(0), PM(3), PM(2) };
 
-	#define READ_PIN_SET()	HW::P1->BSET(0)
-	#define READ_PIN_CLR()	HW::P1->BCLR(0)
+	//#define READ_PIN_SET()	HW::P1->BSET(0)
+	//#define READ_PIN_CLR()	HW::P1->BCLR(0)
 
 
 #endif	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -154,6 +155,7 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 		_dmaChMask = 1<<cb.dmaCh;
 		_chdma = &(_dma->CH[cb.dmaCh]);
 		_dlr = cb.dlr;
+		_inpr_sr = cb.inpr_sr;
 
 		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
 
@@ -463,7 +465,7 @@ void ComPort::TransmitByte(byte v)
 	#elif defined(CPU_XMC48)
 
 		_SU->CCR = _ModeRegister|TBIEN;
-		_SU->INPR = 0;
+		_SU->INPR = _inpr_sr<<4;
 
 		_SU->TBUF[0] = v;
 
@@ -500,6 +502,8 @@ void ComPort::EnableTransmit(void* src, word count)
 		HW::DMAC->SWTRIGCTRL = 1 << _dmaCh;
 
 	#elif defined(CPU_XMC48)
+
+		if (_portNum > 1 && count > 0xFFF) { count = 0xFFF; };
 
 		__disable_irq();
 
@@ -558,17 +562,17 @@ void ComPort::EnableTransmit(void* src, word count)
 		_chdma->SAR = (u32)src;
 		_chdma->DAR = (u32)&_SU->TBUF[0];
 		_chdma->CFGL = HS_SEL_SRC;
-		_chdma->CFGH = PROTCTL(1)|DEST_PER(_dlr);
+		_chdma->CFGH = PROTCTL(1)|DEST_PER(_dlr&7);
 
 		_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
 
 		_SU->PSCR = ~0;
 		_SU->CCR = _ModeRegister|TBIEN;
-		_SU->INPR = 0;
+		_SU->INPR = _inpr_sr<<4;
 
 		if ((_SU->PSR & TBIF) == 0)
 		{
-			_SU->FMR = USIC_CH_FMR_SIO0_Msk;
+			_SU->FMR = USIC_CH_FMR_SIO0_Msk<<_inpr_sr;
 		};
 
 		__enable_irq();
@@ -623,6 +627,8 @@ void ComPort::EnableReceive(void* dst, word count)
 	#elif defined(CPU_XMC48)
 
 		volatile u32 t;
+
+		if (_portNum > 1 && count > 0xFFF) { count = 0xFFF; };
 
 		__disable_irq();
 
@@ -679,7 +685,7 @@ void ComPort::EnableReceive(void* dst, word count)
 		_chdma->SAR = (u32)&_SU->RBUF;
 		_chdma->DAR = _startDmaCounter = _prevDmaCounter = (u32)dst;
 		_chdma->CFGL = HS_SEL_DST;
-		_chdma->CFGH = PROTCTL(1)|SRC_PER(_dlr);
+		_chdma->CFGH = PROTCTL(1)|SRC_PER(_dlr&7);
 		_dma->CHENREG = _dmaChMask|(_dmaChMask<<8);
 
 		t = _SU->RBUF;
@@ -689,7 +695,7 @@ void ComPort::EnableReceive(void* dst, word count)
 		HW::DLR->LNEN |= (1<<_dlr);
 
 		_SU->CCR = _ModeRegister|RIEN;
-		_SU->INPR = 0;
+		_SU->INPR = _inpr_sr<<8;
 
 		__enable_irq();
 
@@ -762,7 +768,7 @@ bool ComPort::Update()
 			{
 				if (_rtm.Timeout(_readTimeout))
 				{
-					READ_PIN_CLR();
+//					READ_PIN_CLR();
 
 					DisableReceive();
 					_pReadBuffer->len = GetRecievedLen();
@@ -773,7 +779,7 @@ bool ComPort::Update()
 			}
 			else
 			{
-				READ_PIN_SET();
+//				READ_PIN_SET();
 
 				_prevDmaCounter = t;
 				_rtm.Reset();

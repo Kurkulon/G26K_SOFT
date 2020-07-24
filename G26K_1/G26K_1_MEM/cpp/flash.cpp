@@ -194,7 +194,7 @@ static u32		invalidBlocks = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static ComPort com1;
+//static ComPort com1;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2276,129 +2276,129 @@ static void RequestTestWrite(FLWB *fwb)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void InitCom()
-{
-	com1.Connect(com1.SYNC_S, 0, 2000000, 2, 2);
-}
+//static void InitCom()
+//{
+//	com1.Connect(com1.SYNC_S, 0, 2000000, 2, 2);
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateCom()
-{
-//	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
-
-	static ComPort::WriteBuffer wb;
-	static ComPort::ReadBuffer rb;
-
-	static byte state = 0;
-
-	static FLWB *fwb;
-//	static Req *req;
-	static VecData *vd;
-
-	static u32 count = 0;
-	static u16 v = 0;
-	static byte b = 0;
-
-	static TM32 tm;
-
-	switch (state)
-	{
-		case 0:
-
-			fwb = freeFlWrBuf.Get();
-
-			if (fwb != 0)
-			{
-				if (testWriteFlash)
-				{
-					if (!writeFlashEnabled && tm.Check(2000))
-					{
-						FLASH_WriteEnable();
-					}
-					else if (writeFlashEnabled && (nvv.f.size > 456789012))
-					{	
-						FLASH_WriteDisable();
-						tm.Reset();
-					};
-
-					RequestTestWrite(fwb);
-				}
-				else
-				{
-					state++;
-				};
-			};
-
-			break;
-
-		case 1:
-
-			vd = &fwb->vd;
-
-			rb.data = ((byte*)vd->data)-10;
-			rb.maxLen = 0xF00;//sizeof(vd->data);
-
-			com1.Read(&rb, MS2RT(50), US2RT(200));
-
-
-			state++;
-
-			break;
-
-		case 2:
-
-			if (!com1.Update())
-			{
-				if (rb.recieved)
-				{
-					fwb->data = rb.data;
-					fwb->dataLen = rb.len;
-
-					if (RequestFunc(fwb, &wb))
-					{
-						state++;
-					}
-					else
-					{
-						state = 1;
-					};
-
-				}
-				else
-				{
-//					freeFlWrBuf.Add(fwb);
-
-//					CreateRsp02(&wb);
-					state = 1;
-				};
-			};
-
-			break;
-
-		case 3:
-
-			if (!freeFlWrBuf.Empty())
-			{
-				com1.Write(&wb);
-
-				state++;
-			};
-
-			break;
-
-		case 4:
-			
-			if (!com1.Update())
-			{
-				state = 0;
-			};
-
-			break;
-	};
-
-//	HW::PIOB->CODR = 1<<13;
-}
+//static void UpdateCom()
+//{
+////	__packed struct Req { u16 rw; u32 cnt; u16 gain; u16 st; u16 len; u16 delay; u16 data[512*4]; };
+//
+//	static ComPort::WriteBuffer wb;
+//	static ComPort::ReadBuffer rb;
+//
+//	static byte state = 0;
+//
+//	static FLWB *fwb;
+////	static Req *req;
+//	static VecData *vd;
+//
+//	static u32 count = 0;
+//	static u16 v = 0;
+//	static byte b = 0;
+//
+//	static TM32 tm;
+//
+//	switch (state)
+//	{
+//		case 0:
+//
+//			fwb = freeFlWrBuf.Get();
+//
+//			if (fwb != 0)
+//			{
+//				if (testWriteFlash)
+//				{
+//					if (!writeFlashEnabled && tm.Check(2000))
+//					{
+//						FLASH_WriteEnable();
+//					}
+//					else if (writeFlashEnabled && (nvv.f.size > 456789012))
+//					{	
+//						FLASH_WriteDisable();
+//						tm.Reset();
+//					};
+//
+//					RequestTestWrite(fwb);
+//				}
+//				else
+//				{
+//					state++;
+//				};
+//			};
+//
+//			break;
+//
+//		case 1:
+//
+//			vd = &fwb->vd;
+//
+//			rb.data = ((byte*)vd->data)-10;
+//			rb.maxLen = 0xF00;//sizeof(vd->data);
+//
+//			com1.Read(&rb, MS2RT(50), US2RT(200));
+//
+//
+//			state++;
+//
+//			break;
+//
+//		case 2:
+//
+//			if (!com1.Update())
+//			{
+//				if (rb.recieved)
+//				{
+//					fwb->data = rb.data;
+//					fwb->dataLen = rb.len;
+//
+//					if (RequestFunc(fwb, &wb))
+//					{
+//						state++;
+//					}
+//					else
+//					{
+//						state = 1;
+//					};
+//
+//				}
+//				else
+//				{
+////					freeFlWrBuf.Add(fwb);
+//
+////					CreateRsp02(&wb);
+//					state = 1;
+//				};
+//			};
+//
+//			break;
+//
+//		case 3:
+//
+//			if (!freeFlWrBuf.Empty())
+//			{
+//				com1.Write(&wb);
+//
+//				state++;
+//			};
+//
+//			break;
+//
+//		case 4:
+//			
+//			if (!com1.Update())
+//			{
+//				state = 0;
+//			};
+//
+//			break;
+//	};
+//
+////	HW::PIOB->CODR = 1<<13;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2701,7 +2701,7 @@ void FLASH_Init()
 
 	InitFlashBuffer();
 
-	InitCom();
+//	InitCom();
 
 	InitSessions();
 }
@@ -2717,7 +2717,7 @@ void FLASH_Update()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateCom();	);
+//		CALL( UpdateCom();	);
 		CALL( SaveVars();	);
 	};
 

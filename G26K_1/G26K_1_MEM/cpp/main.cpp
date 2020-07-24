@@ -1353,6 +1353,22 @@ static void UpdateTemp()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateMoto()
+{
+	static TM32 tm;
+
+	if (tm.Check(101))
+	{
+		qmoto.Add(CreateMotoReq());
+	}
+	else
+	{
+		qmoto.Update();
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateParams()
 {
 	static byte i = 0;
@@ -1362,11 +1378,13 @@ static void UpdateParams()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
+		CALL( MainMode()		);
+		CALL( UpdateMoto()		);
 		CALL( UpdateTemp()		);
 		CALL( UpdateMan(); 		);
 		CALL( FLASH_Update();	);
 		CALL( UpdateTraps();	);
-		CALL( I2C_Update();		);
+//		CALL( I2C_Update();		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1386,6 +1404,7 @@ static void UpdateMisc()
 	switch(i++)
 	{
 		CALL( UpdateEMAC();		);
+		CALL( qdsp.Update()		);
 		CALL( UpdateParams();	);
 	};
 
@@ -1437,19 +1456,31 @@ int main()
 	static byte buf[100];
 
 	volatile byte * const FLD = (byte*)0x60000000;	
+	
+	static ComPort commem;
 
 //	RTM32 tm;
 //	Dbt db(100);
 
 	//__breakpoint(0);
 
+	DisableDSP();
+
 	InitHardware();
+
+	EnableDSP();
 
 	InitEMAC();
 
 	InitTraps();
 
 	FLASH_Init();
+
+	InitRmemList();
+
+	commoto.Connect(ComPort::ASYNC, 0, 1562500, 0, 1);
+	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 0, 1);
+	commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
 
 	u32 fc = 0;
 
@@ -1459,9 +1490,7 @@ int main()
 	tm.pt = 0;
 
 
-//	ComPort::WriteBuffer wb;
-
-//	com1.ConnectSync(0, 2000000, 2, 2);
+	ComPort::WriteBuffer wb;
 
 	while (1)
 	{
@@ -1473,9 +1502,16 @@ int main()
 
 		fc++;
 
+		commem.Update();
+
 		if (tm.Check(1000))
 		{ 
 			fps = fc; fc = 0; 
+
+			wb.data = buf;
+			wb.len = 5;
+			
+			commem.Write(&wb);
 
 			//HW::ResetWDT();
 		};

@@ -273,7 +273,7 @@ static void UpdateBlackFin()
 
 			rb.data = buf;
 			rb.maxLen = sizeof(buf);
-			com.Read(&rb, ~0, US2CCLK(10));
+			com.Read(&rb, ~0, US2CCLK(100));
 			i++;
 
 			break;

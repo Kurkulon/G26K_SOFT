@@ -94,7 +94,7 @@ struct RTM
 
 	//RTM16() : pt(0) {}
 	bool Check(u16 v) { if ((u16)(GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
-	bool Timeout(u16 v) { return (GetRTT() - pt) >= v; }
+	bool Timeout(u16 v) { return (u16)(GetRTT() - pt) >= v; }
 	void Reset() { pt = GetRTT(); }
 };
 

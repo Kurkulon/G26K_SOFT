@@ -91,6 +91,7 @@ class ComPort
 			T_HW::PORT_Type* const pm;
 			const dword pinRTS;
 			const u32 usic_pid;
+			const u32 inpr_sr;
 			T_HW::GPDMA_Type* const dma;
 			const u32 dmaCh;
 			const u32 dlr;
@@ -104,6 +105,7 @@ class ComPort
 		T_HW::GPDMA_CH_Type	*_chdma;
 		u32					_dmaChMask;
 		u32					_dlr;
+		u32					_inpr_sr;
 
 		bool IsTransmited() { return (_SU->PSR & BUSY) == 0 && !(_dma->CHENREG & _dmaChMask); }
 //		u16	GetDmaCounter() { return BLOCK_TS(_chdma->CTLH); }

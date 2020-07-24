@@ -14,7 +14,7 @@
 
 extern dword millisecondsCount;
 
-#define MASKRTS (1<<10)
+#define MASKRTS (1<<5)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
