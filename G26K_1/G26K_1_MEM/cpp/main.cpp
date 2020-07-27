@@ -1384,6 +1384,7 @@ static void UpdateParams()
 		CALL( UpdateMan(); 		);
 		CALL( FLASH_Update();	);
 		CALL( UpdateTraps();	);
+		CALL( UpdateHardware();	);
 //		CALL( I2C_Update();		);
 	};
 

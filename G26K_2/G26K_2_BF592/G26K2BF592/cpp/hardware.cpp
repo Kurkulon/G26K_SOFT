@@ -42,6 +42,7 @@
 #define IVG_GPTIMER0_FIRE	10
 #define IVG_GPTIMER2_RTT	11
 #define IVG_TWI				12
+#define IVG_PORTF_SHAFT		13
 
 #define PPI_BUF_NUM 4
 
@@ -123,6 +124,9 @@ static List<DSCPPI> freePPI;
 static List<DSCPPI> readyPPI;
 
 static ReqDsp01 dspVars;
+
+u32 shaftCount = 0;
+u32 shaftMMSEC = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -286,15 +290,18 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 		{
 			curDscPPI->busy = true;
 
-			u32 t = dspVars.mmsecTime;
+			u32 t = mmsec; //dspVars.mmsecTime;
 
 			curDscPPI->data[1] = t;
 			curDscPPI->data[2] = t>>16;
 
-			t = dspVars.hallTime;
+			t = shaftMMSEC; //dspVars.hallTime;
 
 			curDscPPI->data[3] = t;
 			curDscPPI->data[4] = t>>16;
+
+			curDscPPI->data[5] = dspVars.motoCount;
+			curDscPPI->data[6] = shaftCount;
 
 			if (curDscPPI->delay == 0)
 			{ 
@@ -364,12 +371,11 @@ static void InitFire()
 
 	InitIVG(IVG_PORTF_SYNC, PID_Port_F_Interrupt_A, SYNC_ISR);
 
-	*pPORTFIO_INEN = 1<<4;
-	*pPORTFIO_EDGE = 1<<4;
-	*pPORTFIO_BOTH = 0;
+	*pPORTFIO_INEN |= 1<<4;
+	*pPORTFIO_EDGE |= 1<<4;
+	*pPORTFIO_BOTH &= ~(1<<4);
 	*pPORTFIO_CLEAR = 1<<4;
 	*pPORTFIO_MASKA = 1<<4;
-	*pPORTFIO_MASKB = 0;
 
 	ReadPPI();
 
@@ -381,6 +387,29 @@ static void InitFire()
 	*pTIMER_ENABLE = TIMEN0; 
 	
 	InitIVG(IVG_CORETIMER, 0, TIMER_PPI_ISR);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EX_INTERRUPT_HANDLER(SHAFT_ISR)
+{
+	*pPORTFIO_CLEAR = 1<<6;
+
+	shaftCount++;
+
+	shaftMMSEC = mmsec;
+}
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitShaft()
+{
+	InitIVG(IVG_PORTF_SHAFT, PID_Port_F_Interrupt_B, SHAFT_ISR);
+
+	*pPORTFIO_INEN |= 1<<6;
+	*pPORTFIO_EDGE |= 1<<6;
+	*pPORTFIO_BOTH &= ~(1<<6);
+	*pPORTFIO_CLEAR = 1<<6;
+	*pPORTFIO_MASKB = 1<<6;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -489,7 +518,7 @@ static void LowLevelInit()
 	*pPORTF_FER = 0x1E0F;		//  0001 1110 0000 1111
 	*pPORTG_FER = 0xFF00;		//  1111 1111 0000 0000
 
-	*pPORTFIO_DIR = 0x01E0;		//  0000 0001 1110 0000
+	*pPORTFIO_DIR = 0x01A0;		//  0000 0001 1010 0000
 	*pPORTGIO_DIR = 0x00FF;		//  0000 0000 1111 1111
 
 	*pPORTFIO_INEN = 0x0000;	//  0000 0000 0000 0000
@@ -497,6 +526,16 @@ static void LowLevelInit()
 
 	*pPORTGIO = 0;
 	*pPORTFIO = 0;
+
+	*pPORTFIO_EDGE = 0;
+	*pPORTFIO_BOTH = 0;
+	*pPORTFIO_MASKA = 0;
+	*pPORTFIO_MASKB = 0;
+
+	*pPORTGIO_EDGE = 0;
+	*pPORTGIO_BOTH = 0;
+	*pPORTGIO_MASKA = 0;
+	*pPORTGIO_MASKB = 0;
 
 #ifndef _DEBUG
 	*pWDOG_CNT = MS2CLK(10);
@@ -532,6 +571,8 @@ void InitHardware()
 //	InitTWI();
 
 	InitFire();
+
+	InitShaft();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

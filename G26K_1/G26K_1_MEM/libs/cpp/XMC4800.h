@@ -2955,8 +2955,17 @@ namespace T_HW
 
 		__I  	u32  RESERVED2[6];
 		
-		__IO	u32  PDR0;                              /*!< (@ 0x40) Port 0 Pad Driver Mode 0 Register                      */
-		__IO	u32  PDR1;                              /*!< (@ 0x44) Port 0 Pad Driver Mode 1 Register                      */
+		union
+		{
+			__IO	u32  PDR0;                              /*!< (@ 0x40) Port 0 Pad Driver Mode 0 Register                      */
+			__IO	byte PD0[4];
+		};
+		
+		union
+		{
+			__IO	u32  PDR1;                              /*!< (@ 0x44) Port 0 Pad Driver Mode 1 Register                      */
+			__IO	byte PD8[4];
+		};
 		
 		__I  	u32  RESERVED3[6];
 		
@@ -2988,41 +2997,41 @@ namespace T_HW
 		bool TBSET(u16 b) { return IN & (1<<b); }
 		bool TBCLR(u16 b) { return (IN & (1<<b)) == 0; }
 
-		void PIOF0(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR0 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[0] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
-		void PIOF4(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR4 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[1] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
-		void PIOF8(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR8 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[2] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
-		void PIOF12(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR12 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[3] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		//void PIOF0(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR0 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[0] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		//void PIOF4(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR4 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[1] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		//void PIOF8(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR8 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[2] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
+		//void PIOF12(byte f0=0, byte f1=0, byte f2=0, byte f3=0) { IOCR12 =	((f0 |(f1<<8)|(f2<<16)|(f3<<24)) & 0x1F1F1F1F)<<3; ((byte*)&HWSEL)[3] = ((f0>>5)&3)|(((f1>>5)&3)<<2)|(((f2>>5)&3)<<4)|(((f3>>5)&3)<<6);}
 
-		inline void DriverMode0(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
-		{
-			PDR0 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
-		};
+		//inline void DriverMode0(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
+		//{
+		//	PDR0 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
+		//};
 
-		void DriverMode8(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
-		{
-			PDR1 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
-		};
+		//void DriverMode8(byte m0=7, byte m1=7, byte m2=7, byte m3=7, byte m4=7, byte m5=7, byte m6=7, byte m7=7)
+		//{
+		//	PDR1 = (m0&7)|((m1&7)<<4)|((m2&7)<<8)|((m3&7)<<12)|((m4&7)<<16)|((m5&7)<<20)|((m6&7)<<24)|((m7&7)<<28);
+		//};
 
-//		void Driver(byte pin, byte driver) { __IO u32* pdr = &(((__IO u32*)(&PDR0))[pin>>3]); byte sh = (pin&7)*4; *pdr = *pdr & ~(7<<sh) | ((driver&7)<<sh); }
+		void Driver(byte pin, byte driver) { byte sh = (pin&1)*4; pin >>= 1; PD0[pin] = (PD0[pin] & ~(0xF<<sh)) | ((driver&7)<<sh); }
 
-//		void ModePin(byte pin, byte f, byte driver=7) { PC0[pin] = f<<3; byte sh = pin*2; HWSEL = (HWSEL & ~(3<<sh)) | (((f>>5)&3)<<sh); Driver(pin, driver);	}
+		void ModePin(byte pin, byte f) { PC0[pin] = f<<3; byte sh = pin*2; HWSEL = (HWSEL & ~(3<<sh)) | (((f>>5)&3)<<sh); }
 
-		void ModePin0(byte f, byte driver=7) { PC0[0] = f<<3; 	HW0	= 	f>>5; /*Driver(0, driver); */	}
-		void ModePin1(byte f, byte driver=7) { PC0[1] = f<<3; 	HW1	= 	f>>5; /*Driver(1, driver); */	}
-		void ModePin2(byte f, byte driver=7) { PC0[2] = f<<3; 	HW2	= 	f>>5; /*Driver(2, driver); */	}
-		void ModePin3(byte f, byte driver=7) { PC0[3] = f<<3; 	HW3	= 	f>>5; /*Driver(3, driver); */	}
-		void ModePin4(byte f, byte driver=7) { PC4[0] = f<<3; 	HW4	= 	f>>5; /*Driver(4, driver); */	}
-		void ModePin5(byte f, byte driver=7) { PC4[1] = f<<3; 	HW5	= 	f>>5; /*Driver(5, driver); */	}
-		void ModePin6(byte f, byte driver=7) { PC4[2] = f<<3; 	HW6	= 	f>>5; /*Driver(6, driver); */	}
-		void ModePin7(byte f, byte driver=7) { PC4[3] = f<<3; 	HW7	= 	f>>5; /*Driver(7, driver); */	}
-		void ModePin8(byte f, byte driver=7) { PC8[0] = f<<3; 	HW8	= 	f>>5; /*Driver(8, driver);	 */}
-		void ModePin9(byte f, byte driver=7) { PC8[1] = f<<3; 	HW9	= 	f>>5; /*Driver(9, driver);	 */}
-		void ModePin10(byte f, byte driver=7) { PC8[2] = f<<3; 	HW10 = 	f>>5; /*Driver(10, driver);	 */}
-		void ModePin11(byte f, byte driver=7) { PC8[3] = f<<3; 	HW11 = 	f>>5; /*Driver(11, driver);	 */}
-		void ModePin12(byte f, byte driver=7) { PC12[0] = f<<3;	HW12 = 	f>>5; /*Driver(12, driver);	 */}
-		void ModePin13(byte f, byte driver=7) { PC12[1] = f<<3;	HW13 = 	f>>5; /*Driver(13, driver);	 */}
-		void ModePin14(byte f, byte driver=7) { PC12[2] = f<<3;	HW14 = 	f>>5; /*Driver(14, driver);	 */}
-		void ModePin15(byte f, byte driver=7) { PC12[3] = f<<3;	HW15 = 	f>>5; /*Driver(15, driver);	 */}
+		void ModePin0(byte f) 	{ PC0[0] 	= f<<3; HW0		=	f>>5; }
+		void ModePin1(byte f) 	{ PC0[1] 	= f<<3; HW1		=	f>>5; }
+		void ModePin2(byte f) 	{ PC0[2] 	= f<<3; HW2		=	f>>5; }
+		void ModePin3(byte f) 	{ PC0[3] 	= f<<3; HW3		=	f>>5; }
+		void ModePin4(byte f) 	{ PC4[0] 	= f<<3; HW4		=	f>>5; }
+		void ModePin5(byte f) 	{ PC4[1] 	= f<<3; HW5		=	f>>5; }
+		void ModePin6(byte f) 	{ PC4[2] 	= f<<3; HW6		=	f>>5; }
+		void ModePin7(byte f) 	{ PC4[3] 	= f<<3; HW7		=	f>>5; }
+		void ModePin8(byte f) 	{ PC8[0] 	= f<<3; HW8		=	f>>5; }
+		void ModePin9(byte f) 	{ PC8[1] 	= f<<3; HW9		=	f>>5; }
+		void ModePin10(byte f) 	{ PC8[2] 	= f<<3; HW10 	=	f>>5; }
+		void ModePin11(byte f) 	{ PC8[3] 	= f<<3; HW11 	=	f>>5; }
+		void ModePin12(byte f) 	{ PC12[0]	= f<<3;	HW12 	=	f>>5; }
+		void ModePin13(byte f) 	{ PC12[1]	= f<<3;	HW13 	=	f>>5; }
+		void ModePin14(byte f) 	{ PC12[2]	= f<<3;	HW14 	=	f>>5; }
+		void ModePin15(byte f) 	{ PC12[3]	= f<<3;	HW15 	=	f>>5; }
 
 
 
@@ -4153,6 +4162,30 @@ namespace T_HW
 #define ERU_EXOCON_IPEN2_Msk                  (0x4000UL)                /*!< ERU EXOCON: IPEN2 (Bitfield-Mask: 0x01)                     */
 #define ERU_EXOCON_IPEN3_Pos                  (15UL)                    /*!< ERU EXOCON: IPEN3 (Bit 15)                                  */
 #define ERU_EXOCON_IPEN3_Msk                  (0x8000UL)                /*!< ERU EXOCON: IPEN3 (Bitfield-Mask: 0x01)                     */
+
+
+#define ERU_PE                 		(1<<0UL)      						/*!< ERU EXICON: PE (Bit 0)                                      */
+#define ERU_LD                 		(1<<1UL)      						/*!< ERU EXICON: LD (Bit 1)                                      */
+#define ERU_RE                 		(1<<2UL)      						/*!< ERU EXICON: RE (Bit 2)                                      */
+#define ERU_FE                 		(1<<3UL)      						/*!< ERU EXICON: FE (Bit 3)                                      */
+#define ERU_OCS(v)             		(((v)&7)<<4UL)						/*!< ERU EXICON: OCS (Bit 4)                                     */
+#define ERU_FL                 		(1<<7UL)      						/*!< ERU EXICON: FL (Bit 7)                                      */
+#define ERU_SS(v)              		(((v)&3)<<8UL)						/*!< ERU EXICON: SS (Bit 8)                                      */
+#define ERU_SS_A              		(0<<8UL)							/*!< ERU EXICON: SS (Bit 8)                                      */
+#define ERU_SS_B              		(1<<8UL)							/*!< ERU EXICON: SS (Bit 8)                                      */
+#define ERU_SS_A_OR_B          		(2<<8UL)							/*!< ERU EXICON: SS (Bit 8)                                      */
+#define ERU_SS_A_AND_B         		(3<<8UL)							/*!< ERU EXICON: SS (Bit 8)                                      */
+#define ERU_NA                 		(1<<10UL)     						/*!< ERU EXICON: NA (Bit 10)                                     */
+#define ERU_NB                 		(1<<11UL)     						/*!< ERU EXICON: NB (Bit 11)                                     */
+
+#define ERU_ISS(v)					(((v)&3)<<0UL)              		/*!< ERU EXOCON: ISS (Bit 0)                                     */
+#define ERU_GEEN                   	(1<<2UL)                 			/*!< ERU EXOCON: GEEN (Bit 2)                                    */
+#define ERU_PDR                    	(1<<3UL)                 			/*!< ERU EXOCON: PDR (Bit 3)                                     */
+#define ERU_GP(v)					(((v)&3)<<4UL)              		/*!< ERU EXOCON: GP (Bit 4)                                      */
+#define ERU_IPEN0                  	(1<<12UL)                			/*!< ERU EXOCON: IPEN0 (Bit 12)                                  */
+#define ERU_IPEN1                  	(1<<13UL)                			/*!< ERU EXOCON: IPEN1 (Bit 13)                                  */
+#define ERU_IPEN2                  	(1<<14UL)                			/*!< ERU EXOCON: IPEN2 (Bit 14)                                  */
+#define ERU_IPEN3                  	(1<<15UL)                			/*!< ERU EXOCON: IPEN3 (Bit 15)                                  */
 
 
 /* ================================================================================ */

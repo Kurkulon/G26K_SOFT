@@ -128,7 +128,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>@фњ</Name>
+          <Name>d</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -138,7 +138,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=1392,230,1832,773,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=3124,266,3372,840,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=2724,158,3174,711,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=3124,266,3372,840,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -146,24 +146,7 @@
           <Name></Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>1337</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134233014</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\hardware.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\\cpp/hardware.cpp\1337</Expression>
-        </Bp>
-      </Breakpoint>
+      <Breakpoint/>
       <WatchWindow1>
         <Ww>
           <count>0</count>
@@ -194,6 +177,26 @@
           <count>5</count>
           <WinNumber>1</WinNumber>
           <ItemText>nandSize</ItemText>
+        </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>shaftCounter,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>curShaftCounter,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>shaftRPS,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>rotCount</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -361,28 +364,8 @@
       <pMultCmds></pMultCmds>
       <SystemViewers>
         <Entry>
-          <Name>System Viewer\EBU</Name>
-          <WinId>35903</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\PORT0</Name>
-          <WinId>35902</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\PORT1</Name>
+          <Name>System Viewer\ERU0</Name>
           <WinId>35900</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\PORT3</Name>
-          <WinId>35901</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\SCU_RESET</Name>
-          <WinId>35904</WinId>
-        </Entry>
-        <Entry>
-          <Name>System Viewer\WDT</Name>
-          <WinId>35905</WinId>
         </Entry>
       </SystemViewers>
     </TargetOption>
