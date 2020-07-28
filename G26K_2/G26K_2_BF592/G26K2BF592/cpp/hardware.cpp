@@ -138,7 +138,7 @@ void SetDspVars(const ReqDsp01 *v)
 
 	//sti(i);
 
-	ppiClkDiv = dspVars.st * (NS2CLK(50));
+	ppiClkDiv = (dspVars.st+1) * NS2CLK(50);
 
 	if (ppiClkDiv == 0) ppiClkDiv = 1;
 
@@ -160,7 +160,7 @@ EX_INTERRUPT_HANDLER(RTT_ISR)
 	{
 		*pTIMER_STATUS = TIMIL2; 
 
-		*pPORTGIO_TOGGLE = 1<<6;
+		//*pPORTGIO_TOGGLE = 1<<6;
 
 		mmsec++;
 	};
@@ -246,7 +246,6 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 		*pDMA0_CONFIG = 0;
 
 		*pTIMER_DISABLE = TIMDIS1;
-		*pPORTFIO_CLEAR = 1<<9; // SYNC 
 
 		curDscPPI->busy = false;
 		readyPPI.Add(curDscPPI);
@@ -262,7 +261,6 @@ EX_INTERRUPT_HANDLER(FIRE_PPI_ISR)
 	if (*pTIMER_STATUS & TIMIL0)
 	{
 		*pTIMER_STATUS = TIMIL0; 
-		*pPORTGIO_TOGGLE = 1<<6;
 
 		//if (curDscPPI != 0 && !curDscPPI->ready) { *pTIMER_ENABLE = TIMEN1; };
 	};
@@ -379,7 +377,7 @@ static void InitFire()
 
 	ReadPPI();
 
-	InitIVG(IVG_GPTIMER0_FIRE, PID_GP_Timer_0, FIRE_PPI_ISR);
+	//InitIVG(IVG_GPTIMER0_FIRE, PID_GP_Timer_0, FIRE_PPI_ISR);
 
 	*pTIMER0_CONFIG = /*PERIOD_CNT|*/PWM_OUT|PULSE_HI/*|IRQ_ENA*/;
 	*pTIMER0_PERIOD = MS2CLK(1000) / 500 / 4;

@@ -111,7 +111,8 @@ __packed struct NVV // NonVolatileVars
 
 	u32 prevFilePage;
 
-	u32 badBlocks[4];
+	u32 badBlocks[8];
+	u32 pageError[8];
 };
 
 
@@ -829,6 +830,7 @@ bool Write::Update()
 				if ((t & 1) != 0) // program error
 				{
 					spare.fbp += 1;
+					nvv.pageError[wr.chip] += 1;
 
 					NAND_CmdWritePage(wr.pg, wr.block, wr.page);
 
@@ -1847,10 +1849,10 @@ void NAND_Idle()
 
 			if (!UpdateSendSession())
 			{
-				if (TRAP_TRACE_PrintString("NAND Bad Blocks: %lu, %lu, %lu, %lu", nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3]))
-				{
-					nandState = NAND_STATE_WAIT;
-				};
+				TRAP_TRACE_PrintString("NAND Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]);
+				TRAP_TRACE_PrintString("NAND Page Error: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", nvv.pageError[0], nvv.pageError[1], nvv.pageError[2], nvv.pageError[3], nvv.pageError[4], nvv.pageError[5], nvv.pageError[6], nvv.pageError[7]);
+
+				nandState = NAND_STATE_WAIT;
 			};
 
 			break;

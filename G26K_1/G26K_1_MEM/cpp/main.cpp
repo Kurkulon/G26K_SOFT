@@ -82,6 +82,8 @@ static u16 sampleLenRef = 1024;
 static u16 sampleDelayRef = 200;
 static u16 deadTimeRef = 400;
 static u16 descriminantRef = 400;
+static u16 filtrType = 0;
+static u16 packType = 0;
 
 static u16 motoEnable = 0; // двигатель включить или выключить
 static u16 motoTargetRPS = 0; // заданные обороты двигателя
@@ -544,15 +546,25 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 {
-	//__packed struct T { u16 g[8]; u16 st; u16 len; u16 delay; u16 voltage; };
-	//__packed struct Rsp { u16 hdr; u16 rw; T t1, t2, t3; };
-	
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	u16* p = manTrmData+1;
-
-
-	manTrmData[0] = (manReqWord & manReqMask) | 0x10;
+	manTrmData[0] = (manReqWord & manReqMask) | 0x10;		//1. Ответное слово
+	manTrmData[1] = gain;									//2. КУ (измерительный датчик)
+	manTrmData[2] = sampleTime;								//3. Шаг оцифровки
+	manTrmData[3] = sampleLen;								//4. Длина оцифровки
+	manTrmData[4] = sampleDelay; 							//5. Задержка оцифровки
+	manTrmData[5] = deadTime;								//6. Мертвая зона датчика
+	manTrmData[6] = descriminant;							//7. Уровень дискриминации датчика
+	manTrmData[7] = gainRef;								//8. КУ (опорный датчик)
+	manTrmData[8] = sampleTimeRef;							//9. Шаг оцифровки
+	manTrmData[9] = sampleLenRef;							//10. Длина оцифровки
+	manTrmData[10] = sampleDelayRef; 						//11. Задержка оцифровки
+	manTrmData[11] = deadTimeRef;							//12. Мертвая зона датчика
+	manTrmData[12] = descriminantRef;						//13. Уровень дискриминации датчика
+	manTrmData[13] = filtrType;								//14. Фильтр
+	manTrmData[14] = packType;								//15. Упаковка
+	manTrmData[15] = 0;										//16. Количество волновых картин на оборот головки в режиме цементомера
+	manTrmData[16] = 0;										//17. Количество точек на оборот головки в режиме имиджера
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 17;
@@ -882,8 +894,24 @@ static bool RequestMem_20(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	manTrmData[0] = (memReqWord & memReqMask)|0x20;
+	__packed struct Rsp {u16 rw; u16 device; u16 session; u32 rcvVec; u32 rejVec; u32 wrVec; u32 errVec; u16 wrAdr[3]; u16 temp; byte status; byte flags; RTC rtc; };
 
+	if (len != 1) return false;
+
+	Rsp &rsp = *((Rsp*)&manTrmData);
+
+	rsp.rw = (memReqWord & memReqMask)|0x20;
+	rsp.device = GetDeviceID();  
+	rsp.session = FLASH_Session_Get();	  
+	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
+	rsp.rejVec = FLASH_Vectors_Rejected_Get();
+	rsp.wrVec = FLASH_Vectors_Saved_Get();
+	rsp.errVec = FLASH_Vectors_Errors_Get();
+	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
+	rsp.temp = (temp+2)/4;
+	rsp.status = FLASH_Status();
+
+	GetTime(&rsp.rtc);
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 20;
@@ -897,10 +925,11 @@ static bool RequestMem_20(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMem_30(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+	if (len != 5) return false;
+
+	SetClock(*(RTC*)(&data[1]));
 
 	manTrmData[0] = (memReqWord & memReqMask)|0x30;
-
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -914,10 +943,11 @@ static bool RequestMem_30(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMem_31(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+	if (len != 1) return false;
+
+	FLASH_WriteEnable();
 
 	manTrmData[0] = (memReqWord & memReqMask)|0x31;
-
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -931,10 +961,11 @@ static bool RequestMem_31(u16 *data, u16 len, MTB* mtb)
 
 static bool RequestMem_32(u16 *data, u16 len, MTB* mtb)
 {
-	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
+	if (len != 1) return false;
+
+	FLASH_WriteDisable();
 
 	manTrmData[0] = (memReqWord & memReqMask)|0x32;
-
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -950,8 +981,9 @@ static bool RequestMem_33(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 4 || mtb == 0) return false;
 
-	manTrmData[0] = (memReqWord & memReqMask)|0x33;
+	// Erase all
 
+	manTrmData[0] = (memReqWord & memReqMask)|0x33;
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -1073,7 +1105,7 @@ static void UpdateMan()
 		case 0:
 
 			mrb.data = manRcvData;
-			mrb.maxLen = 3;
+			mrb.maxLen = ArraySize(manRcvData);
 			RcvManData(&mrb);
 
 			i++;
