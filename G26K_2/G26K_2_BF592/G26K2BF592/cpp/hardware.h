@@ -16,6 +16,10 @@
 struct DSCPPI
 {
 	DSCPPI	*next;
+	u32		mmsec;
+	u32		shaftTime;
+	u16		motoCount;
+	u16		shaftCount;
 	u16		len;
 	u16		offset;
 	u16		clkdiv;
@@ -54,6 +58,8 @@ struct ReqDsp01	// чтение вектора
 	u16 	refsd; 
 	u16		refthr;
 	u16		refdescr;
+	u16		vavesPerRoundCM;
+	u16		vavesPerRoundIM;
 
 	u16 	crc;  
 };
@@ -93,6 +99,7 @@ extern void SetDspVars(const ReqDsp01 *v);
 //extern void ReadPPI(void *dst);
 extern DSCPPI* GetDscPPI();
 extern void FreeDscPPI(DSCPPI* dsc);
+extern DSCPPI* AllocDscPPI();
 
 extern void WriteTWI(void *src, u16 len);
 extern void ReadTWI(void *dst, u16 len);

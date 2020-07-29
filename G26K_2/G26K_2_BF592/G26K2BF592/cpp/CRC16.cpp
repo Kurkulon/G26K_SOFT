@@ -40,6 +40,8 @@ extern const u16 tableCRC[256] =
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#pragma optimize_for_speed
+
 word GetCRC16(const void *data, u32 len)
 {
 	DataCRC CRC = { 0xFFFF };

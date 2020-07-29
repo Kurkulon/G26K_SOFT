@@ -3211,7 +3211,10 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 	
 	u32 r = ((u32)RPS * pulsesPerHeadRoundFix4) >> 4;
 
-	r = US2SRT((100000000 + r/2) / r);
+	if (r != 0)
+	{
+		r = US2SRT((100000000 + r/2) / r);
+	};
 
 	if (r > 0xFFFF) r = 0xFFFF;
 

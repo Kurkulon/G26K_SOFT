@@ -16,6 +16,9 @@ extern dword millisecondsCount;
 
 #define MASKRTS (1<<5)
 
+#pragma optimize_for_speed
+//#pragma optimize_as_cmd_line
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool ComPort::Connect(dword speed, byte parity)

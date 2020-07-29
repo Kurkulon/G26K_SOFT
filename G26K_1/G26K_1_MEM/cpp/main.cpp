@@ -84,6 +84,11 @@ static u16 deadTimeRef = 400;
 static u16 descriminantRef = 400;
 static u16 filtrType = 0;
 static u16 packType = 0;
+//static u16 vavesPerRoundCM = 100;	
+//static u16 vavesPerRoundIM = 100;
+static u16 mode = 0;
+
+static TM32 imModeTimeout;
 
 static u16 motoEnable = 0; // двигатель включить или выключить
 static u16 motoTargetRPS = 0; // заданные обороты двигателя
@@ -117,7 +122,8 @@ static u32 fireCounter = 0;
 static byte mainModeState = 0;
 static byte dspStatus = 0;
 
-//static u32 rcvCRCOK = 0;
+u32 dspRcv40 = 0;
+u32 dspRcv50 = 0;
 //static u32 rcvCRCER = 0;
 
 //static u32 chnlCount[4] = {0};
@@ -174,12 +180,14 @@ void CallBackDspReq01(REQ *q)
 		q->crcOK = (q->rb->len == (rsp.CM.sl*2 + 19*2));
 
 		dspStatus |= 1;
+		dspRcv40++;
 	}
 	else if (rsp.rw == (dspReqWord|0x50))
 	{
-		q->crcOK = (q->rb->len == (rsp.IM.dataLen*2 + 11*2));
+		q->crcOK = (q->rb->len == (rsp.IM.dataLen*4 + 11*2));
 
 		dspStatus |= 1;
+		dspRcv50++;
 	}
 	else
 	{
@@ -257,20 +265,22 @@ R01* CreateDspReq01(u16 tryCount)
 	rb.maxLen = sizeof(rsp);
 	rb.recieved = false;
 	
-	req.rw			= dspReqWord|1;
-	req.mode 		= 0;
-	req.gain 		= gain;
-	req.st	 		= sampleTime;
-	req.sl 			= sampleLen;
-	req.sd 			= sampleDelay;
-	req.thr			= deadTime;
-	req.descr		= descriminant;
-	req.refgain 	= gainRef;
-	req.refst		= sampleTimeRef;
-	req.refsl 		= sampleLenRef;
-	req.refsd 		= sampleDelayRef;
-	req.refthr		= deadTimeRef;
-	req.refdescr	= descriminantRef;
+	req.rw				= dspReqWord|1;
+	req.mode 			= mode;
+	req.gain 			= gain;
+	req.st	 			= sampleTime;
+	req.sl 				= sampleLen;
+	req.sd 				= sampleDelay;
+	req.thr				= descriminant;
+	req.descr			= deadTime;
+	req.refgain 		= gainRef;
+	req.refst			= sampleTimeRef;
+	req.refsl 			= sampleLenRef;
+	req.refsd 			= sampleDelayRef;
+	req.refthr			= deadTimeRef;
+	req.refdescr		= descriminantRef;
+	req.vavesPerRoundCM = cmSPR;
+	req.vavesPerRoundIM = imSPR;
 
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
 
@@ -563,8 +573,8 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 	manTrmData[12] = descriminantRef;						//13. Уровень дискриминации датчика
 	manTrmData[13] = filtrType;								//14. Фильтр
 	manTrmData[14] = packType;								//15. Упаковка
-	manTrmData[15] = 0;										//16. Количество волновых картин на оборот головки в режиме цементомера
-	manTrmData[16] = 0;										//17. Количество точек на оборот головки в режиме имиджера
+	manTrmData[15] = cmSPR;									//16. Количество волновых картин на оборот головки в режиме цементомера
+	manTrmData[16] = imSPR;									//17. Количество точек на оборот головки в режиме имиджера
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 17;
@@ -725,16 +735,104 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestMan_50(u16 *data, u16 len, MTB* mtb)
+static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 {
-	if (data == 0 || len == 0 || len > 3 || mtb == 0) return false;
+	__packed struct Req { u16 rw; u16 off; u16 len; };
 
-	manTrmData[0] = manReqWord|0x50;	
- 
-	mtb->data1 = manTrmData;
-	mtb->len1 = 1;
+	Req &req = *((Req*)data);
+
+	if (data == 0 || reqlen == 0 || reqlen > 4 || mtb == 0) return false;
+
+	//byte nf = ((req.rw>>4)-3)&3;
+	//byte nr = req.rw & 7;
+
+//	curRcv[nf] = nr;
+
+	struct Rsp { u16 rw; };
+	
+	static Rsp rsp; 
+	
+	static u16 prevOff = 0;
+	static u16 prevLen = 0;
+	static u16 maxLen = 200;
+
+	mode = 1;
+
+	imModeTimeout.Reset();
+
+	rsp.rw = req.rw;
+
+	mtb->data1 = (u16*)&rsp;
+	mtb->len1 = sizeof(rsp)/2;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
+
+	R01 *r01 = curManVec50;
+	
+	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
+	{
+		if (r01 != 0)
+		{
+			freeR01.Add(r01);
+
+			curManVec50 = 0;
+		};
+		
+		r01 = manVec50;
+
+		if (r01 != 0/* && r01->rsp.rw == req.rw*/)
+		{
+			curManVec50 = r01;
+
+			manVec50 = 0;
+
+			mtb->data2 = ((u16*)&r01->rsp)+1;
+
+			prevOff = 0;
+
+			u16 sz = 10 + r01->rsp.IM.dataLen*2;
+
+			if (reqlen == 1)
+			{
+				mtb->len2 = sz;
+				prevLen = sz;
+			}
+			else 
+			{
+				if (reqlen == 3) maxLen = data[2];
+
+				u16 len = maxLen;
+
+				if (len > sz) len = sz;
+
+				mtb->len2 = len;
+
+				prevLen = len;
+			};
+		};
+	}
+	else if (r01 != 0)
+	{
+		u16 off = prevOff + prevLen;
+		u16 len = prevLen;
+		u16 sz = 10 + r01->rsp.IM.dataLen*2;
+
+		if (reqlen == 3)
+		{
+			off = data[1];
+			len = data[2];
+		};
+
+		if (sz >= off && r01 != 0)
+		{
+			u16 ml = sz - off;
+
+			if (len > ml) len = ml;
+
+			mtb->data2 = (u16*)&r01->rsp + data[1]+1;
+			mtb->len2 = len;
+		};
+	};
 
 	return true;
 }
@@ -791,6 +889,13 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		case 0x14:	sampleDelayRef 	= data[2];	break;
 		case 0x15:	deadTimeRef		= data[2];	break;
 		case 0x16:	descriminantRef	= data[2];	break;
+
+		case 0x20:	filtrType		= data[2];	break;
+		case 0x21:	packType		= data[2];	break;
+
+		case 0x30:	cmSPR			= data[2];	break;
+		case 0x31:	imSPR			= data[2];	break;
+
 
 		default:
 
@@ -1197,8 +1302,8 @@ static void MainMode()
 				{
 					if ((r01->rsp.rw & 0xFF) == 0x40)
 					{
-						r01->rsp.CM.ax = -ax;
-						r01->rsp.CM.ay = az;
+						//r01->rsp.CM.ax = -ax;
+						//r01->rsp.CM.ay = az;
 						r01->rsp.CM.az = -ay;
 						r01->rsp.CM.at = at;
 						r01->rsp.CM.pakType = 1;
@@ -1217,6 +1322,8 @@ static void MainMode()
 						r01->rsp.IM.az = -ay;
 						r01->rsp.IM.at = at;
 
+						//r01->rsp.IM.data[0] = 32767;
+
 						if (manVec50 != 0)
 						{
 							freeR01.Add(manVec50);
@@ -1233,6 +1340,11 @@ static void MainMode()
 				};
 
 				mainModeState = 0;
+			};
+
+			if (imModeTimeout.Check(10000))
+			{
+				mode = 0;
 			};
 
 			break;

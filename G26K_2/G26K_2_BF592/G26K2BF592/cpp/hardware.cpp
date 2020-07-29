@@ -127,6 +127,7 @@ static ReqDsp01 dspVars;
 
 u32 shaftCount = 0;
 u32 shaftMMSEC = 0;
+u32 shaftDT = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -146,7 +147,7 @@ void SetDspVars(const ReqDsp01 *v)
 
 	if (ppiLen < 16) ppiLen = 16;
 
-	ppiDelay = dspVars.sd * (NS2CLK(50));
+	ppiDelay = dspVars.sd * (NS2CCLK(50));
 	
 	if (ppiDelay > US2CLK(500)) ppiDelay = US2CLK(500);
 
@@ -205,6 +206,13 @@ DSCPPI* GetDscPPI()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+DSCPPI* AllocDscPPI()
+{
+	return freePPI.Get();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void FreeDscPPI(DSCPPI* dsc)
 {
 	freePPI.Add(dsc);
@@ -214,13 +222,14 @@ void FreeDscPPI(DSCPPI* dsc)
 
 static void ReadPPI()
 {
-	curDscPPI = freePPI.Get();
+	curDscPPI = AllocDscPPI();
 
 	*pTIMER_DISABLE = TIMDIS1;
 
 	if (curDscPPI != 0)
 	{
 		curDscPPI->busy = false;
+		curDscPPI->delay = ppiDelay;
 
 		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
 		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppiClkDiv;
@@ -249,6 +258,8 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 
 		curDscPPI->busy = false;
 		readyPPI.Add(curDscPPI);
+
+		SetGain(0);
 
 		ReadPPI();
 	};
@@ -288,18 +299,11 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 		{
 			curDscPPI->busy = true;
 
-			u32 t = mmsec; //dspVars.mmsecTime;
+			curDscPPI->mmsec = mmsec;
+			curDscPPI->shaftTime = shaftMMSEC;
 
-			curDscPPI->data[1] = t;
-			curDscPPI->data[2] = t>>16;
-
-			t = shaftMMSEC; //dspVars.hallTime;
-
-			curDscPPI->data[3] = t;
-			curDscPPI->data[4] = t>>16;
-
-			curDscPPI->data[5] = dspVars.motoCount;
-			curDscPPI->data[6] = shaftCount;
+			curDscPPI->motoCount = dspVars.motoCount;
+			curDscPPI->shaftCount = shaftCount;
 
 			if (curDscPPI->delay == 0)
 			{ 
@@ -395,7 +399,11 @@ EX_INTERRUPT_HANDLER(SHAFT_ISR)
 
 	shaftCount++;
 
-	shaftMMSEC = mmsec;
+	u32 t = mmsec;
+
+	shaftDT = t - shaftMMSEC;
+
+	shaftMMSEC = t;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

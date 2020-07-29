@@ -34,162 +34,96 @@ static u16 sampleTime = 8;
 static u16 sampleLen = 512;
 static u16 gain = 0;
 
+static u16 vavesPerRoundCM = 100;	
+static u16 vavesPerRoundIM = 100;
+
 static List<DSCPPI> processedPPI;
 
-static DSCPPI *curDscPPI = 0;
+static DSCPPI *curDsc = 0;
 
 //static void SaveParams();
+
+static u16 mode = 0; // 0 - CM, 1 - IM
+static u16 imThr = 0;
+static u16 imDescr = 0;
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateFire()
+#pragma pack(1)
+
+struct RspCM	// 0xAD40
 {
-	static byte i = 0;
-	static bool ready = false;
-	static RTM32 tm;
+	u16 	rw;
+	u32 	mmsecTime; 
+	u32		shaftTime; 
+	u16		motoCount; 
+	u16		headCount;
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16		sensType; 
+	u16		angle;
+	u16 	gain; 
+	u16 	st;	 
+	u16 	sl; 
+	u16 	sd; 
+	u16		packType;
+	u16		packLen;
+};
 
-	static byte count = 0;
-	static byte fnum = 0;
+#pragma pack()
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	//Req30 &req = req30[fnum];
+#pragma pack(1)
 
+struct RspIM	// 0xAD50
+{
+	u16 	rw;
+	u32 	mmsecTime; 
+	u32		shaftTime; 
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16 	gain; 
+	u16		len;
+	u16		data[16];
+};
 
-	//switch (i)
-	//{
-	//	case 0:
+#pragma pack()
 
-	//		if (startFire)
-	//		{
-	//			startFire = false;
-
-	//			fnum = 0;
-
-	//			SetGain(gain);
-
-	//			tm.Reset();
-
-	//			i++;
-	//		};
-
-	//		break;
-
-	//	case 1:
-
-	//		cmdreq.chnl = fnum;
-
-	//		WriteTWI(&cmdreq, sizeof(cmdreq));
-
-	//		count = 10;
-
-	//		i++;
-
-	//		break;
-
-	//	case 2:
-
-	//		if ((*pTWI_MASTER_CTL & MEN) == 0)
-	//		{
-	//			ReadTWI(&cmdrsp, sizeof(cmdrsp));
-
-	//			i++;
-	//		};
-
-	//		break;
-
-	//	case 3:
-
-	//		if ((*pTWI_MASTER_CTL & MEN) == 0)
-	//		{
-	//			if ((count--) == 0)
-	//			{
-	//				i = 1;
-	//			}
-	//			else
-	//			{
-	//				i = (cmdrsp.busy || !cmdrsp.ready) ? (i-1) : (i+1);
-	//			};
-	//		};
-
-	//		break;
-
-	//	case 4:
-
-	//		{
-	//			i32 d = (i32)sampleDelay - (i32)sampleTime*2;
-
-	//			if (d < 0) d = 0;
-
-	//			ReadPPI(req.data, ArraySize(req.data), sampleTime, d, &ready);
-	//		};
-
-	//		i++;
-
-	//		break;
-
-	//	case 5:
-
-	//		if (ready)
-	//		{
-	//			u16 *p = req.data;
-
-	//			for (u16 j = ArraySize(req.data)-8; j > 0; j--)
-	//			{
-	//				*p = p[8] - 2048;
-	//				p++;
-	//			};
-
-	//			for (u16 j = 8; j > 0; j--)
-	//			{
-	//				*p++ = 0;
-	//			};
-
-	//			req.rw = manReqWord + 0x30 + fnum;
-	//			req.gain = gain;
-	//			req.st = sampleTime;
-	//			req.sl = sampleLen;
-	//			req.sd = sampleDelay;
-	//			req.flt = 0;
-
-	//			i++;
-	//		};
-
-	//		break;
-
-	//	case 6:
-
-	//		if (tm.Check(US2CLK(2000)))
-	//		{
-	//			fnum++;
-	//			
-	//			i = (fnum < 13) ? 1 : 0;
-	//		};
-
-	//		break;
-	//};
-
-}
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
 	static u16 rsp[6];
 
-	SetDspVars((ReqDsp01*)data);
-	
+	ReqDsp01 *req = (ReqDsp01*)data;
+
+	SetDspVars(req);
+
+	mode = req->mode;
+	imThr = req->thr;
+	imDescr = req->descr;
+
+	vavesPerRoundCM = req->vavesPerRoundCM;	
+	vavesPerRoundIM = req->vavesPerRoundIM;
+
 	if (wb == 0) return false;
 
-	if (curDscPPI != 0)
+	if (curDsc != 0)
 	{
-		FreeDscPPI(curDscPPI);
+		FreeDscPPI(curDsc);
 
-		curDscPPI = 0;
+		curDsc = 0;
 	};
 
-	curDscPPI = processedPPI.Get();
+	curDsc = processedPPI.Get();
 
-	if (curDscPPI == 0)
+	if (curDsc == 0)
 	{
 		rsp[0] = data[0];
 
@@ -198,30 +132,8 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	}
 	else
 	{
-		u16 *rsp = curDscPPI->data;
-
-		rsp[0] = manReqWord|0x40;					//1. ответное слово
-		//rsp[1] = 0;								//2. Время (0.1мс). младшие 2 байта
-		//rsp[2] = 0;								//3. Время. старшие 2 байта
-		//rsp[3] = 0;								//4. Время датчика Холла (0.1мс). младшие 2 байта
-		//rsp[4] = 0;								//5. Время датчика Холла. старшие 2 байта
-		rsp[5] = 0;									//6. Счётчик оборотов двигателя (1/6 об)
-		//rsp[6] = 0;									//7. Счётчик оборотов головки (об)
-		rsp[7] = 0;									//8. AX (уе)
-		rsp[8] = 0;									//9. AY (уе)
-		rsp[9] = 0;									//10. AZ (уе)
-		rsp[10] = 0;								//11. AT (short 0.01 гр)
-		rsp[11] = 0;								//12. Тип датчика (0 - измерительный датчик, 1 - опорный датчик)
-		rsp[12] = 0;								//13. Угол поворота (0.01гр)(ushort)
-		rsp[13] = 0;								//14. КУ
-		rsp[14] = curDscPPI->clkdiv/NS2CLK(50);		//15. Шаг оцифровки
-		rsp[15] = curDscPPI->len;					//16. Длина оцифровки (макс 2028)
-		rsp[16] = 0;								//17. Задержка оцифровки  
-		rsp[17] = 1;								//18. Упаковка
-		rsp[18] = 0;								//19. Размер упакованных данных
-	
-		wb->data = rsp;			 
-		wb->len = (19 + curDscPPI->len)*2;	 
+		wb->data = curDsc->data;			 
+		wb->len = (curDsc->offset + curDsc->len)*2;	 
 	};
 
 	return true;
@@ -306,11 +218,11 @@ static void UpdateBlackFin()
 
 			if (!com.Update())
 			{
-				if (curDscPPI != 0)
+				if (curDsc != 0)
 				{
-					FreeDscPPI(curDscPPI);
+					FreeDscPPI(curDsc);
 					
-					curDscPPI = 0;
+					curDsc = 0;
 				};
 
 				i = 0;
@@ -344,44 +256,201 @@ static void Update()
 
 #pragma optimize_for_speed
 
-i16 TestProcessData(u16 *data, u16 len)
+static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
 {
+	amp = 0;
+	time = 0;
+
+	u16 *data = dsc.data + dsc.offset;
+	
+	u16 len1 = imDescr * NS2CLK(50) / dsc.clkdiv;
+
+	if (len1 > dsc.len) len1 = dsc.len;
+
+	u16 len2 = dsc.len - len1;
+
 	i32 max = -32768;
 	i32 imax = -1;
+	i32 ind = 0;
 
-	for (u32 i = len; i > 0; i--)
+	for (u32 i = len1; i > 0; i--)
 	{
-		i32 t = *(data++) - 2048;
+		i32 t = (i16)(*(data++)) - 2048;
 
-		if (t > max)
+		if (t < 0) t = -t;
+
+		if (t > max) { max = t; imax = ind; };
+		
+		ind++;
+	};
+
+	if ((imax < 0 || max < imThr) && len2 > 0)
+	{
+		max = -32768;
+		imax = -1;
+
+		for (u32 i = len2; i > 0; i--)
 		{
-			max = t;
-			imax = i;
+			i32 t = (i16)(*(data++)) - 2048;
+
+			if (t < 0) t = -t;
+
+			if (t > max) { max = t; imax = ind; };
+
+			ind++;
 		};
 	};
 
-	return len - imax;
+	if (imax >= 0)
+	{
+		amp = max;
+		time = (dsc.delay * NS2CLK(50) / NS2CCLK(50) + imax * dsc.clkdiv) / 2;// / NS2CLK(100);
+	};
 }
 
 #pragma optimize_as_cmd_line
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateProcessData()
+#pragma optimize_for_speed
+
+static void ProcessDataCM(DSCPPI &dsc)
+{
+	//u16 amp, time;
+
+	//GetAmpTimeIM(dsc, amp, time);
+
+	u16 *d = dsc.data + dsc.offset;
+
+	for (u32 i = dsc.len; i > 0; i--)
+	{
+		*(d++) -= 2048;
+	};
+
+	RspCM *rsp = (RspCM*)dsc.data;
+
+	rsp->rw			= manReqWord|0x40;			//1. ответное слово
+	rsp->mmsecTime	= dsc.mmsec;
+	rsp->shaftTime	= dsc.shaftTime;
+	rsp->motoCount	= dsc.motoCount;
+	rsp->headCount	= dsc.shaftCount;
+	rsp->sensType	= 0;
+	rsp->gain		= 0;
+	rsp->st 		= dsc.clkdiv/NS2CLK(50);	//15. Шаг оцифровки
+	rsp->sl 		= dsc.len;					//16. Длина оцифровки (макс 2028)
+	rsp->sd 		= dsc.delay/NS2CCLK(50);		//17. Задержка оцифровки  
+	rsp->packType	= 1;						//18. Упаковка
+	rsp->packLen	= 0;						//19. Размер упакованных данных
+
+	//rsp->ax = amp;
+	//rsp->ay = time;
+
+	processedPPI.Add(&dsc);
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//#pragma optimize_for_speed
+
+static void ProcessDataIM(DSCPPI &dsc)
+{
+	static DSCPPI *imdsc = 0;
+	static u32 count = 0;
+	static u32 cmCount = 0;
+	static u32 i = 0;
+
+	if (imdsc == 0)
+	{
+		count = vavesPerRoundIM;
+		cmCount = count/8;
+		i = 0;
+
+		imdsc = AllocDscPPI();
+	};
+
+	if (imdsc != 0)
+	{
+		RspIM *rsp = (RspIM*)imdsc->data;
+
+		if (i < count)
+		{
+			u16 amp, time;
+
+			GetAmpTimeIM(dsc, amp, time);
+
+			rsp->data[i] = amp;
+			rsp->data[i+count] = time;
+
+			i++;
+		};
+
+		if (i >= count)
+		{
+			*pPORTGIO_SET = 1<<6;
+
+			rsp->rw = manReqWord|0x50;				//1. ответное слово
+			rsp->mmsecTime = 0;						//2. Время (0.1мс). младшие 2 байта
+			rsp->shaftTime = 0;						//4. Время датчика Холла (0.1мс). младшие 2 байта
+			rsp->ax = 0;							//6. AX
+			rsp->ay = 0;							//7. AY
+			rsp->az = 0;							//8. AZ
+			rsp->at = 0;							//9. AT
+			rsp->gain = 0;							//10. КУ
+			rsp->len = count;						//11. Длина (макс 1024)
+
+			imdsc->offset = (sizeof(*rsp) - sizeof(rsp->data)) / 2;
+			imdsc->len = count*2;
+
+			processedPPI.Add(imdsc);
+
+			imdsc = 0;
+
+			*pPORTGIO_CLEAR = 1<<6;
+		};
+	};
+
+	if (cmCount == 0)
+	{
+		cmCount = count / 8;
+
+		ProcessDataCM(dsc);
+	}
+	else
+	{
+		cmCount -= 1;
+	
+		FreeDscPPI(&dsc);
+	};
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMode()
 {
 	DSCPPI *dsc = GetDscPPI();
 
 	if (dsc != 0)
 	{
-		//*pPORTGIO_SET = 1<<5;
+		*pPORTGIO_SET = 1<<5;
 
-		TestProcessData(dsc->data, dsc->len);
+		//ProcessDataIM(*dsc);
 
-		processedPPI.Add(dsc);
+		switch (mode)
+		{
+			case 0:  ProcessDataCM(*dsc); break;
+			case 1:  ProcessDataIM(*dsc); break;
+		};
 
-		//*pPORTGIO_CLEAR = 1<<5;
-
-		idle();
+		//idle();
+		*pPORTGIO_CLEAR = 1<<5;
+	}
+	else
+	{
+		UpdateBlackFin();
 	};
 }
 
@@ -400,34 +469,15 @@ int main( void )
 
 	InitHardware();
 
-	//LoadParams();
-
 	com.Connect(6250000, 0);
-
-//	InitNetAdress();
 
 	while (1)
 	{
-		UpdateProcessData();
+		*pPORTFIO_SET = 1<<8;
+		
+		UpdateMode();
 
-		u32 t = GetCycles32();
-
-		*pPORTFIO_TOGGLE = 1<<8;
-
-		Update();
-
-		if ((t - pt) >= US2CCLK(500))
-		{
-			pt += US2CCLK(500);
-
-			*pPORTGIO_CLEAR = 1<<5;
-
-			SetGain(0);
-		};
-
-		//Update();
-
-		*pPORTFIO_TOGGLE = 1<<8;
+		*pPORTFIO_CLEAR = 1<<8;
 
 	};
 
