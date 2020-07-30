@@ -36,6 +36,8 @@ static u16 gain = 0;
 
 static u16 vavesPerRoundCM = 100;	
 static u16 vavesPerRoundIM = 100;
+static u16 filtrType = 0;
+static u16 packType = 0;
 
 static List<DSCPPI> processedPPI;
 
@@ -46,6 +48,8 @@ static DSCPPI *curDsc = 0;
 static u16 mode = 0; // 0 - CM, 1 - IM
 static u16 imThr = 0;
 static u16 imDescr = 0;
+
+static i16 avrBuf[PPI_BUF_LEN] = {0};
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -103,14 +107,19 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	ReqDsp01 *req = (ReqDsp01*)data;
 
+	if (req->vavesPerRoundCM > 64) { req->vavesPerRoundCM = 64; }
+	if (req->vavesPerRoundIM > 500) { req->vavesPerRoundIM = 500; }
+
 	SetDspVars(req);
 
 	mode = req->mode;
-	imThr = req->thr;
-	imDescr = req->descr;
+	imThr = req->mainSens.thr;
+	imDescr = req->mainSens.descr;
 
 	vavesPerRoundCM = req->vavesPerRoundCM;	
 	vavesPerRoundIM = req->vavesPerRoundIM;
+	filtrType = req->filtrType;
+	packType = req->packType;
 
 	if (wb == 0) return false;
 
@@ -322,9 +331,56 @@ static void ProcessDataCM(DSCPPI &dsc)
 
 	u16 *d = dsc.data + dsc.offset;
 
-	for (u32 i = dsc.len; i > 0; i--)
+	if (dsc.sensType == 0 && filtrType == 1)
 	{
-		*(d++) -= 2048;
+		i16 *ab = avrBuf;
+
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			i16 v = *d - 2048;
+
+			*(d++) = v -= *ab;
+
+			*(ab++) += v / 32;
+		};
+	}
+	else if (dsc.sensType == 0 && filtrType == 2)
+	{
+		i32 av = 0;
+
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			i16 v = *d - 2048;
+
+			av += v - av/2;
+
+			*(d++) = av / 2;
+		};
+	}
+	else if (dsc.sensType == 0 && filtrType == 3)
+	{
+		i32 av = 0;
+		i16 *ab = avrBuf;
+
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			i16 v = *d - 2048;
+
+			av += v - av/2;
+
+			v = av / 2;
+
+			*(d++) = v -= *ab;
+
+			*(ab++) += v / 32;
+		};
+	}
+	else
+	{
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			*(d++) -= 2048;
+		};
 	};
 
 	RspCM *rsp = (RspCM*)dsc.data;
@@ -334,16 +390,19 @@ static void ProcessDataCM(DSCPPI &dsc)
 	rsp->shaftTime	= dsc.shaftTime;
 	rsp->motoCount	= dsc.motoCount;
 	rsp->headCount	= dsc.shaftCount;
-	rsp->sensType	= 0;
-	rsp->gain		= 0;
+	rsp->sensType	= dsc.sensType;
+	rsp->gain		= dsc.gain;
 	rsp->st 		= dsc.clkdiv/NS2CLK(50);	//15. Шаг оцифровки
 	rsp->sl 		= dsc.len;					//16. Длина оцифровки (макс 2028)
 	rsp->sd 		= dsc.delay/NS2CCLK(50);		//17. Задержка оцифровки  
 	rsp->packType	= 1;						//18. Упаковка
 	rsp->packLen	= 0;						//19. Размер упакованных данных
+	
+	u32 t = dsc.shaftTime - dsc.shaftPrev;
 
-	//rsp->ax = amp;
-	//rsp->ay = time;
+	if (t != 0) { t = (36000 * (dsc.mmsec - dsc.shaftTime) + t/2) / t; };
+	
+	rsp->angle = t;
 
 	processedPPI.Add(&dsc);
 }
@@ -374,6 +433,13 @@ static void ProcessDataIM(DSCPPI &dsc)
 	{
 		RspIM *rsp = (RspIM*)imdsc->data;
 
+		while (i < dsc.fireIndex)
+		{
+			rsp->data[i+1] = rsp->data[i];
+			rsp->data[i+count+1] = rsp->data[i+count];
+			i++;
+		};
+
 		if (i < count)
 		{
 			u16 amp, time;
@@ -382,22 +448,23 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 			rsp->data[i] = amp;
 			rsp->data[i+count] = time;
-
 			i++;
 		};
 
-		if (i >= count)
+		if (i >= count || i > (dsc.fireIndex+1))
 		{
 			*pPORTGIO_SET = 1<<6;
+
+			RspIM *rsp = (RspIM*)imdsc->data;
 
 			rsp->rw = manReqWord|0x50;				//1. ответное слово
 			rsp->mmsecTime = 0;						//2. Время (0.1мс). младшие 2 байта
 			rsp->shaftTime = 0;						//4. Время датчика Холла (0.1мс). младшие 2 байта
-			rsp->ax = 0;							//6. AX
-			rsp->ay = 0;							//7. AY
-			rsp->az = 0;							//8. AZ
-			rsp->at = 0;							//9. AT
-			rsp->gain = 0;							//10. КУ
+			//rsp->ax = 0;							//6. AX
+			//rsp->ay = 0;							//7. AY
+			//rsp->az = 0;							//8. AZ
+			//rsp->at = 0;							//9. AT
+			rsp->gain = dsc.gain;					//10. КУ
 			rsp->len = count;						//11. Длина (макс 1024)
 
 			imdsc->offset = (sizeof(*rsp) - sizeof(rsp->data)) / 2;

@@ -19,7 +19,7 @@ extern dword millisecondsCount;
 
 #ifdef CPU_SAME53	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	ComPort::ComBase	ComPort::_bases[2] = { 
+	ComPort::ComBase	ComPort::_bases[3] = { 
 		{false, HW::USART5,	 HW::PIOC, 1<<28, 1 }, 
 		{false, HW::USART1,	 HW::PIOC, 1<<27, 2 }
 	};

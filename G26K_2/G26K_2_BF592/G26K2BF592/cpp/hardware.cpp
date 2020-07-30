@@ -36,15 +36,25 @@
 // SPI1 	- 
 // TWI		- 
 
+#define IVG_EMULATION		0
+#define IVG_RESET			1
+#define IVG_NMI				2
+#define IVG_EXEPTIONS		3
+#define IVG_HW_ERROR		5
 #define IVG_CORETIMER		6
-#define IVG_PPI_DMA0		8
-#define IVG_PORTF_SYNC		9
-#define IVG_GPTIMER0_FIRE	10
-#define IVG_GPTIMER2_RTT	11
-#define IVG_TWI				12
-#define IVG_PORTF_SHAFT		13
+#define IVG_PORTF_SYNC		7
+#define IVG_PORTF_SHAFT		8
+#define IVG_GPTIMER2_RTT	9
+#define IVG_PPI_DMA0		10
+//#define IVG_TWI				12
+//#define IVG_GPTIMER0_FIRE	10
 
-#define PPI_BUF_NUM 4
+#define PPI_BUF_NUM 6
+
+#define PIN_SHAFT		6
+#define PIN_SYNC		4
+#define BM_SHAFT		(1 << PIN_SHAFT)	
+#define BM_SYNC			(1 << PIN_SYNC)
 
 #define PIN_GAIN_EN		1
 #define PIN_GAIN_0		3
@@ -68,6 +78,10 @@
 #define GAIN_M7		(GAIN_EN|GAIN_2|GAIN_1)	
 #define GAIN_M8		(GAIN_EN|GAIN_2|GAIN_1|GAIN_0)
 
+#define StartPPI()	{ *pTIMER_ENABLE = TIMEN1; }
+#define StopPPI()	{ *pTIMER_DISABLE = TIMDIS1; }
+
+#define StartFire()	{ *pTIMER_ENABLE = TIMEN0; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -111,11 +125,12 @@ static DSCPPI ppidsc[PPI_BUF_NUM];
 //static u16 startIndPPI = 0;
 //static u16 endIndPPI = 0;g118
 
-u16 ppiClkDiv = NS2CLK(400);
-u16 ppiLen = 16;
+//u16 ppiClkDiv = NS2CLK(400);
+//u16 ppiLen = 16;
+
 u16 ppiOffset = 19;
 
-u32 ppiDelay = US2CCLK(10);
+//u32 ppiDelay = US2CCLK(10);
 
 u32 mmsec = 0; // 0.1 ms
 
@@ -127,30 +142,70 @@ static ReqDsp01 dspVars;
 
 u32 shaftCount = 0;
 u32 shaftMMSEC = 0;
-u32 shaftDT = 0;
+u32 shaftPrevMMSEC = 0;
+
+u32 fireSyncCount = 0;
+u32 firesPerRound = 16;
+
+static SENS *curSens = &dspVars.mainSens;
+
+struct PPI 
+{
+	u16 clkDiv;
+	u16 len;
+	u16 delay;
+	u16 gain;
+	u16 sensType;
+};
+
+static PPI mainPPI;
+static PPI refPPI;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetGain(byte v) 
+{
+	*pPORTGIO = (*pPORTGIO & ~0xF) | bitGain[v&0xF];
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetMux(byte a) 
+{
+	*pPORTGIO = (*pPORTGIO & ~A0) | ((a & 1) << PIN_A0);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
+{
+	ppi.clkDiv = (sens.st+1) * NS2CLK(50);
+
+	//if (ppi.clkDiv == 0) ppi.clkDiv = 1;
+
+	ppi.len = sens.sl;
+
+	if (ppi.len < 16) ppi.len = 16;
+
+	ppi.delay = sens.sd * (NS2CCLK(50));
+	
+	if (ppi.delay > US2CLK(500)) ppi.delay = US2CLK(500);
+
+	ppi.gain = sens.gain;
+	ppi.sensType = sensType;
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void SetDspVars(const ReqDsp01 *v)
 {
-	//u32 i = cli();
-
 	dspVars = *v;
 
-	//sti(i);
+	SetPPI(mainPPI, dspVars.mainSens, 0); 
 
-	ppiClkDiv = (dspVars.st+1) * NS2CLK(50);
-
-	if (ppiClkDiv == 0) ppiClkDiv = 1;
-
-	ppiLen = dspVars.sl;
-
-	if (ppiLen < 16) ppiLen = 16;
-
-	ppiDelay = dspVars.sd * (NS2CCLK(50));
+	SetPPI(refPPI, dspVars.refSens, 1);
 	
-	if (ppiDelay > US2CLK(500)) ppiDelay = US2CLK(500);
-
+	firesPerRound = (dspVars.mode == 0) ? dspVars.vavesPerRoundCM : dspVars.vavesPerRoundIM;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -220,27 +275,68 @@ void FreeDscPPI(DSCPPI* dsc)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void ReadPPI()
+static void ReadPPI(PPI &ppi)
 {
 	curDscPPI = AllocDscPPI();
 
-	*pTIMER_DISABLE = TIMDIS1;
+	StopPPI();
 
 	if (curDscPPI != 0)
 	{
 		curDscPPI->busy = false;
-		curDscPPI->delay = ppiDelay;
+		curDscPPI->delay = ppi.delay;
+		SetMux(curDscPPI->sensType = ppi.sensType);
+		SetGain(curDscPPI->gain = ppi.gain);
 
 		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
-		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppiClkDiv;
+		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppi.clkDiv;
 		*pTIMER1_WIDTH = curDscPPI->clkdiv>>1;
 
 		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
-		*pDMA0_X_COUNT = curDscPPI->len = ppiLen;
+		*pDMA0_X_COUNT = curDscPPI->len = ppi.len;
 		*pDMA0_X_MODIFY = 2;
 
 		*pDMA0_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
 		*pPPI_CONTROL = FLD_SEL|PORT_CFG|POLC|DLEN_12|XFR_TYPE|PORT_EN;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Fire()
+{
+	StartFire(); // Start Fire Pulse
+
+	if (curDscPPI != 0)
+	{
+		if (!curDscPPI->busy)
+		{
+			curDscPPI->busy = true;
+			curDscPPI->fireIndex = fireSyncCount;
+
+			curDscPPI->mmsec = mmsec;
+			curDscPPI->shaftTime = shaftMMSEC;
+			curDscPPI->shaftPrev = shaftPrevMMSEC;
+
+			curDscPPI->motoCount = dspVars.motoCount;
+			curDscPPI->shaftCount = shaftCount;
+
+			if (curDscPPI->delay == 0)
+			{ 
+				*pTCNTL = 0;
+				StartPPI();
+			}
+			else
+			{
+				*pTSCALE = 0;
+				*pTCOUNT = curDscPPI->delay;
+				*pTCNTL = TINT|TMPWR|TMREN;
+			};
+		};
+	}
+	else
+	{
+		ReadPPI(mainPPI);
 	};
 }
 
@@ -254,75 +350,57 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 		*pPPI_CONTROL = 0;
 		*pDMA0_CONFIG = 0;
 
-		*pTIMER_DISABLE = TIMDIS1;
+		StopPPI();
 
 		curDscPPI->busy = false;
 		readyPPI.Add(curDscPPI);
 
-		SetGain(0);
-
-		ReadPPI();
+		if (curDscPPI->fireIndex == 0 && dspVars.mode == 0)
+		{
+			ReadPPI(refPPI);
+			
+			Fire();
+		}
+		else
+		{
+			ReadPPI(mainPPI);
+		};
 	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(FIRE_PPI_ISR)
-{
-	if (*pTIMER_STATUS & TIMIL0)
-	{
-		*pTIMER_STATUS = TIMIL0; 
+//EX_INTERRUPT_HANDLER(FIRE_PPI_ISR)
+//{
+//	if (*pTIMER_STATUS & TIMIL0)
+//	{
+//		*pTIMER_STATUS = TIMIL0; 
+//
+//		//if (curDscPPI != 0 && !curDscPPI->ready) { *pTIMER_ENABLE = TIMEN1; };
+//	};
+//}
 
-		//if (curDscPPI != 0 && !curDscPPI->ready) { *pTIMER_ENABLE = TIMEN1; };
-	};
-}
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 EX_INTERRUPT_HANDLER(TIMER_PPI_ISR)
 {
-	*pTIMER_ENABLE = TIMEN1;
+	StartPPI();
 	*pTCNTL = 0;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 EX_INTERRUPT_HANDLER(SYNC_ISR)
 {
-	*pPORTGIO_TOGGLE = 1<<7;
-	*pPORTFIO_CLEAR = 1<<4;
-	*pPORTGIO_TOGGLE = 1<<7;
+	*pPORTGIO_SET = 1<<7;
+	*pPORTFIO_CLEAR = BM_SYNC;
 
-	*pTIMER_ENABLE = TIMEN0; // Start Fire Pulse
+	Fire();
 
-	if (curDscPPI != 0)
-	{
-		if (!curDscPPI->busy)
-		{
-			curDscPPI->busy = true;
+	fireSyncCount += 1;
 
-			curDscPPI->mmsec = mmsec;
-			curDscPPI->shaftTime = shaftMMSEC;
+	if (fireSyncCount >= firesPerRound) fireSyncCount = 0;
 
-			curDscPPI->motoCount = dspVars.motoCount;
-			curDscPPI->shaftCount = shaftCount;
-
-			if (curDscPPI->delay == 0)
-			{ 
-				*pTCNTL = 0;
-				*pTIMER_ENABLE = TIMEN1;
-			}
-			else
-			{
-				*pTSCALE = 0;
-				*pTCOUNT = curDscPPI->delay;
-				*pTCNTL = TINT|TMPWR|TMREN;
-			};
-		};
-	}
-	else
-	{
-		ReadPPI();
-	};
-
+	*pPORTGIO_CLEAR = 1<<7;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -361,6 +439,8 @@ static void InitFire()
 	*pPORTF_FER |= PF9;
 	*pPORTF_MUX &= ~PF9;
 
+	// PPI clk
+
 	*pTIMER_DISABLE = TIMDIS1;
 	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
 	*pTIMER1_PERIOD = 5;
@@ -379,7 +459,10 @@ static void InitFire()
 	*pPORTFIO_CLEAR = 1<<4;
 	*pPORTFIO_MASKA = 1<<4;
 
-	ReadPPI();
+	SetPPI(mainPPI, dspVars.mainSens, 0);
+	SetPPI(refPPI, dspVars.refSens, 1);
+
+	ReadPPI(mainPPI);
 
 	//InitIVG(IVG_GPTIMER0_FIRE, PID_GP_Timer_0, FIRE_PPI_ISR);
 
@@ -395,15 +478,15 @@ static void InitFire()
 
 EX_INTERRUPT_HANDLER(SHAFT_ISR)
 {
-	*pPORTFIO_CLEAR = 1<<6;
+	*pPORTFIO_CLEAR = BM_SHAFT;
 
 	shaftCount++;
 
-	u32 t = mmsec;
+	shaftPrevMMSEC = shaftMMSEC;
+	
+	shaftMMSEC = mmsec;
 
-	shaftDT = t - shaftMMSEC;
-
-	shaftMMSEC = t;
+	fireSyncCount = 0;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -420,96 +503,96 @@ static void InitShaft()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static u16 twiWriteCount = 0;
-static u16 twiReadCount = 0;
-static u16 *twiWriteData = 0;
-static u16 *twiReadData = 0;
-
-EX_INTERRUPT_HANDLER(TWI_ISR)
-{
-	if (*pTWI_INT_STAT & RCVSERV)
-	{
-		*twiReadData++ = *pTWI_RCV_DATA16;
-		twiReadCount++;
-
-
-		*pTWI_INT_STAT = RCVSERV;
-	};
-	
-	if (*pTWI_INT_STAT & XMTSERV)
-	{
-		*pTWI_XMT_DATA16 = *twiWriteData++;
-		twiWriteCount--;
-
-
-		*pTWI_INT_STAT = XMTSERV;
-	};
-	
-	if (*pTWI_INT_STAT & MERR)
-	{
-		
-
-		*pTWI_INT_STAT = MERR;
-	};
-
-	if (*pTWI_INT_STAT & MCOMP)
-	{
-		*pTWI_MASTER_CTL = 0;
-		*pTWI_MASTER_STAT = 0x3E;
-		*pTWI_FIFO_CTL = XMTFLUSH|RCVFLUSH;
-
-		*pTWI_INT_MASK = 0;
-		*pTWI_INT_STAT = MCOMP;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void InitTWI()
-{
-	*pTWI_CONTROL = TWI_ENA | 10;
-	*pTWI_CLKDIV = (8<<8)|12;
-	*pTWI_INT_MASK = 0;
-	*pTWI_MASTER_ADDR = 0;
-
-//	*pSIC_IAR3 = (*pSIC_IAR3 & ~0xF)|8;
-
-	InitIVG(IVG_TWI, PID_TWI, TWI_ISR);
-	//*pEVT12 = (void*)TWI_ISR;
-	//*pIMASK |= EVT_IVG12; 
-	//*pSIC_IMASK |= 1<<24;
-}
+//static u16 twiWriteCount = 0;
+//static u16 twiReadCount = 0;
+//static u16 *twiWriteData = 0;
+//static u16 *twiReadData = 0;
+//
+//EX_INTERRUPT_HANDLER(TWI_ISR)
+//{
+//	if (*pTWI_INT_STAT & RCVSERV)
+//	{
+//		*twiReadData++ = *pTWI_RCV_DATA16;
+//		twiReadCount++;
+//
+//
+//		*pTWI_INT_STAT = RCVSERV;
+//	};
+//	
+//	if (*pTWI_INT_STAT & XMTSERV)
+//	{
+//		*pTWI_XMT_DATA16 = *twiWriteData++;
+//		twiWriteCount--;
+//
+//
+//		*pTWI_INT_STAT = XMTSERV;
+//	};
+//	
+//	if (*pTWI_INT_STAT & MERR)
+//	{
+//		
+//
+//		*pTWI_INT_STAT = MERR;
+//	};
+//
+//	if (*pTWI_INT_STAT & MCOMP)
+//	{
+//		*pTWI_MASTER_CTL = 0;
+//		*pTWI_MASTER_STAT = 0x3E;
+//		*pTWI_FIFO_CTL = XMTFLUSH|RCVFLUSH;
+//
+//		*pTWI_INT_MASK = 0;
+//		*pTWI_INT_STAT = MCOMP;
+//	};
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void WriteTWI(void *src, u16 len)
-{
-	*pTWI_MASTER_CTL = 0;
-	*pTWI_MASTER_STAT = 0x3E;
-	*pTWI_FIFO_CTL = XMTINTLEN;
-
-	twiWriteData = (u16*)src;
-	twiWriteCount = len>>1;
-	*pTWI_MASTER_ADDR = 11;
-	*pTWI_XMT_DATA16 = *twiWriteData++;	twiWriteCount--;
-	*pTWI_INT_MASK = XMTSERV|MERR|MCOMP;
-	*pTWI_MASTER_CTL = (len<<6)|FAST|MEN;
-}
+//static void InitTWI()
+//{
+//	*pTWI_CONTROL = TWI_ENA | 10;
+//	*pTWI_CLKDIV = (8<<8)|12;
+//	*pTWI_INT_MASK = 0;
+//	*pTWI_MASTER_ADDR = 0;
+//
+////	*pSIC_IAR3 = (*pSIC_IAR3 & ~0xF)|8;
+//
+//	InitIVG(IVG_TWI, PID_TWI, TWI_ISR);
+//	//*pEVT12 = (void*)TWI_ISR;
+//	//*pIMASK |= EVT_IVG12; 
+//	//*pSIC_IMASK |= 1<<24;
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void ReadTWI(void *dst, u16 len)
-{
-	*pTWI_MASTER_CTL = 0;
-	*pTWI_MASTER_STAT = 0x3E;
+//void WriteTWI(void *src, u16 len)
+//{
+//	*pTWI_MASTER_CTL = 0;
+//	*pTWI_MASTER_STAT = 0x3E;
+//	*pTWI_FIFO_CTL = XMTINTLEN;
+//
+//	twiWriteData = (u16*)src;
+//	twiWriteCount = len>>1;
+//	*pTWI_MASTER_ADDR = 11;
+//	*pTWI_XMT_DATA16 = *twiWriteData++;	twiWriteCount--;
+//	*pTWI_INT_MASK = XMTSERV|MERR|MCOMP;
+//	*pTWI_MASTER_CTL = (len<<6)|FAST|MEN;
+//}
 
-	twiReadData = (u16*)dst;
-	twiReadCount = 0;
-	*pTWI_MASTER_ADDR = 11;
-	*pTWI_FIFO_CTL = RCVINTLEN;
-	*pTWI_INT_MASK = RCVSERV|MERR|MCOMP;
-	*pTWI_MASTER_CTL = (len<<6)|MDIR|FAST|MEN;
-}
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//void ReadTWI(void *dst, u16 len)
+//{
+//	*pTWI_MASTER_CTL = 0;
+//	*pTWI_MASTER_STAT = 0x3E;
+//
+//	twiReadData = (u16*)dst;
+//	twiReadCount = 0;
+//	*pTWI_MASTER_ADDR = 11;
+//	*pTWI_FIFO_CTL = RCVINTLEN;
+//	*pTWI_INT_MASK = RCVSERV|MERR|MCOMP;
+//	*pTWI_MASTER_CTL = (len<<6)|MDIR|FAST|MEN;
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -547,13 +630,6 @@ static void LowLevelInit()
 	*pWDOG_CNT = MS2CLK(10);
 	*pWDOG_CTL = WDEV_RESET|WDEN;
 #endif
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void SetGain(byte v) 
-{
-	*pPORTGIO = (*pPORTGIO & ~0xF) | bitGain[v&0xF];
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

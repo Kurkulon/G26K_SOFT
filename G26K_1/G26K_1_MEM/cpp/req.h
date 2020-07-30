@@ -69,6 +69,8 @@ __packed struct ReqDsp01	// чтение вектора
 	u16		refdescr;
 	u16		vavesPerRoundCM;
 	u16		vavesPerRoundIM;
+	u16		filtrType;
+	u16		packType;
 
 	u16 	crc;  
 };

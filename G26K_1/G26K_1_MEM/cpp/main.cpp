@@ -75,6 +75,7 @@ static u16 sampleLen = 1024;
 static u16 sampleDelay = 200;
 static u16 deadTime = 400;
 static u16 descriminant = 400;
+static u16 freq = 500;
 
 static byte gainRef = 0;
 static u16 sampleTimeRef = 5;
@@ -82,6 +83,7 @@ static u16 sampleLenRef = 1024;
 static u16 sampleDelayRef = 200;
 static u16 deadTimeRef = 400;
 static u16 descriminantRef = 400;
+static u16 refFreq = 500;
 static u16 filtrType = 0;
 static u16 packType = 0;
 //static u16 vavesPerRoundCM = 100;	
@@ -90,16 +92,18 @@ static u16 mode = 0;
 
 static TM32 imModeTimeout;
 
-static u16 motoEnable = 0; // двигатель включить или выключить
-static u16 motoTargetRPS = 0; // заданные обороты двигателя
-static u16 motoRPS = 0; // обороты двигателя, об/сек
-static u16 motoCur = 0; // ток двигателя, мА
-static u16 motoStat = 0; // статус двигателя: 0 - выкл, 1 - вкл
-static u16 motoCounter = 0; // счётчик оборотов двигателя 1/6 оборота
-static u16 cmSPR = 32;		// Количество волновых картин на оборот головки в режиме цементомера
-static u16 imSPR = 32;		// Количество точек на оборот головки в режиме имиджера
-static u16 curSPR = 32;		// Количество импульсов излучателя на оборот в текущем режиме
+static u16 motoEnable = 0;		// двигатель включить или выключить
+static u16 motoTargetRPS = 0;	// заданные обороты двигателя
+static u16 motoRPS = 0;			// обороты двигателя, об/сек
+static u16 motoCur = 0;			// ток двигателя, мА
+static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
+static u16 motoCounter = 0;		// счётчик оборотов двигателя 1/6 оборота
+static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
+static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
+static u16 *curSPR = &cmSPR;	// Количество импульсов излучателя на оборот в текущем режиме
 
+static u32 dspMMSEC = 0;
+static u32 shaftMMSEC = 0;
 
 const u16 dspReqWord = 0xAD00;
 const u16 dspReqMask = 0xFF00;
@@ -141,6 +145,40 @@ i16 cpuTemp = 0;
 i16 temp = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Update_RPS_SPR()
+{
+	curSPR = (mode == 0) ? &cmSPR : &imSPR;
+
+	Set_Sync_Rot(motoTargetRPS, *curSPR);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SetModeCM()
+{
+	if (mode != 0)
+	{
+		mode = 0;
+
+		Update_RPS_SPR();
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SetModeIM()
+{
+	if (mode == 0)
+	{
+		mode = 1;
+
+		Update_RPS_SPR();
+	};
+
+	imModeTimeout.Reset();
+}
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void Response_0(u16 rw, MTB &mtb)
@@ -181,6 +219,10 @@ void CallBackDspReq01(REQ *q)
 
 		dspStatus |= 1;
 		dspRcv40++;
+		
+		dspMMSEC = rsp.time;
+		shaftMMSEC = rsp.hallTime;
+
 	}
 	else if (rsp.rw == (dspReqWord|0x50))
 	{
@@ -188,6 +230,9 @@ void CallBackDspReq01(REQ *q)
 
 		dspStatus |= 1;
 		dspRcv50++;
+
+		dspMMSEC = rsp.time;
+		shaftMMSEC = rsp.hallTime;
 	}
 	else
 	{
@@ -267,6 +312,7 @@ R01* CreateDspReq01(u16 tryCount)
 	
 	req.rw				= dspReqWord|1;
 	req.mode 			= mode;
+	req.motoCount		= motoCounter;
 	req.gain 			= gain;
 	req.st	 			= sampleTime;
 	req.sl 				= sampleLen;
@@ -281,6 +327,8 @@ R01* CreateDspReq01(u16 tryCount)
 	req.refdescr		= descriminantRef;
 	req.vavesPerRoundCM = cmSPR;
 	req.vavesPerRoundIM = imSPR;
+	req.filtrType		= filtrType;
+	req.packType		= packType;
 
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
 
@@ -565,19 +613,21 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 	manTrmData[4] = sampleDelay; 							//5. Задержка оцифровки
 	manTrmData[5] = deadTime;								//6. Мертвая зона датчика
 	manTrmData[6] = descriminant;							//7. Уровень дискриминации датчика
-	manTrmData[7] = gainRef;								//8. КУ (опорный датчик)
-	manTrmData[8] = sampleTimeRef;							//9. Шаг оцифровки
-	manTrmData[9] = sampleLenRef;							//10. Длина оцифровки
-	manTrmData[10] = sampleDelayRef; 						//11. Задержка оцифровки
-	manTrmData[11] = deadTimeRef;							//12. Мертвая зона датчика
-	manTrmData[12] = descriminantRef;						//13. Уровень дискриминации датчика
-	manTrmData[13] = filtrType;								//14. Фильтр
-	manTrmData[14] = packType;								//15. Упаковка
-	manTrmData[15] = cmSPR;									//16. Количество волновых картин на оборот головки в режиме цементомера
-	manTrmData[16] = imSPR;									//17. Количество точек на оборот головки в режиме имиджера
+	manTrmData[7] = freq;
+	manTrmData[8] = gainRef;								//8. КУ (опорный датчик)
+	manTrmData[9] = sampleTimeRef;							//9. Шаг оцифровки
+	manTrmData[10] = sampleLenRef;							//10. Длина оцифровки
+	manTrmData[11] = sampleDelayRef; 						//11. Задержка оцифровки
+	manTrmData[12] = deadTimeRef;							//12. Мертвая зона датчика
+	manTrmData[13] = descriminantRef;						//13. Уровень дискриминации датчика
+	manTrmData[14] = refFreq;
+	manTrmData[15] = filtrType;								//14. Фильтр
+	manTrmData[16] = packType;								//15. Упаковка
+	manTrmData[17] = cmSPR;									//16. Количество волновых картин на оборот головки в режиме цементомера
+	manTrmData[18] = imSPR;									//17. Количество точек на оборот головки в режиме имиджера
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 17;
+	mtb->len1 = 19;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -591,10 +641,10 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = manReqWord|0x20;	//	1. ответное слово
-	manTrmData[1] = 0;					//	2. Время (0.1мс). младшие 2 байта
-	manTrmData[2] = 0;					//	3. Время. старшие 2 байта
-	manTrmData[3] = 0;					//	4. Время датчика Холла (0.1мс). младшие 2 байта
-	manTrmData[4] = 0;					//	5. Время датчика Холла. старшие 2 байта
+	manTrmData[1] = dspMMSEC; 			//	2. Время (0.1мс). младшие 2 байта
+	manTrmData[2] = dspMMSEC>>16;		//	3. Время. старшие 2 байта
+	manTrmData[3] = shaftMMSEC;			//	4. Время датчика Холла (0.1мс). младшие 2 байта
+	manTrmData[4] = shaftMMSEC>>16;		//	5. Время датчика Холла. старшие 2 байта
 	manTrmData[5] = motoRPS;			//	6. Частота вращения двигателя (0.01 об/сек)
 	manTrmData[6] = motoCur;			//	7. Ток двигателя (мА)
 	manTrmData[7] = motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
@@ -723,7 +773,7 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
  
 	motoTargetRPS = (data[0]&15) * 100;
 		
-	Set_Sync_Rot(motoTargetRPS, curSPR);
+	Set_Sync_Rot(motoTargetRPS, *curSPR);
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -756,9 +806,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 	static u16 prevLen = 0;
 	static u16 maxLen = 200;
 
-	mode = 1;
-
-	imModeTimeout.Reset();
+	SetModeIM();
 
 	rsp.rw = req.rw;
 
@@ -882,6 +930,7 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		case 0x4:	sampleDelay 	= data[2];	break;
 		case 0x5:	deadTime		= data[2];	break;
 		case 0x6:	descriminant	= data[2];	break;
+		case 0x7:	freq			= data[2];	break;
 
 		case 0x11:	gainRef			= data[2];	break;
 		case 0x12:	sampleTimeRef	= data[2];	break;
@@ -889,13 +938,13 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		case 0x14:	sampleDelayRef 	= data[2];	break;
 		case 0x15:	deadTimeRef		= data[2];	break;
 		case 0x16:	descriminantRef	= data[2];	break;
+		case 0x17:	refFreq			= data[2];	break;
 
 		case 0x20:	filtrType		= data[2];	break;
 		case 0x21:	packType		= data[2];	break;
 
-		case 0x30:	cmSPR			= data[2];	break;
-		case 0x31:	imSPR			= data[2];	break;
-
+		case 0x30:	cmSPR = data[2]; Update_RPS_SPR();	break;
+		case 0x31:	imSPR = data[2]; Update_RPS_SPR();	break;
 
 		default:
 
@@ -1302,18 +1351,27 @@ static void MainMode()
 				{
 					if ((r01->rsp.rw & 0xFF) == 0x40)
 					{
-						//r01->rsp.CM.ax = -ax;
-						//r01->rsp.CM.ay = az;
+						r01->rsp.CM.ax = -ax;
+						r01->rsp.CM.ay = az;
 						r01->rsp.CM.az = -ay;
 						r01->rsp.CM.at = at;
 						r01->rsp.CM.pakType = 1;
 
-						if (manVec40 != 0)
+						if (manVec40 != 0 && manVec40->rsp.CM.sensType == 0)
 						{
 							freeR01.Add(manVec40);
+							
+							manVec40 = 0;
 						};
 						
-						manVec40 = r01;
+						if (manVec40 == 0)
+						{
+							manVec40 = r01;
+						}
+						else
+						{
+							freeR01.Add(r01);
+						};
 					}
 					else if ((r01->rsp.rw & 0xFF) == 0x50)
 					{
@@ -1344,7 +1402,7 @@ static void MainMode()
 
 			if (imModeTimeout.Check(10000))
 			{
-				mode = 0;
+				SetModeCM();
 			};
 
 			break;
@@ -1475,8 +1533,17 @@ static void UpdateTemp()
 					temp = -2730;
 				};
 
-				HW::SCU_GENERAL->DTSCON = SCU_GENERAL_DTSCON_START_Msk;
+#ifdef CPU_SAME53	
 
+				i = 0;
+			};
+
+			break;
+
+#elif defined(CPU_XMC48)
+
+				HW::SCU_GENERAL->DTSCON = SCU_GENERAL_DTSCON_START_Msk;
+				
 				i++;
 			};
 
@@ -1492,6 +1559,7 @@ static void UpdateTemp()
 			};
 
 			break;
+#endif
 	};
 }
 
@@ -1598,9 +1666,9 @@ int main()
 {
 	static bool c = true;
 
-	static byte buf[100];
+	//static byte buf[100];
 
-	volatile byte * const FLD = (byte*)0x60000000;	
+	//volatile byte * const FLD = (byte*)0x60000000;	
 	
 	static ComPort commem;
 
@@ -1622,6 +1690,8 @@ int main()
 	FLASH_Init();
 
 	InitRmemList();
+
+	Update_RPS_SPR();
 
 	commoto.Connect(ComPort::ASYNC, 0, 1562500, 0, 1);
 	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 0, 1);
@@ -1653,10 +1723,10 @@ int main()
 		{ 
 			fps = fc; fc = 0; 
 
-			wb.data = buf;
-			wb.len = 5;
-			
-			commem.Write(&wb);
+			//wb.data = buf;
+			//wb.len = 5;
+			//
+			//commem.Write(&wb);
 
 			//HW::ResetWDT();
 		};

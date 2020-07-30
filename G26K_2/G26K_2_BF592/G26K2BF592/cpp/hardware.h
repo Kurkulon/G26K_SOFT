@@ -18,14 +18,30 @@ struct DSCPPI
 	DSCPPI	*next;
 	u32		mmsec;
 	u32		shaftTime;
+	u32		shaftPrev;
+	u32		fireIndex;
 	u16		motoCount;
 	u16		shaftCount;
+	u16		sensType;
+	u16		gain;
 	u16		len;
 	u16		offset;
 	u16		clkdiv;
 	u16		delay;
 	u16		busy;
 	u16		data[PPI_BUF_LEN];
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct SENS
+{
+	u16 	gain; 
+	u16 	st;	 
+	u16 	sl; 
+	u16 	sd; 
+	u16		thr;
+	u16		descr;
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -46,20 +62,15 @@ struct ReqDsp01	// чтение вектора
 	u16		at;
 	u16		sensType; 
 	u16		angle;
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		thr;
-	u16		descr;
-	u16 	refgain; 
-	u16 	refst;	 
-	u16 	refsl; 
-	u16 	refsd; 
-	u16		refthr;
-	u16		refdescr;
+
+	SENS	mainSens;
+	SENS	refSens;
+
 	u16		vavesPerRoundCM;
 	u16		vavesPerRoundIM;
+
+	u16		filtrType;
+	u16		packType;
 
 	u16 	crc;  
 };
