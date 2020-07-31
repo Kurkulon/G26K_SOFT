@@ -1,6 +1,9 @@
 #include "types.h"
 #include "CRC32.h"
 
+#pragma O3
+#pragma Otime
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 u32 GetCRC32(const void *data, u16 len)

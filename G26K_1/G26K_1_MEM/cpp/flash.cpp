@@ -235,6 +235,13 @@ FLWB* AllocFlashWriteBuffer()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void FreeFlashWriteBuffer(FLWB* b)
+{
+	freeFlWrBuf.Add(b);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 FLRB* AllocFlashReadBuffer()
 {
 	return freeFlRdBuf.Get();
@@ -257,22 +264,6 @@ bool RequestFlashRead(FLRB* b)
 		b->len = 0;
 
 		readFlBuf.Add(b);
-
-		return true;
-	}
-	else
-	{
-		return false;
-	};
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool RequestFlashWrite(FLWB* b)
-{
-	if ((b != 0) && (b->dataLen > 0))
-	{
-		writeFlBuf.Add(b);
 
 		return true;
 	}
@@ -1066,6 +1057,9 @@ struct ReadSpare
 	SpareArea	*spare;
 	FLADR		*rd;
 
+	u32			blockTryCount;
+	u32			pageTryCount;
+
 	byte state;
 
 	ReadSpare() : spare(0), rd(0) {}
@@ -1085,6 +1079,10 @@ bool ReadSpare::Start(SpareArea *sp, FLADR *frd)
 
 	spare = sp;
 	rd = frd;
+
+	blockTryCount = 32;
+	pageTryCount = 128;
+
 
 	state = START;
 
@@ -1128,21 +1126,39 @@ bool ReadSpare::Update()
 			{
 				if (spare->validBlock != 0xFFFF)
 				{
-					rd->NextBlock();
+					if (blockTryCount > 0)
+					{
+						blockTryCount--;
 
-					NAND_Chip_Select(rd->chip);
-					NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+						rd->NextBlock();
 
-					state = READ_1;
+						NAND_Chip_Select(rd->chip);
+						NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+
+						state = READ_1;
+					}
+					else
+					{
+						state = WAIT;
+					};
 				}				
 				else if (spare->validPage != 0xFFFF)
 				{
-					rd->NextPage();
+					if (pageTryCount > 0)
+					{
+						pageTryCount--;
 
-					NAND_Chip_Select(rd->chip);
-					NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+						rd->NextPage();
 
-					state = READ_1;
+						NAND_Chip_Select(rd->chip);
+						NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+
+						state = READ_1;
+					}
+					else
+					{
+						state = WAIT;
+					}
 				}
 				else
 				{
@@ -2115,25 +2131,25 @@ static bool CreateRspErrReq(ComPort::WriteBuffer *wb)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
-{
-	VecData &vd = fwb->vd;
-
-//	Req &req = *((Req*)vd.data);
-
-	//byte n = vd.data[0] & 7;
-
-	//vecCount[n] += 1;
-
-	if (!RequestFlashWrite(fwb))
-	{
-		freeFlWrBuf.Add(fwb);
-//		return false;
-	};
-
-
-	return CreateRsp02(wb);
-}
+//static bool RequestFunc02(FLWB *fwb, ComPort::WriteBuffer *wb)
+//{
+//	VecData &vd = fwb->vd;
+//
+////	Req &req = *((Req*)vd.data);
+//
+//	//byte n = vd.data[0] & 7;
+//
+//	//vecCount[n] += 1;
+//
+//	if (!RequestFlashWrite(fwb))
+//	{
+//		freeFlWrBuf.Add(fwb);
+////		return false;
+//	};
+//
+//
+//	return CreateRsp02(wb);
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2166,53 +2182,29 @@ static byte GetRequestCRC(byte *s, u32 len)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestFunc(FLWB *fwb, ComPort::WriteBuffer *wb)
+bool RequestFlashWrite(FLWB* fwb, u16 devID)
 {
 	bool result = false;
-
-	byte *d = (byte*)fwb->data;
 
 	if (fwb == 0)
 	{
 //		freeReqList.Add(req);
 	}
-	else if (fwb->dataLen < 952)
+	else if (fwb->dataLen > 0)
 	{
-//		freeFlWrBuf.Add(fwb);
-	}
-	else
-	{
-		d[3] = -d[3];
+		DataPointer p(fwb->vd.data);
 
-		if (GetRequestCRC(d, fwb->dataLen) == 0) // (req.rw & 0xFF00) == 0xAA00) // 
-		{
-			fwb->dataLen -= fwb->vd.data - d;
+		p.b += fwb->dataLen;
 
-			DataPointer p(fwb->vd.data);
+		*p.w = CRC_CCITT_DMA(fwb->vd.data, fwb->dataLen, 0xFFFF);
 
-			p.b += fwb->dataLen;
+		fwb->dataLen += 2;
 
-			*p.w = CRC_CCITT_DMA(fwb->vd.data, fwb->dataLen, 0xFFFF);
-//			*p.w = GetCRC16(fwb->vd.data, fwb->dataLen);
+		fwb->vd.h.device = deviceID = devID;
 
-			fwb->dataLen += 2;
+		writeFlBuf.Add(fwb);
 
-			fwb->vd.h.device = deviceID = *((__packed u16*)(d+4));
-
-			if (RequestFlashWrite(fwb))
-			{
-				result = CreateRsp02(wb);
-			}
-			else
-			{
-//				freeFlWrBuf.Add(fwb);
-			};
-		}
-		else
-		{
-//			freeFlWrBuf.Add(fwb);
-			write.rejVec++;
-		};
+		result = true;
 	};
 
 	return result;
@@ -2273,7 +2265,7 @@ static void RequestTestWrite(FLWB *fwb)
 //	req.crc = GetCRC16(fwb->vd.data, fwb->dataLen - 2);
 	req.crc = CRC_CCITT_DMA(fwb->vd.data, fwb->dataLen - 2, 0xFFFF);
 	
-	RequestFlashWrite(fwb);
+	RequestFlashWrite(fwb, 0xEC00);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2404,16 +2396,22 @@ static void RequestTestWrite(FLWB *fwb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void FLASH_WriteEnable()
+bool FLASH_WriteEnable()
 {
+	bool result = false;
+
 	if (!writeFlashEnabled)
 	{
 		nvv.f.size = 0;
 		GetTime(&nvv.f.start_rtc);
+
+		result = true;
 	};
 
 	writeFlashEnabled = true;
 	flashStatus = FLASH_STATUS_WRITE;
+
+	return result;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

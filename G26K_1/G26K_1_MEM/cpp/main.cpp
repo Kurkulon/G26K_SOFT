@@ -62,6 +62,7 @@ static RspMan60 rspMan60;
 //static byte curVec[3] = {0};
 
 static List<R01> freeR01;
+static List<R01> readyR01;
 
 //static RMEM rmem[4];
 //static List<RMEM> lstRmem;
@@ -125,6 +126,10 @@ static u32 fireCounter = 0;
 
 static byte mainModeState = 0;
 static byte dspStatus = 0;
+
+static bool cmdWriteStart_00 = false;
+static bool cmdWriteStart_10 = false;
+static bool cmdWriteStart_20 = false;
 
 u32 dspRcv40 = 0;
 u32 dspRcv50 = 0;
@@ -223,6 +228,11 @@ void CallBackDspReq01(REQ *q)
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
 
+		rsp.CM.ax = -ax;
+		rsp.CM.ay = az;
+		rsp.CM.az = -ay;
+		rsp.CM.at = at;
+		rsp.CM.pakType = 0;
 	}
 	else if (rsp.rw == (dspReqWord|0x50))
 	{
@@ -233,6 +243,11 @@ void CallBackDspReq01(REQ *q)
 
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
+
+		rsp.IM.ax = -ax;
+		rsp.IM.ay = az;
+		rsp.IM.az = -ay;
+		rsp.IM.at = at;
 	}
 	else
 	{
@@ -584,13 +599,35 @@ static void InitRmemList()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static u32 InitRspMan_00(__packed u16 *data)
+{
+	__packed u16 *start = data;
+
+	*(data++)	= (manReqWord & manReqMask) | 0;
+	*(data++)	= numDevice;
+	*(data++)	= verDevice;
+	
+	return data - start;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestFlashWrite_00(FLWB *flwb)
+{
+	__packed u16* data = (__packed u16*)flwb->vd.data;
+
+	flwb->dataLen = InitRspMan_00(data) * 2;
+
+	RequestFlashWrite(flwb, data[0]);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0;
-	manTrmData[1] = numDevice;
-	manTrmData[2] = verDevice;
+	InitRspMan_00(manTrmData);
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 3;
@@ -602,29 +639,51 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static u32 InitRspMan_10(__packed u16 *data)
+{
+	__packed u16 *start = data;
+
+	*(data++)	= (manReqWord & manReqMask) | 0x10;		//1. Ответное слово
+	*(data++)	= gain;									//2. КУ (измерительный датчик)
+	*(data++)	= sampleTime;							//3. Шаг оцифровки
+	*(data++)	= sampleLen;							//4. Длина оцифровки
+	*(data++)	= sampleDelay; 							//5. Задержка оцифровки
+	*(data++)	= deadTime;								//6. Мертвая зона датчика
+	*(data++)	= descriminant;							//7. Уровень дискриминации датчика
+	*(data++)	= freq;
+	*(data++)	= gainRef;								//8. КУ (опорный датчик)
+	*(data++)	= sampleTimeRef;						//9. Шаг оцифровки
+	*(data++)	= sampleLenRef;							//10. Длина оцифровки
+	*(data++)	= sampleDelayRef; 						//11. Задержка оцифровки
+	*(data++)	= deadTimeRef;							//12. Мертвая зона датчика
+	*(data++)	= descriminantRef;						//13. Уровень дискриминации датчика
+	*(data++)	= refFreq;
+	*(data++)	= filtrType;							//14. Фильтр
+	*(data++)	= packType;								//15. Упаковка
+	*(data++)	= cmSPR;								//16. Количество волновых картин на оборот головки в режиме цементомера
+	*(data++)	= imSPR;								//17. Количество точек на оборот головки в режиме имиджера
+	
+	return data - start;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestFlashWrite_10(FLWB *flwb)
+{
+	__packed u16* data = (__packed u16*)flwb->vd.data;
+
+	flwb->dataLen = InitRspMan_10(data) * 2;
+
+	RequestFlashWrite(flwb, data[0]);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	manTrmData[0] = (manReqWord & manReqMask) | 0x10;		//1. Ответное слово
-	manTrmData[1] = gain;									//2. КУ (измерительный датчик)
-	manTrmData[2] = sampleTime;								//3. Шаг оцифровки
-	manTrmData[3] = sampleLen;								//4. Длина оцифровки
-	manTrmData[4] = sampleDelay; 							//5. Задержка оцифровки
-	manTrmData[5] = deadTime;								//6. Мертвая зона датчика
-	manTrmData[6] = descriminant;							//7. Уровень дискриминации датчика
-	manTrmData[7] = freq;
-	manTrmData[8] = gainRef;								//8. КУ (опорный датчик)
-	manTrmData[9] = sampleTimeRef;							//9. Шаг оцифровки
-	manTrmData[10] = sampleLenRef;							//10. Длина оцифровки
-	manTrmData[11] = sampleDelayRef; 						//11. Задержка оцифровки
-	manTrmData[12] = deadTimeRef;							//12. Мертвая зона датчика
-	manTrmData[13] = descriminantRef;						//13. Уровень дискриминации датчика
-	manTrmData[14] = refFreq;
-	manTrmData[15] = filtrType;								//14. Фильтр
-	manTrmData[16] = packType;								//15. Упаковка
-	manTrmData[17] = cmSPR;									//16. Количество волновых картин на оборот головки в режиме цементомера
-	manTrmData[18] = imSPR;									//17. Количество точек на оборот головки в режиме имиджера
+	InitRspMan_10(manTrmData);
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 19;
@@ -636,25 +695,47 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static u32 InitRspMan_20(__packed u16 *data)
+{
+	__packed u16 *start = data;
+
+	*(data++)	= manReqWord|0x20;	//	1. ответное слово
+	*(data++)	= dspMMSEC; 		//	2. Время (0.1мс). младшие 2 байта
+	*(data++)	= dspMMSEC>>16;		//	3. Время. старшие 2 байта
+	*(data++)  	= shaftMMSEC;		//	4. Время датчика Холла (0.1мс). младшие 2 байта
+	*(data++)  	= shaftMMSEC>>16;	//	5. Время датчика Холла. старшие 2 байта
+	*(data++)  	= motoRPS;			//	6. Частота вращения двигателя (0.01 об/сек)
+	*(data++)  	= motoCur;			//	7. Ток двигателя (мА)
+	*(data++)  	= motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
+	*(data++)  	= GetShaftRPS();	//	9. Частота вращения головки (0.01 об/сек)
+	*(data++)  	= GetShaftCount();	//	10. Счётчик оборотов головки (об)
+	*(data++)  	= -ax;				//	11. AX (уе)
+	*(data++)  	= az;				//	12. AY (уе)
+	*(data++)  	= -ay;				//	13. AZ (уе)
+	*(data++)  	= tempClock;		//	14. AT (short 0.01 гр)
+	*(data++)	= temp;				//	15. Температура в приборе (short)(0.1гр)
+	
+	return data - start;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void RequestFlashWrite_20(FLWB *flwb)
+{
+	__packed u16* data = (__packed u16*)flwb->vd.data;
+
+	flwb->dataLen = InitRspMan_20(data) * 2;
+
+	RequestFlashWrite(flwb, data[0]);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	manTrmData[0] = manReqWord|0x20;	//	1. ответное слово
-	manTrmData[1] = dspMMSEC; 			//	2. Время (0.1мс). младшие 2 байта
-	manTrmData[2] = dspMMSEC>>16;		//	3. Время. старшие 2 байта
-	manTrmData[3] = shaftMMSEC;			//	4. Время датчика Холла (0.1мс). младшие 2 байта
-	manTrmData[4] = shaftMMSEC>>16;		//	5. Время датчика Холла. старшие 2 байта
-	manTrmData[5] = motoRPS;			//	6. Частота вращения двигателя (0.01 об/сек)
-	manTrmData[6] = motoCur;			//	7. Ток двигателя (мА)
-	manTrmData[7] = motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
-	manTrmData[8] = GetShaftRPS();		//	9. Частота вращения головки (0.01 об/сек)
-	manTrmData[9] = GetShaftCount();	//	10. Счётчик оборотов головки (об)
-	manTrmData[10] = -ax;				//	11. AX (уе)
-	manTrmData[11] = az;				//	12. AY (уе)
-	manTrmData[12] = -ay;				//	13. AZ (уе)
-	manTrmData[13] = tempClock;			//	14. AT (short 0.01 гр)
-	manTrmData[14] = temp;				//	15. Температура в приборе (short)(0.1гр)
+	InitRspMan_20(manTrmData);
  
 	mtb->data1 = manTrmData;
 	mtb->len1 = 15;
@@ -1099,7 +1180,7 @@ static bool RequestMem_31(u16 *data, u16 len, MTB* mtb)
 {
 	if (len != 1) return false;
 
-	FLASH_WriteEnable();
+	cmdWriteStart_00 = cmdWriteStart_10 = FLASH_WriteEnable();
 
 	manTrmData[0] = (memReqWord & memReqMask)|0x31;
 
@@ -1318,92 +1399,132 @@ static void UpdateMan()
 
 static void MainMode()
 {
-	//fireType
-
-	static byte rcv = 0;
-//	static REQ *req = 0;
 	static R01 *r01 = 0;
-//	static RTM32 rt;
-//	static TM32 rt2;
-
-//	REQ *rm = 0;
+	static FLWB *flwb = 0;
+	static TM32 tm;
 
 	switch (mainModeState)
 	{
 		case 0:
 
-			r01 = CreateDspReq01(1);
+			r01 = readyR01.Get();
 
 			if (r01 != 0)
 			{
-				qdsp.Add(&r01->q);
-
 				mainModeState++;
 			};
 
 			break;
 
 		case 1:
+			
+			flwb = AllocFlashWriteBuffer();
 
-			if (r01->q.ready)
+			if (flwb != 0)
 			{
-				if (r01->q.crcOK)
+				flwb->dataLen = r01->rb.len;
+
+				DSP_CopyDataDMA(&r01->rsp, flwb->vd.data, flwb->dataLen);
+
+				mainModeState++;
+			};
+
+			break;
+
+		case 2:
+
+			if (DSP_CheckDataComplete())
+			{
+				if (!RequestFlashWrite(flwb, r01->rsp.rw))
 				{
-					if ((r01->rsp.rw & 0xFF) == 0x40)
-					{
-						r01->rsp.CM.ax = -ax;
-						r01->rsp.CM.ay = az;
-						r01->rsp.CM.az = -ay;
-						r01->rsp.CM.at = at;
-						r01->rsp.CM.pakType = 1;
+					FreeFlashWriteBuffer(flwb);
+				};
 
-						if (manVec40 != 0 && manVec40->rsp.CM.sensType == 0)
-						{
-							freeR01.Add(manVec40);
-							
-							manVec40 = 0;
-						};
-						
-						if (manVec40 == 0)
-						{
-							manVec40 = r01;
-						}
-						else
-						{
-							freeR01.Add(r01);
-						};
-					}
-					else if ((r01->rsp.rw & 0xFF) == 0x50)
-					{
-						r01->rsp.IM.ax = -ax;
-						r01->rsp.IM.ay = az;
-						r01->rsp.IM.az = -ay;
-						r01->rsp.IM.at = at;
+				mainModeState++;
+			};
 
-						//r01->rsp.IM.data[0] = 32767;
+			break;
 
-						if (manVec50 != 0)
-						{
-							freeR01.Add(manVec50);
-						};
-						
-						manVec50 = r01;
-					};
+		case 3:
+
+			if ((r01->rsp.rw & 0xFF) == 0x40)
+			{
+				if (manVec40 != 0 && manVec40->rsp.CM.sensType == 0)
+				{
+					freeR01.Add(manVec40);
+					
+					manVec40 = 0;
+				};
 				
-					manCounter++;
+				if (manVec40 == 0)
+				{
+					manVec40 = r01;
 				}
 				else
 				{
 					freeR01.Add(r01);
 				};
-
-				mainModeState = 0;
+			}
+			else if ((r01->rsp.rw & 0xFF) == 0x50)
+			{
+				if (manVec50 != 0)
+				{
+					freeR01.Add(manVec50);
+				};
+				
+				manVec50 = r01;
 			};
 
 			if (imModeTimeout.Check(10000))
 			{
 				SetModeCM();
 			};
+
+			mainModeState++;
+
+			break;
+
+		case 4:
+
+			if (cmdWriteStart_00)
+			{
+				FLWB *b = AllocFlashWriteBuffer();
+
+				if (b != 0)
+				{
+					RequestFlashWrite_00(b);
+
+					cmdWriteStart_00 = false;
+				};
+			}
+			else if (cmdWriteStart_10)
+			{
+				FLWB *b = AllocFlashWriteBuffer();
+
+				if (b != 0)
+				{
+					RequestFlashWrite_10(b);
+
+					cmdWriteStart_10 = false;
+				};
+			}
+			else if (cmdWriteStart_20)
+			{
+				FLWB *b = AllocFlashWriteBuffer();
+
+				if (b != 0)
+				{
+					RequestFlashWrite_20(b);
+
+					cmdWriteStart_20 = false;
+				};
+			}
+			else if (tm.Check(1001))
+			{
+				cmdWriteStart_20 = true;
+			};
+
+			mainModeState = 0;
 
 			break;
 	};
@@ -1581,6 +1702,47 @@ static void UpdateMoto()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateDSP()
+{
+	static R01 *r01 = 0;
+
+	static byte i = 0;
+
+	switch (i)
+	{
+		case 0:
+
+			r01 = CreateDspReq01(1);
+
+			if (r01 != 0)
+			{
+				qdsp.Add(&r01->q);
+
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			if (r01->q.ready)
+			{
+				if (r01->q.crcOK)
+				{
+					readyR01.Add(r01);
+				};
+				
+				i = 0;
+			};
+
+			break;
+	};
+
+	qdsp.Update();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateParams()
 {
 	static byte i = 0;
@@ -1617,7 +1779,7 @@ static void UpdateMisc()
 	switch(i++)
 	{
 		CALL( UpdateEMAC();		);
-		CALL( qdsp.Update()		);
+		CALL( UpdateDSP();		);
 		CALL( UpdateParams();	);
 	};
 
@@ -1717,7 +1879,7 @@ int main()
 
 		fc++;
 
-		commem.Update();
+		//commem.Update();
 
 		if (tm.Check(1000))
 		{ 

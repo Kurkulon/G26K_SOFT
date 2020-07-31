@@ -1,6 +1,9 @@
 #include "types.h"
 #include "CRC16_CCIT.h"
 
+#pragma O3
+#pragma Otime
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 word GetCRC16_CCIT(const void *data, u32 len, word init)

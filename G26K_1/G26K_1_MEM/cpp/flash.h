@@ -121,7 +121,7 @@ struct FLWB
 {
 	FLWB *next;
 
-	void	*data;
+	//void	*data;
 	u16 	dataLen;
 
 	VecData vd;
@@ -201,9 +201,10 @@ __packed struct SpareArea
 
 extern FLWB*	AllocFlashWriteBuffer();
 extern FLRB*	AllocFlashReadBuffer();
+extern void		FreeFlashWriteBuffer(FLWB* b);
 extern void		FreeFlashReadBuffer(FLRB* b);
 extern bool		RequestFlashRead(FLRB* b);
-extern bool		RequestFlashWrite(FLWB* b);
+extern bool		RequestFlashWrite(FLWB* b, u16 devID);
 
 extern void NAND_Idle();
 extern void NAND_FullErase();
@@ -226,7 +227,7 @@ extern bool FLASH_Reset();
 extern void FLASH_Update();
 extern bool FLASH_Busy();
 
-extern void FLASH_WriteEnable();
+extern bool FLASH_WriteEnable();
 extern void FLASH_WriteDisable();
 extern byte FLASH_Status();
 
