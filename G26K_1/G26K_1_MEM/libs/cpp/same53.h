@@ -15,7 +15,9 @@
 
 #include "cm4.h"
 
-#define MCK 200000000
+#define MCK_MHz 200
+#define MCK (MCK_MHz*1000000)
+#define NS2CLK(x) (((x)*MCK_MHz+500)/1000)
 
 
 #ifndef WIN32

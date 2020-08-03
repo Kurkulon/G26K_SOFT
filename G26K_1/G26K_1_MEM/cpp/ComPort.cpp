@@ -20,9 +20,9 @@ extern dword millisecondsCount;
 #ifdef CPU_SAME53	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	ComPort::ComBase	ComPort::_bases[3] = { 
-		{false, HW::USART7,	 HW::PIOC, 1<<21, 1 }, 
-		{false, HW::USART5,	 HW::PIOC, 1<<11, 2 },
-		{false, HW::USART6,	 HW::PIOC, 1<<5,  3 }
+		{false, HW::USART7,	 HW::PIOC, 1<<21, 1, DMCH_TRIGSRC_SERCOM7_TX, DMCH_TRIGSRC_SERCOM7_RX }, 
+		{false, HW::USART6,	 HW::PIOC, 1<<5,  2, DMCH_TRIGSRC_SERCOM6_TX, DMCH_TRIGSRC_SERCOM6_RX },
+		{false, HW::USART5,	 HW::PIOC, 1<<11, 3, DMCH_TRIGSRC_SERCOM5_TX, DMCH_TRIGSRC_SERCOM5_RX }
 	};
 
 	#define READ_PIN_SET()	HW::PIOC->BSET(27)
@@ -89,6 +89,8 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 		_dmadsc = &DmaTable[cb.dmaCh];
 		_dmawrb = &DmaWRB[cb.dmaCh];
 		_dma_act_mask = 0x8000|(_dmaCh<<8);
+		_dma_trgsrc_tx = cb.dmaTrgSrcTX;
+		_dma_trgsrc_rx = cb.dmaTrgSrcRX;
 
 		_SU->CTRLA = USART_SWRST;
 
@@ -496,7 +498,7 @@ void ComPort::EnableTransmit(void* src, word count)
 		_dmadsc->BTCNT = count;
 		_dmadsc->BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
 
-		_chdma->CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM5_TX;
+		_chdma->CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|_dma_trgsrc_tx;
 
 		_SU->CTRLB = _CTRLB|USART_TXEN;
 
@@ -618,7 +620,7 @@ void ComPort::EnableReceive(void* dst, word count)
 
 		_SU->CTRLB = _CTRLB|USART_RXEN;
 
-		_chdma->CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM5_RX;
+		_chdma->CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|_dma_trgsrc_rx;
 
 		_prevDmaCounter = count;
 		_dma_act_mask = 0x8000|(_dmaCh<<8);

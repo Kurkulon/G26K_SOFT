@@ -47,7 +47,7 @@
 #define PL(v)        	(v<<13UL)                    /*!< USIC_CH PCR_ASCMode: PL (Bit 13)                            */
 #define RSTEN(v)     	(v<<16UL)                    /*!< USIC_CH PCR_ASCMode: RSTEN (Bit 16)                         */
 #define TSTEN(v)     	(v<<17UL)                    /*!< USIC_CH PCR_ASCMode: TSTEN (Bit 17)                         */
-#define MCLK(v)      	(v<<31UL)                    /*!< USIC_CH PCR_ASCMode: MCLK (Bit 31)                          */
+#define MCLK(v)      	(0x80000000UL)                    /*!< USIC_CH PCR_ASCMode: MCLK (Bit 31)                          */
 
 /* --------------------------------  USIC_CH_DX0CR  ------------------------------- */
 

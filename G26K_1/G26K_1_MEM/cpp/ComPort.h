@@ -63,6 +63,8 @@ class ComPort
 			T_HW::S_PORT* const pm;
 			const dword pinRTS;
 			const u32 dmaCh;
+			const u32 dmaTrgSrcTX;
+			const u32 dmaTrgSrcRX;
 		};
 
 		T_HW::S_PORT			*_pm;
@@ -76,6 +78,8 @@ class ComPort
 		u32 _CTRLC;
 		u32 _dmaCh;
 		u32 _dma_act_mask;
+		u32 _dma_trgsrc_tx;
+		u32 _dma_trgsrc_rx;
 
 		bool IsTransmited() { return (_SU->INTFLAG & USART_TXC) && ((_chdma->CTRLA & DMCH_ENABLE) == 0); }
 		u32	GetDmaCounter() { u32 t = HW::DMAC->ACTIVE; return ((t & 0x9F00) == _dma_act_mask) ? (t >> 16) : _dmawrb->BTCNT; }

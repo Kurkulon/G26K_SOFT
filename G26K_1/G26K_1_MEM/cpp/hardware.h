@@ -99,6 +99,23 @@ struct DSCI2C
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+struct DSCSPI
+{
+	DSCSPI*			next;
+	void*			wdata;
+	void*			rdata;
+	void*			wdata2;
+	u16				wlen;
+	u16				wlen2;
+	u16				rlen;
+	u16				readedLen;
+	byte			adr;
+	volatile bool	ready;
+	volatile bool	ack;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //extern bool Write_I2C(DSCI2C *d);
 //inline bool Read_I2C(DSCI2C *d) { return Write_I2C(d); }
 //extern bool Check_I2C_ready();
