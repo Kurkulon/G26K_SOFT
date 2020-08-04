@@ -25,8 +25,8 @@ extern dword millisecondsCount;
 		{false, HW::USART5,	 HW::PIOC, 1<<11, 3, DMCH_TRIGSRC_SERCOM5_TX, DMCH_TRIGSRC_SERCOM5_RX }
 	};
 
-	#define READ_PIN_SET()	HW::PIOC->BSET(27)
-	#define READ_PIN_CLR()	HW::PIOC->BCLR(27)
+	//#define READ_PIN_SET()	HW::PIOC->BSET(27)
+	//#define READ_PIN_CLR()	HW::PIOC->BCLR(27)
 
 #elif defined(CPU_XMC48)	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -98,21 +98,21 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 		{
 			case ASYNC:
 
-				_CTRLA = USART_MODE_INT_CLK|USART_RXPO_3|USART_DORD;
+				_CTRLA = USART_MODE_INT_CLK|USART_RXPO_1|USART_DORD;
 				_BaudRateRegister = BoudToPresc(speed);
 
 				break;
 
 			case SYNC_M:
 
-				_CTRLA = USART_MODE_INT_CLK|USART_RXPO_3|USART_CMODE|USART_DORD;
+				_CTRLA = USART_MODE_INT_CLK|USART_RXPO_1|USART_CMODE|USART_DORD;
 				_BaudRateRegister = (MCK+speed) / (2*speed) - 1;
 
 				break;
 
 			case SYNC_S:
 
-				_CTRLA = USART_MODE_EXT_CLK|USART_RXPO_3|USART_CMODE|USART_DORD;
+				_CTRLA = USART_MODE_EXT_CLK|USART_RXPO_1|USART_CMODE|USART_DORD;
 				_BaudRateRegister = ~0;
 
 				break;
@@ -502,7 +502,7 @@ void ComPort::EnableTransmit(void* src, word count)
 
 		_SU->CTRLB = _CTRLB|USART_TXEN;
 
-		HW::DMAC->SWTRIGCTRL = 1 << _dmaCh;
+		//HW::DMAC->SWTRIGCTRL = 1 << _dmaCh;
 
 	#elif defined(CPU_XMC48)
 

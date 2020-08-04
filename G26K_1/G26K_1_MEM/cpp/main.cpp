@@ -1730,6 +1730,10 @@ static void UpdateDSP()
 				if (r01->q.crcOK)
 				{
 					readyR01.Add(r01);
+				}
+				else
+				{
+					freeR01.Add(r01);
 				};
 				
 				i = 0;

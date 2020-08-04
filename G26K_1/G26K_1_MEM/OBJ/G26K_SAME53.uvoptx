@@ -118,7 +118,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>d</Name>
+          <Name></Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -138,7 +138,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=1392,230,1832,773,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=3124,266,3372,840,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=2328,205,2778,758,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=3124,266,3372,840,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -187,6 +187,16 @@
           <count>7</count>
           <WinNumber>1</WinNumber>
           <ItemText>nandSize</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>DmaTable</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>DmaWRB</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -310,7 +320,7 @@
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>fwb-&gt;vd.data</ItemText>
+          <ItemText>q-&gt;rb-&gt;data</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>
@@ -354,8 +364,12 @@
       <pMultCmds></pMultCmds>
       <SystemViewers>
         <Entry>
-          <Name>System Viewer\PORT</Name>
+          <Name>System Viewer\DMAC</Name>
           <WinId>35905</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\EIC</Name>
+          <WinId>35901</WinId>
         </Entry>
       </SystemViewers>
     </TargetOption>

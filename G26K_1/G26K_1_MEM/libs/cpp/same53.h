@@ -702,6 +702,16 @@ namespace T_HW
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+	#define	PORT_PMUXEN			(1<<16)
+	#define	PORT_INEN			(1<<17)
+	#define	PORT_PULLEN       	(1<<18)
+	#define	PORT_DRVSTR       	(1<<22)
+	#define PORT_PMUX(value)	(((value)&15)<<24)
+	#define	PORT_WRPMUX       	(1<<28)
+	#define	PORT_WRPINCFG      	(1<<30)
+	#define	PORT_HWSEL_LO      	(0<<31)
+	#define	PORT_HWSEL_HI      	(1UL<<31)
+
 	struct S_PORT
 	{
 		RW32	DIR;         		/**< \brief Offset: 0x00 (R/W 32) Data Direction */
@@ -740,13 +750,13 @@ namespace T_HW
 		bool 	TBSET(u16 b) 		{ return IN & (1<<b); }
 		bool 	TBCLR(u16 b) 		{ return (IN & (1<<b)) == 0; }
 
-		void 	SetPinMux(byte pinnum, byte value) { byte sh = (pinnum&1)<<2; pinnum >>= 1; PMUX[pinnum] = (PMUX[pinnum] & ~(0xF<<sh)) | (value<<sh); };
+		//void 	SetPinMux(byte pinnum, byte value) { byte sh = (pinnum&1)<<2; pinnum >>= 1; PMUX[pinnum] = (PMUX[pinnum] & ~(0xF<<sh)) | (value<<sh); };
 		
-		void 	SetCfgMux(byte cfg, byte mux, u32 mask) 
+		void 	SetWRCONFIG(u32 mask, u32 mux) 
 		{ 
-			u32 t = (((u32)(0x50 | (mux&0xF))<<8) | cfg) << 16; 
+			u32 t = (mux & 0xFFFF0000); 
 			WRCONFIG = t | (mask & 0xFFFF); 
-			WRCONFIG = t | (mask >> 16) | (1uL<<31); };
+			WRCONFIG = t | (mask >> 16) | PORT_HWSEL_HI; };
 	};										
 											
 	typedef S_PORT S_PIOA, S_PIOB, S_PIOC;
@@ -785,17 +795,6 @@ namespace T_HW
 	#define	PORT_EVACT_CLR   	(0x2<<5)			/**< \brief (PORT_EVCTRL) Clear output register of pin on event */
 	#define	PORT_EVACT_TGL   	(0x3<<5)			/**< \brief (PORT_EVCTRL) Toggle output register of pin on event */
 	#define PORT_PORTEI 		(1<<7)				/**< \brief (PORT_EVCTRL) PORT Event Input Enable 0 */
-
-	#define	PORT_PMUXEN			(1<<16)
-	#define	PORT_INEN			(1<<17)
-	#define	PORT_PULLEN       	(1<<18)
-	#define	PORT_DRVSTR       	(1<<22)
-	#define PORT_PMUX(value)	(((value)&15)<<24)
-	#define	PORT_WRPMUX       	(1<<28)
-	#define	PORT_WRPINCFG      	(1<<30)
-	#define	PORT_HWSEL_LO      	(0<<31)
-	#define	PORT_HWSEL_HI      	(1UL<<31)
-
 
 	#define	PINGFG_PMUXEN       (1<<0)
 	#define	PINGFG_INEN			(1<<1)
@@ -1350,6 +1349,8 @@ namespace T_HW
 		RW32  	DEBOUNCEN;   /**< \brief Offset: 0x30 (R/W 32) Debouncer Enable */
 		RW32  	DPRESCALER;  /**< \brief Offset: 0x34 (R/W 32) Debouncer Prescaler */
 		RO32  	PINSTATE;    /**< \brief Offset: 0x38 (R/  32) Pin State */
+
+		void SetConfig(byte intn, bool filt, byte sense) { byte n = intn / 8; intn &= 7; CONFIG[n] = (CONFIG[n] & ~(0xF << (intn*4))) | (filt << (intn*4+3)) | (sense << (intn*4)); }
 	};
 
 	#define EIC_SWRST_Pos       	0            /**< \brief (EIC_CTRLA) Software Reset */
@@ -1376,13 +1377,13 @@ namespace T_HW
 	#define EIC_NMI_Pos     		0            /**< \brief (EIC_NMIFLAG) Non-Maskable Interrupt */
 	#define EIC_NMI         		((0x1) << EIC_NMI_Pos)
 
-	#define EIC_SENSE_NONE(i)  		(0x0 << ((i)*4))		/**< \brief (EIC_CONFIG) No detection */
-	#define EIC_SENSE_RISE(i)  		(0x1 << ((i)*4))		/**< \brief (EIC_CONFIG) Rising edge detection */
-	#define EIC_SENSE_FALL(i)  		(0x2 << ((i)*4))		/**< \brief (EIC_CONFIG) Falling edge detection */
-	#define EIC_SENSE_BOTH(i)  		(0x3 << ((i)*4))		/**< \brief (EIC_CONFIG) Both edges detection */
-	#define EIC_SENSE_HIGH(i)  		(0x4 << ((i)*4))		/**< \brief (EIC_CONFIG) High level detection */
-	#define EIC_SENSE_LOW(i)   		(0x5 << ((i)*4))		/**< \brief (EIC_CONFIG) Low level detection */
-	#define EIC_FILTEN(i)       	(0x1 << ((i)*4+3))		/**< \brief (EIC_CONFIG) Filter Enable i*/
+	#define EIC_SENSE_NONE 			(0x0)		/**< \brief (EIC_CONFIG) No detection */
+	#define EIC_SENSE_RISE 			(0x1)		/**< \brief (EIC_CONFIG) Rising edge detection */
+	#define EIC_SENSE_FALL 			(0x2)		/**< \brief (EIC_CONFIG) Falling edge detection */
+	#define EIC_SENSE_BOTH 			(0x3)		/**< \brief (EIC_CONFIG) Both edges detection */
+	#define EIC_SENSE_HIGH 			(0x4)		/**< \brief (EIC_CONFIG) High level detection */
+	#define EIC_SENSE_LOW   		(0x5)		/**< \brief (EIC_CONFIG) Low level detection */
+	//#define EIC_FILTEN(i)       	(0x1 << ((i)*4+3))		/**< \brief (EIC_CONFIG) Filter Enable i*/
 
 	#define EIC_PRESCALER0_Pos 		0            /**< \brief (EIC_DPRESCALER) Debouncer Prescaler */
 	#define EIC_PRESCALER0_Msk 		(_U_(0x7) << EIC_PRESCALER0_Pos)

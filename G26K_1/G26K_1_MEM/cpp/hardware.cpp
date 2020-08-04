@@ -87,34 +87,56 @@ u16 curShaftCounter = 0;
 	__align(16) T_HW::DMADESC DmaTable[32];
 	__align(16) T_HW::DMADESC DmaWRB[32];
 
+	#define SPI				HW::SPI0
+	#define PIO_SPCK		HW::PIOA
+	#define PIO_MOSI		HW::PIOA
+	#define PIO_MISO		HW::PIOA
+	#define PIO_CS			HW::PIOB
+
+	#define PIN_SPCK		9
+	#define PIN_MOSI		8 
+	#define PIN_MISO		10 
+	#define PIN_CS0			10 
+	#define PIN_CS1			11
+
+	#define SPCK			(1<<PIN_SPCK) 
+	#define MOSI			(1<<PIN_MOSI) 
+	#define MISO			(1<<PIN_MISO) 
+	#define CS0				(1<<PIN_CS0) 
+	#define CS1				(1<<PIN_CS1) 
+
+	#define SPI_IRQ			SERCOM0_0_IRQ
+	#define SPI_PID			PID_USIC1
+
 	#define EVENT_NAND_1	0
 	//#define EVENT_NAND_2	1
 	//#define EVENT_NAND_3	2
 	#define EVENT_MANR_1	3
 	#define EVENT_MANR_2	4
 
-	//#define nandTC			HW::TC0
-	//#define 				HW::TC1
+	#define ManTT			HW::TC0
+	#define ManIT			HW::TC1
 	//#define 				HW::TC2
 	//#define 				HW::TC3
-	#define SyncTmr			HW::TC4
-	#define RotTmr			HW::TC5
+	//#define 				HW::TC4
+	//#define 				HW::TC5
 	//#define 				HW::TC6
-	//#define 				HW::TC0
+	//#define 				HW::TC7
 
 	#define nandTCC			HW::TCC0
 	//#define				HW::TCC1
 	#define ManRT			HW::TCC2
-	#define ManIT			HW::TCC3
-	#define ManTT			HW::TCC4
+	#define SyncTmr			HW::TCC3
+	#define RotTmr			HW::TCC4
 	//#define MltTmr			HW::TCC4
 
 	#define MT(v)			(v)
 	#define BOUD2CLK(x)		((u32)(1000000/x+0.5))
 
-	#define MANT_IRQ		TCC4_0_IRQ
+	#define MANT_IRQ		TC0_IRQ
 	#define MANR_IRQ		TCC2_1_IRQ
-	#define MANR_EXTINT		EVGEN_EIC_EXTINT_11
+	//#define MANR_EXTINT		11
+	#define MANR_EXTINT		7
 
 	
 	#define PIO_MANCH		HW::PIOC
@@ -129,8 +151,11 @@ u16 curShaftCounter = 0;
 	#define H2				(1UL<<PIN_H2)
 
 	#define PIO_MANCHRX		HW::PIOA
+	#define PIO_RXD			HW::PIOB
 	#define PIN_MANCHRX		11
+	#define PIN_RXD			23
 	#define MANCHRX			(1UL<<PIN_MANCHRX)
+	#define RXD				(1UL<<PIN_RXD)
 
 
 
@@ -192,7 +217,8 @@ u16 curShaftCounter = 0;
 	#define PIN_SHAFT		13
 	#define SHAFT			(1<<PIN_SHAFT)
 	#define PIO_SHAFT		HW::PIOB
-	#define IRQ_SHAFT		EIC_0_IRQ
+	#define SHAFT_EXTINT	13
+	#define IRQ_SHAFT		(EIC_0_IRQ+SHAFT_EXTINT)
 
 	#define Pin_ShaftIRQ_Set()		//HW::P6->BSET(6);
 	#define Pin_ShaftIRQ_Clr()		//HW::P6->BCLR(6);
@@ -705,9 +731,9 @@ extern "C" void SystemInit()
 		HW::PIOA->DIRSET = (1<<27)|(1<<25)|(1<<24)|(1<<16)|0xFF;
 		HW::PIOA->CLR((1<<27)|(1<<25)|(1<<24)|(1<<16));
 
-		PIO_USART0->WRCONFIG = ((UTXD0|URXD0)>>16)	|PORT_HWSEL_HI|PORT_PMUX(3)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN;
-		PIO_USART1->WRCONFIG = ((UTXD1|URXD1)>>16)	|PORT_HWSEL_HI|PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN;
-		PIO_USART2->WRCONFIG = (UTXD2|URXD2)		|PORT_HWSEL_LO|PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN;
+		PIO_USART0->SetWRCONFIG(UTXD0|URXD0, PORT_PMUX(3)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN);
+		PIO_USART1->SetWRCONFIG(UTXD1|URXD1, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN);
+		PIO_USART2->SetWRCONFIG(UTXD2|URXD2, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN);
 
 		HW::PIOB->DIRSET = (1<<18)|(1<<24)|(1<<21);
 		//HW::PIOB->WRCONFIG = ((1<<17)>>16) |PORT_HWSEL_HI|PORT_PMUX(11)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX;
@@ -1435,14 +1461,14 @@ static void NAND_Init()
 //	EVSYS->USER[EVSYS_USER_PORT_EV_2] = EVENT_NAND_3+1;
 
 	PIO_NAND_DATA->DIRSET = 0xFF;
-	PIO_NAND_DATA->WRCONFIG = 0xFF|PORT_INEN|PORT_DRVSTR|PORT_WRPINCFG;
+	PIO_NAND_DATA->SetWRCONFIG(0xFF, PORT_INEN|PORT_DRVSTR|PORT_WRPINCFG);
 	PIO_NAND_DATA->CTRL |= 0xFF;
 	PIO_FCS->DIRSET = FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7; PIO_FCS->SET(FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7);
 	PIO_CLE->DIRSET = CLE; PIO_CLE->CLR(CLE);
 	PIO_ALE->DIRSET = ALE; PIO_ALE->CLR(ALE);
 
-	PIO_WE_RE->DIRSET = WE; PIO_WE_RE->SET(WE); PIO_WE_RE->WRCONFIG = (WE>>16)|PORT_HWSEL_HI|PORT_DRVSTR|PORT_WRPINCFG|PORT_PMUX(6)|PORT_WRPMUX/*|PORT_PMUXEN*/;
-	PIO_WE_RE->DIRSET = RE; PIO_WE_RE->SET(RE); PIO_WE_RE->WRCONFIG = (RE>>16)|PORT_HWSEL_HI|PORT_DRVSTR|PORT_WRPINCFG|PORT_PMUX(6)|PORT_WRPMUX/*|PORT_PMUXEN*/;
+	PIO_WE_RE->DIRSET = WE; PIO_WE_RE->SET(WE); PIO_WE_RE->SetWRCONFIG(WE, PORT_DRVSTR|PORT_WRPINCFG|PORT_PMUX(6)|PORT_WRPMUX/*|PORT_PMUXEN*/);
+	PIO_WE_RE->DIRSET = RE; PIO_WE_RE->SET(RE); PIO_WE_RE->SetWRCONFIG(RE, PORT_DRVSTR|PORT_WRPINCFG|PORT_PMUX(6)|PORT_WRPMUX/*|PORT_PMUXEN*/);
 
 	PIO_FLREADY->DIRCLR = FLREADY; PIO_FLREADY->PINCFG[PIN_FLREADY] = FLREADY|PINGFG_INEN|PINGFG_PULLEN; PIO_FLREADY->CTRL |= FLREADY; PIO_FLREADY->SET(FLREADY);
 	PIO_WP->DIRSET = WP; PIO_WP->SET(WP);
@@ -1866,7 +1892,9 @@ static bool trmBusy = false;
 
 void SetTrmBoudRate(byte i)
 {
-	trmHalfPeriod = manboud[i&3]/2;
+	if (i >= ArraySize(manboud)) { i = ArraySize(manboud) - 1; };
+
+	trmHalfPeriod = manboud[i]/2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2062,16 +2090,29 @@ bool SendManData(MTB *mtb)
 
 	#ifdef CPU_SAME53	
 
-		ManTT->CTRLA = 0;
 
-		ManTT->PER = trmHalfPeriod-1;
+		ManTT->CTRLA = TC_MODE_COUNT8;
+		ManTT->WAVE = TC_WAVEGEN_NPWM;
+		ManTT->PER8 = trmHalfPeriod-1;
 
-		ManTT->INTENCLR = ~TCC_OVF;
-		ManTT->INTENSET = TCC_OVF;
+		ManTT->INTENCLR = ~TC_OVF;
+		ManTT->INTENSET = TC_OVF;
 
 		ManTT->INTFLAG = ~0;
 
-		ManTT->CTRLA = TCC_ENABLE;
+		ManTT->CTRLA = TC_MODE_COUNT8|TC_ENABLE;
+		ManTT->CTRLBSET = TC_CMD_RETRIGGER;
+
+		//ManTT->CTRLA = 0;
+
+		//ManTT->PER = trmHalfPeriod-1;
+
+		//ManTT->INTENCLR = ~TCC_OVF;
+		//ManTT->INTENSET = TCC_OVF;
+
+		//ManTT->INTFLAG = ~0;
+
+		//ManTT->CTRLA = TCC_ENABLE;
 
 	#elif defined(CPU_XMC48)
 
@@ -2102,9 +2143,9 @@ static void InitManTransmit()
 
 #ifdef CPU_SAME53	
 
-	HW::GCLK->PCHCTRL[GCLK_TCC4] = GCLK_GEN(GEN_1M)|GCLK_CHEN;
+	HW::GCLK->PCHCTRL[GCLK_TC0_TC1] = GCLK_GEN(GEN_1M)|GCLK_CHEN;
 
-	HW::MCLK->APBDMASK |= APBD_TCC4;
+	HW::MCLK->APBAMASK |= APBA_TC0;
 
 	PIO_MANCH->DIRSET = L1|H1|L2|H2;
 
@@ -2114,10 +2155,12 @@ static void InitManTransmit()
 
 	SetTrmBoudRate(0);
 
-	ManTT->PER = trmHalfPeriod-1;
+	ManTT->CTRLA = TC_MODE_COUNT8;
+	ManTT->WAVE = TC_WAVEGEN_NPWM;
+	ManTT->PER8 = trmHalfPeriod-1;
 
-	ManTT->INTENCLR = ~TCC_OVF;
-	ManTT->INTENSET = TCC_OVF;
+	ManTT->INTENCLR = ~TC_OVF;
+	ManTT->INTENSET = TC_OVF;
 
 	ManTT->INTFLAG = ~0;
 
@@ -2468,23 +2511,40 @@ static void InitManRecieve()
 
 #ifdef CPU_SAME53	
 
-	HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3] = GCLK_GEN(GEN_1M)|GCLK_CHEN;
-	HW::MCLK->APBCMASK |= APBC_TCC2|APBC_TCC3;
+	HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3]	= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+	HW::GCLK->PCHCTRL[GCLK_TC0_TC1]		= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+
+	HW::MCLK->APBCMASK |= APBC_TCC2;
+	HW::MCLK->APBAMASK |= APBA_TC1;
 
 	HW::GCLK->PCHCTRL[EVENT_MANR_1+GCLK_EVSYS0] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;
 	HW::GCLK->PCHCTRL[EVENT_MANR_2+GCLK_EVSYS0] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;
 
-	EVSYS->CH[EVENT_MANR_1].CHANNEL = MANR_EXTINT|EVSYS_PATH_ASYNCHRONOUS;
-	EVSYS->USER[EVSYS_USER_TCC3_EV_0] = EVENT_MANR_1+1;
+	EIC->CTRLA = 0;
+	while(EIC->SYNCBUSY);
 
-	EVSYS->CH[EVENT_MANR_2].CHANNEL = EVGEN_TCC3_OVF|EVSYS_PATH_ASYNCHRONOUS|EVSYS_EDGSEL_RISING_EDGE;;
+	EIC->EVCTRL |= EIC_EXTINT0<<MANR_EXTINT;
+	EIC->SetConfig(MANR_EXTINT, 1, EIC_SENSE_BOTH);
+	EIC->INTENCLR = EIC_EXTINT0<<MANR_EXTINT;
+	EIC->CTRLA = EIC_ENABLE;
+
+	EVSYS->CH[EVENT_MANR_1].CHANNEL = (EVGEN_EIC_EXTINT_0+MANR_EXTINT)|EVSYS_PATH_ASYNCHRONOUS;
+	EVSYS->USER[EVSYS_USER_TC1_EVU] = EVENT_MANR_1+1;
+
+	EVSYS->CH[EVENT_MANR_2].CHANNEL = EVGEN_TC1_OVF|EVSYS_PATH_ASYNCHRONOUS|EVSYS_EDGSEL_RISING_EDGE;;
 	EVSYS->USER[EVSYS_USER_TCC2_MC_0] = EVENT_MANR_2+1;
 
-	PIO_MANCH->DIRCLR = MANCHRX;
-	PIO_MANCH->CTRL |= MANCHRX;
+	PIO_MANCHRX->DIRCLR = MANCHRX;
+	PIO_MANCHRX->CTRL |= MANCHRX;
 
-	PIO_MANCH->WRCONFIG = MANCHRX|PORT_HWSEL_LO|PORT_PMUX(0)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN;
-	PIO_MANCH->PINCFG[PIN_MANCHRX] = PINGFG_INEN|PINGFG_PMUXEN;
+	PIO_RXD->DIRCLR = RXD;
+	PIO_RXD->CTRL |= RXD;
+
+	PIO_MANCHRX->SetWRCONFIG(	MANCHRX,	PORT_PMUX(0)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);
+	PIO_RXD->SetWRCONFIG(		RXD,		PORT_PMUX(0)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);
+
+	//PIO_MANCHRX->PINCFG[PIN_MANCHRX] = PINGFG_INEN|PINGFG_PMUXEN;
+	//PIO_RXD->PINCFG[PIN_RXD] = PINGFG_INEN|PINGFG_PMUXEN;
 
 	ManRT->CTRLA = TCC_SWRST;
 	while(ManRT->SYNCBUSY);
@@ -2505,21 +2565,22 @@ static void InitManRecieve()
 
 	while(ManIT->SYNCBUSY);
 
-	ManIT->CTRLA = 0;
-	ManIT->EVCTRL = TCC_TCEI0|TCC_EVACT0_RETRIGGER|TCC_OVFEO;
+	ManIT->CTRLA = TC_MODE_COUNT8;
+	ManIT->WAVE = TC_WAVEGEN_NPWM;
 
-	ManIT->PER = 11;
-	ManIT->CC[0] = ~0;
-	ManIT->CC[1] = ~0;
+	ManIT->EVCTRL = TC_TCEI|TC_EVACT_RETRIGGER|TC_OVFEO;
+
+	ManIT->PER8 = 11;
+	ManIT->CC8[0] = ~0;
+	ManIT->CC8[1] = ~0;
 
 	ManIT->INTENCLR = ~0;
-	//ManIT->INTENSET = TCC_OVF;
 
 	ManIT->INTFLAG = ~0;
 
-	ManIT->CTRLA = TCC_ENABLE;
+	ManIT->CTRLA = TC_MODE_COUNT8|TC_ENABLE;
 
-	ManIT->CTRLBSET = TCC_ONESHOT;
+	ManIT->CTRLBSET = TC_ONESHOT;
 
 #elif defined(CPU_XMC48)
 
@@ -3035,7 +3096,7 @@ bool I2C_Init()
 
 	MCLK->APBBMASK |= APBB_SERCOM3;
 
-	PIO_I2C->WRCONFIG = ((SDA|SCL)>>16)	|PORT_HWSEL_HI|PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX;
+	PIO_I2C->SetWRCONFIG(SDA|SCL, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
 
 	I2C->CTRLA = I2C_SWRST;
 
@@ -3248,7 +3309,7 @@ static void Init_CRC_CCITT_DMA()
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	HW::PIOC->BSET(26);
+	//HW::PIOC->BSET(26);
 
 	T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
 	T_HW::S_DMAC::S_DMAC_CH	&dmach = HW::DMAC->CH[CRC_DMACH];
@@ -3267,7 +3328,7 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 	while ((dmach.CTRLA & DMCH_ENABLE) != 0);
 
-	HW::PIOC->BCLR(26);
+	//HW::PIOC->BCLR(26);
 
 	return ReverseWord(HW::DMAC->CRCCHKSUM);
 }
@@ -3374,17 +3435,17 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 
 #ifdef CPU_SAME53	
 
-	//SyncTmr.IER = CPCS;
-	//SyncTmr.CMR = WAVE|TIMER_CLOCK4|WAVSEL_UP_RC|ACPA_CLEAR|ACPC_SET|ASWTRG_SET;
-	//SyncTmr.RA = (10/*us*/	* (MCK / 1000) + 64000) / 128000;
-	//SyncTmr.RC = t;
-	//SyncTmr.CCR = ((t != 0) ? CLKEN : CLKDIS) | SWTRG;
+	SyncTmr->PER = t;
+	SyncTmr->CC[0] = US2SRT(10); 
 
-	////RotBMR = 0xC;
-	//RotTmr.IER = CPCS;
-	//RotTmr.CMR = CPCTRG|TIMER_CLOCK4;
-	//RotTmr.RC = r;
-	//RotTmr.CCR = ((r != 0) ? CLKEN : CLKDIS) | SWTRG;
+	SyncTmr->CTRLA = (t != 0) ? TCC_ENABLE : 0;
+
+	RotTmr->CC[0] = r;
+
+	RotTmr->CTRLA = (r != 0) ? TCC_ENABLE : 0;
+
+	SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
+	RotTmr->CTRLBSET = TCC_CMD_RETRIGGER;
 
 #elif defined(CPU_XMC48)
 
@@ -3424,9 +3485,15 @@ static void Init_Sync_Rot()
 
 #ifdef CPU_SAME53	
 
-	HW::GCLK->PCHCTRL[GCLK_TC4_TC5] = GCLK_GEN(GEN_1M)|GCLK_CHEN;
 
-	HW::MCLK->APBCMASK |= APBC_TC4|APBC_TC5;
+	PIO_SYNC->SetWRCONFIG(SYNC, PORT_PMUX(5)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);
+	PIO_ROT->SetWRCONFIG(ROT,	PORT_PMUX(5)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);	
+
+	HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3]	= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+	HW::GCLK->PCHCTRL[GCLK_TCC4]		= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+
+	HW::MCLK->APBCMASK |= APBC_TCC3;
+	HW::MCLK->APBDMASK |= APBD_TCC4;
 
 	//PIO_MANCH->DIRSET = L1|H1|L2|H2;
 
@@ -3434,52 +3501,35 @@ static void Init_Sync_Rot()
 
 	while(SyncTmr->SYNCBUSY);
 
+	SyncTmr->CTRLA = 0;
+	SyncTmr->WAVE = TCC_WAVEGEN_NPWM;//|TCC_POL0;
+	SyncTmr->DRVCTRL = 0;//TCC_NRE0|TCC_NRE1|TCC_NRV0|TCC_NRV1;
+	SyncTmr->PER = 250;
+	SyncTmr->CC[0] = 2; 
+	//SyncTmr->CC[1] = 2; 
 
-	SyncTmr->CTRLA = TC_MODE_COUNT16;
-	SyncTmr->WAVE = TC_WAVEGEN_NPWM;
-	SyncTmr->CC16[0] = 250;
-	SyncTmr->CC16[1] = 1; 
+	SyncTmr->EVCTRL = 0;
 
-	SyncTmr->CTRLA = TC_MODE_COUNT16|TC_ENABLE;
+	SyncTmr->CTRLA = TCC_ENABLE;
 
+	RotTmr->CTRLA = TCC_SWRST;
 
-	//SyncTmr->PER8 = trmHalfPeriod-1;
-	//SyncTmr->CC[0] = 2; 
+	while(RotTmr->SYNCBUSY);
 
-	//SyncTmr->INTENCLR = ~TCC_OVF;
-	//SyncTmr->INTENSET = TCC_OVF;
+	RotTmr->CTRLA = 0;
+	RotTmr->WAVE = TCC_WAVEGEN_MFRQ;//|TCC_POL0;
+	RotTmr->DRVCTRL = 0;//TCC_NRE0|TCC_NRE1|TCC_NRV0|TCC_NRV1;
+	RotTmr->CC[0] = 250;
+	//RotTmr->CC[0] = 2; 
+	//RotTmr->CC[1] = 2; 
 
-	//SyncTmr->INTFLAG = ~0;
+	RotTmr->EVCTRL = 0;
 
-	//PMC->PCER0 = PID_SYNCTMR;
-	//PMC->PCER0 = PID_ROTTMR;
+	RotTmr->CTRLA = 0;//TCC_ENABLE;
+	
+	SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
+	RotTmr->CTRLBSET = TCC_CMD_RETRIGGER;
 
-	//PIO_SYNCROT->PDR = SYNC;
-	//PIO_SYNCROT->PER = ROT;
-	//PIO_SYNCROT->OER = ROT;
-
-	//PIOA->ABCDSR1 |= SYNC;
-	//PIOA->ABCDSR2 &= ~SYNC;
-
-
-	//SyncTmr.CCR = CLKDIS|SWTRG;
-
-	//VectorTableExt[IRQ_ROTTMR] = RotTrmIRQ;
-	//CM4::NVIC->ICPR[0] = PID_ROTTMR;
-	//CM4::NVIC->ISER[0] = PID_ROTTMR;
-
-	//SyncTmr.IER = CPCS;
-	////SyncTmr.IDR = ~0;
-	//SyncTmr.CMR = WAVE|TIMER_CLOCK4|WAVSEL_UP_RC|ACPA_CLEAR|ACPC_SET;
-	//SyncTmr.RA = 10/*us*/	* (MCK / 1000) / 128000;
-	//SyncTmr.RC = 60/*us*/	* (MCK / 1000) / 128000;
-	//SyncTmr.CCR = CLKEN|SWTRG;
-
-	////RotBMR = 0xC;
-	//RotTmr.IER = CPCS;
-	//RotTmr.CMR = CPCTRG|TIMER_CLOCK4;
-	//RotTmr.RC = 0xFFFF;
-	//RotTmr.CCR = CLKEN|SWTRG; 
 
 #elif defined(CPU_XMC48)
 
@@ -3517,33 +3567,28 @@ static __irq void ShaftIRQ()
 
 #ifdef CPU_SAME53	
 
-	//u32 t = PIO_SHAFT->ISR;
-
-	//if (t & SHAFT)
-	{
-	//	SyncTmr.CCR = SWTRG;
+	HW::EIC->INTFLAG = 1<<SHAFT_EXTINT;
 
 #elif defined(CPU_XMC48)
 
-	{
 
 #endif
-		shaftCounter++;
-		curShaftCounter++;
 
-		u32 tm = GetMilliseconds();
-		u32 dt = tm - shaftPrevTime;
+	shaftCounter++;
+	curShaftCounter++;
 
-		if (dt >= 1000)
-		{
-			shaftPrevTime = tm;
-			shaftCount = shaftCounter;
-			shaftTime = dt;
-			shaftCounter = 0;
-		};
+	u32 tm = GetMilliseconds();
+	u32 dt = tm - shaftPrevTime;
 
-		rotCount = 0;
+	if (dt >= 1000)
+	{
+		shaftPrevTime = tm;
+		shaftCount = shaftCounter;
+		shaftTime = dt;
+		shaftCounter = 0;
 	};
+
+	rotCount = 0;
 
 	Pin_ShaftIRQ_Clr();
 }
@@ -3572,17 +3617,15 @@ static void InitShaft()
 
 #ifdef CPU_SAME53	
 
-	//PMC->PCER0 = PID_SHAFT;
+	EIC->CTRLA = 0;
+	while(EIC->SYNCBUSY);
 
-	//VectorTableExt[IRQ_SHAFT] = ShaftIRQ;
-	//CM4::NVIC->ICPR[0] = PID_SHAFT;
-	//CM4::NVIC->ISER[0] = PID_SHAFT;	
+	EIC->EVCTRL |= EIC_EXTINT0<<SHAFT_EXTINT;
+	EIC->SetConfig(SHAFT_EXTINT, 1, EIC_SENSE_RISE);
+	EIC->INTENSET = EIC_EXTINT0<<SHAFT_EXTINT;
+	EIC->CTRLA = EIC_ENABLE;
 
-	//PIO_SHAFT->IFER = SHAFT;
-	//PIO_SHAFT->AIMER = SHAFT;
-	//PIO_SHAFT->ESR = SHAFT;
-	//PIO_SHAFT->REHLSR = SHAFT;
-	//PIO_SHAFT->IER = SHAFT;
+	PIO_SHAFT->SetWRCONFIG(SHAFT, PORT_PMUX(0)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);
 
 #elif defined(CPU_XMC48)
 
@@ -3595,8 +3638,6 @@ static void InitShaft()
 	// Event Trigger Logic (ETL)
 
 	ERU0->EXICON[3] = ERU_PE|ERU_RE|ERU_OCS(0)|ERU_SS_B;
-	
-
 
 	// Cross Connect Matrix
 
@@ -3748,7 +3789,7 @@ static __irq void SPI_Handler()
 		spi_dsc->ready = true;
 		spi_dsc->readedLen = spi_dsc->rlen - spi_rdCount;
 
-		DSCI2C *ndsc = spi_dsc->next;
+		DSCSPI *ndsc = spi_dsc->next;
 
 		if (ndsc != 0)
 		{
@@ -3928,7 +3969,7 @@ bool SPI_Write(DSCSPI *d)
 
 	#ifdef CPU_SAME53
 
-		SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
+		//SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
 
 		SPI->INTFLAG = ~0;
 		SPI->INTENSET = I2C_MB|I2C_SB;
@@ -4009,7 +4050,7 @@ bool SPI_Init()
 
 	MCLK->APBBMASK |= APBB_SERCOM3;
 
-	PIO_I2C->WRCONFIG = ((SDA|SCL)>>16)	|PORT_HWSEL_HI|PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX;
+	PIO_I2C->SetWRCONFIG(SDA|SCL, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
 
 	SPI->CTRLA = I2C_SWRST;
 
@@ -4026,7 +4067,7 @@ bool SPI_Init()
 	while(SPI->SYNCBUSY);
 
 	SPI->STATUS = 0;
-	SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
+//	SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
 
 	VectorTableExt[SERCOM3_0_IRQ] = SPI_Handler;
 	VectorTableExt[SERCOM3_1_IRQ] = SPI_Handler;
@@ -4101,11 +4142,6 @@ void InitHardware()
 	HW::MCLK->APBAMASK |= APBA_EIC;
 	HW::GCLK->PCHCTRL[GCLK_EIC] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;
 
-	EIC->EVCTRL = EIC_EXTINT3;
-	EIC->CONFIG[0] = EIC_FILTEN(3)|EIC_SENSE_BOTH(3);
-	EIC->INTENCLR = EIC_EXTINT3;
-	EIC->CTRLA = EIC_ENABLE;
-
 	HW::MCLK->APBBMASK |= APBB_EVSYS;
 
 	HW::GCLK->PCHCTRL[GCLK_SERCOM_SLOW]		= GCLK_GEN(GEN_32K)|GCLK_CHEN;	// 32 kHz
@@ -4128,7 +4164,6 @@ void InitHardware()
 	Init_CRC_CCITT_DMA();
 
 	Init_Sync_Rot();
-	Set_Sync_Rot(200, 100);
 
 	InitShaft();
 
