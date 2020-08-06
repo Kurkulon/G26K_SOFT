@@ -391,7 +391,7 @@ EX_INTERRUPT_HANDLER(TIMER_PPI_ISR)
 
 EX_INTERRUPT_HANDLER(SYNC_ISR)
 {
-	*pPORTGIO_SET = 1<<7;
+//	*pPORTGIO_SET = 1<<7;
 	*pPORTFIO_CLEAR = BM_SYNC;
 
 	Fire();
@@ -400,7 +400,7 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 
 	if (fireSyncCount >= firesPerRound) fireSyncCount = 0;
 
-	*pPORTGIO_CLEAR = 1<<7;
+//	*pPORTGIO_CLEAR = 1<<7;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -51,7 +51,7 @@ static RequestQuery qdsp(&comdsp);
 
 static R01 r02[8];
 
-static R01* manVec40 = 0;
+static R01* manVec40[2] = {0};
 static R01* curManVec40 = 0;
 static R01* manVec50 = 0;
 static R01* curManVec50 = 0;
@@ -101,7 +101,7 @@ static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
 static u16 motoCounter = 0;		// счётчик оборотов двигателя 1/6 оборота
 static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
 static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
-static u16 *curSPR = &cmSPR;	// Количество импульсов излучателя на оборот в текущем режиме
+//static u16 *curSPR = &cmSPR;	// Количество импульсов излучателя на оборот в текущем режиме
 
 static u32 dspMMSEC = 0;
 static u32 shaftMMSEC = 0;
@@ -153,9 +153,7 @@ i16 temp = 0;
 
 static void Update_RPS_SPR()
 {
-	curSPR = (mode == 0) ? &cmSPR : &imSPR;
-
-	Set_Sync_Rot(motoTargetRPS, *curSPR);
+	Set_Sync_Rot(motoTargetRPS, (mode == 0) ? cmSPR : imSPR);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -768,6 +766,8 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	static u16 prevLen = 0;
 	static u16 maxLen = 200;
 
+	static byte sensInd = 0;
+
 	rsp.rw = req.rw;
 
 	mtb->data1 = (u16*)&rsp;
@@ -788,13 +788,14 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 			curManVec40 = 0;
 		};
 		
-		r01 = manVec40;
+		R01* &vec = manVec40[sensInd&1];
+		r01 = vec;
 
 		if (r01 != 0/* && r01->rsp.rw == req.rw*/)
 		{
 			curManVec40 = r01;
 
-			manVec40 = 0;
+			vec = 0;
 
 			mtb->data2 = ((u16*)&r01->rsp)+1;
 
@@ -818,6 +819,8 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 				prevLen = len;
 			};
 		};
+
+		sensInd = (sensInd + 1) & 1;
 	}
 	else 
 	{
@@ -854,7 +857,9 @@ static bool RequestMan_30(u16 *data, u16 len, MTB* mtb)
  
 	motoTargetRPS = (data[0]&15) * 100;
 		
-	Set_Sync_Rot(motoTargetRPS, *curSPR);
+	//Set_Sync_Rot(motoTargetRPS, *curSPR);
+
+	Update_RPS_SPR();
 
 	mtb->data1 = manTrmData;
 	mtb->len1 = 1;
@@ -1449,16 +1454,18 @@ static void MainMode()
 
 			if ((r01->rsp.rw & 0xFF) == 0x40)
 			{
-				if (manVec40 != 0 && manVec40->rsp.CM.sensType == 0)
+				R01* &vec = manVec40[r01->rsp.CM.sensType&1];
+
+				if (vec != 0)
 				{
-					freeR01.Add(manVec40);
+					freeR01.Add(vec);
 					
-					manVec40 = 0;
+					vec = 0;
 				};
 				
-				if (manVec40 == 0)
+				if (vec == 0)
 				{
-					manVec40 = r01;
+					vec = r01;
 				}
 				else
 				{

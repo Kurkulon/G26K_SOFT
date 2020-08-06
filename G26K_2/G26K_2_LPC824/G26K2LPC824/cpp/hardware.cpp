@@ -1398,7 +1398,7 @@ __irq void ROT_Handler()
 		{
 			if (limDuty < maxDuty) limDuty += 1;
 
-			if (tachoPLL < 0x7FFFFFFF)
+			if (tachoPLL < (((u32)maxDuty)<<6))
 			{ 
 				tachoPLL += 1; 
 			};

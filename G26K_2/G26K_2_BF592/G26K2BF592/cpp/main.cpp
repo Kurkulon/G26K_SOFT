@@ -48,8 +48,9 @@ static DSCPPI *curDsc = 0;
 static u16 mode = 0; // 0 - CM, 1 - IM
 static u16 imThr = 0;
 static u16 imDescr = 0;
+static u16 imDelay = 0;
 
-static i16 avrBuf[PPI_BUF_LEN] = {0};
+static i32 avrBuf[PPI_BUF_LEN] = {0};
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -115,6 +116,7 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	mode = req->mode;
 	imThr = req->mainSens.thr;
 	imDescr = req->mainSens.descr;
+	imDelay = req->mainSens.sd;
 
 	vavesPerRoundCM = req->vavesPerRoundCM;	
 	vavesPerRoundIM = req->vavesPerRoundIM;
@@ -265,6 +267,73 @@ static void Update()
 
 #pragma optimize_for_speed
 
+static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
+{
+	//u16 amp, time;
+
+	//GetAmpTimeIM(dsc, amp, time);
+
+	u16 *d = dsc.data + dsc.offset;
+
+	if (filtrType == 1)
+	{
+		i32 *ab = avrBuf;
+
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			i16 v = *d - 2048;
+
+			*(d++) = v -= *ab/32;
+
+			*(ab++) += v;
+		};
+	}
+	else if (filtrType == 2)
+	{
+		i32 av = 0;
+
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			i16 v = *d - 2048;
+
+			av += v - av/2;
+
+			*(d++) = av / 2;
+		};
+	}
+	else if (filtrType == 3)
+	{
+		i32 av = 0;
+		i32 *ab = avrBuf;
+
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			i16 v = *d - 2048;
+
+			av += v - av/2;
+
+			v = av / 2;
+
+			*(d++) = v -= *ab/32;
+
+			*(ab++) += v;
+		};
+	}
+	else
+	{
+		for (u32 i = dsc.len; i > 0; i--)
+		{
+			*(d++) -= 2048;
+		};
+	};
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
 static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
 {
 	amp = 0;
@@ -284,7 +353,7 @@ static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
 
 	for (u32 i = len1; i > 0; i--)
 	{
-		i32 t = (i16)(*(data++)) - 2048;
+		i32 t = (i16)(*(data++));
 
 		if (t < 0) t = -t;
 
@@ -300,7 +369,7 @@ static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
 
 		for (u32 i = len2; i > 0; i--)
 		{
-			i32 t = (i16)(*(data++)) - 2048;
+			i32 t = (i16)(*(data++));
 
 			if (t < 0) t = -t;
 
@@ -323,65 +392,64 @@ static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
 
 #pragma optimize_for_speed
 
+static void GetAmpTimeIM_2(DSCPPI &dsc, u16 &amp, u16 &time)
+{
+	amp = 0;
+	time = 0;
+
+	u16 *data = dsc.data + dsc.offset;
+	//i16 *ab = avrBuf;
+	
+	u16 descr = (imDescr > imDelay) ? (imDescr - imDelay) : 0;
+
+	u16 ind = descr * NS2CLK(50) / dsc.clkdiv;
+
+	if (ind >= dsc.len) return;
+
+	data += ind;
+	//ab += ind;
+
+	u16 len = dsc.len - ind;
+
+	i32 max = -32768;
+	i32 imax = -1;
+
+	for (u32 i = len; i > 0; i--)
+	{
+		i32 v = (i16)(*(data++));
+
+		if (v > imThr)
+		{ 
+			if (v > max) { max = v; imax = ind; };
+		}
+		else if (imax >= 0 && v < 0)
+		{ 
+			break;
+		};
+		
+		ind++;
+	};
+
+	if (imax >= 0)
+	{
+		amp = max;
+		time = (dsc.delay * NS2CLK(50) / NS2CCLK(50) + imax * dsc.clkdiv) / 2;// / NS2CLK(100);
+	};
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
 static void ProcessDataCM(DSCPPI &dsc)
 {
 	//u16 amp, time;
 
 	//GetAmpTimeIM(dsc, amp, time);
 
-	u16 *d = dsc.data + dsc.offset;
-
-	if (dsc.sensType == 0 && filtrType == 1)
-	{
-		i16 *ab = avrBuf;
-
-		for (u32 i = dsc.len; i > 0; i--)
-		{
-			i16 v = *d - 2048;
-
-			*(d++) = v -= *ab;
-
-			*(ab++) += v / 32;
-		};
-	}
-	else if (dsc.sensType == 0 && filtrType == 2)
-	{
-		i32 av = 0;
-
-		for (u32 i = dsc.len; i > 0; i--)
-		{
-			i16 v = *d - 2048;
-
-			av += v - av/2;
-
-			*(d++) = av / 2;
-		};
-	}
-	else if (dsc.sensType == 0 && filtrType == 3)
-	{
-		i32 av = 0;
-		i16 *ab = avrBuf;
-
-		for (u32 i = dsc.len; i > 0; i--)
-		{
-			i16 v = *d - 2048;
-
-			av += v - av/2;
-
-			v = av / 2;
-
-			*(d++) = v -= *ab;
-
-			*(ab++) += v / 32;
-		};
-	}
-	else
-	{
-		for (u32 i = dsc.len; i > 0; i--)
-		{
-			*(d++) -= 2048;
-		};
-	};
+	//u16 *d = dsc.data + dsc.offset;
 
 	RspCM *rsp = (RspCM*)dsc.data;
 
@@ -435,16 +503,20 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 		while (i < dsc.fireIndex)
 		{
-			rsp->data[i+1] = rsp->data[i];
-			rsp->data[i+count+1] = rsp->data[i+count];
+			*pPORTGIO_TOGGLE = 1<<6;
+			//rsp->data[i+1] = rsp->data[i];
+			//rsp->data[i+count+1] = rsp->data[i+count];
+			rsp->data[i+1] = -100; //rsp->data[i];
+			rsp->data[i+count+1] = -100;//rsp->data[i+count];
 			i++;
+//		*pPORTGIO_CLEAR = 1<<6;
 		};
 
 		if (i < count)
 		{
 			u16 amp, time;
 
-			GetAmpTimeIM(dsc, amp, time);
+			GetAmpTimeIM_2(dsc, amp, time);
 
 			rsp->data[i] = amp;
 			rsp->data[i+count] = time;
@@ -453,7 +525,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 		if (i >= count || i > (dsc.fireIndex+1))
 		{
-			*pPORTGIO_SET = 1<<6;
+			*pPORTGIO_SET = 1<<7;
 
 			RspIM *rsp = (RspIM*)imdsc->data;
 
@@ -474,7 +546,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 			imdsc = 0;
 
-			*pPORTGIO_CLEAR = 1<<6;
+			*pPORTGIO_CLEAR = 1<<7;
 		};
 	};
 
@@ -504,7 +576,14 @@ static void UpdateMode()
 	{
 		*pPORTGIO_SET = 1<<5;
 
-		//ProcessDataIM(*dsc);
+		if (dsc->sensType == 0)
+		{
+			Filtr_Data(*dsc, filtrType);
+		}
+		else
+		{
+			Filtr_Data(*dsc, (filtrType == 2 || filtrType == 3) ? 2 : 0);
+		};
 
 		switch (mode)
 		{
