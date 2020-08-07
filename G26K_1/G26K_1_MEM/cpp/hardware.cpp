@@ -409,10 +409,10 @@ u16 curShaftCounter = 0;
 	#define Sync_GCSS		CCU4_S1SE	
 	#define Rot_GCSS		CCU4_S0SE
 	#define SyncRot_GIDLC	(CCU4_S0I|CCU4_S1I|CCU4_PRB)
-	#define SyncRot_PSC		7					//1.28us
+	#define SyncRot_PSC		8					//1.28us
 	#define SyncRot_DIV		(1<<SyncRot_PSC)	
 
-	#define US2SRT(v)		((u16)((MCK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
+	#define US2SRT(v)		(((MCK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
 
 	#define PIN_SHAFT		6
 	#define SHAFT			(1<<PIN_SHAFT)
@@ -3416,9 +3416,13 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 
 	if (t == 0) t = 100;
 
+	if (samplePerRound < 8) { samplePerRound = 8; };
+
 	t *= samplePerRound;
 	
-	t = US2SRT((100000000 + t/2) / t);
+	t = (100000000 + t/2) / t;
+	
+	t = US2SRT(t);
 
 	if (t > 0xFFFF) t = 0xFFFF;
 
@@ -3569,8 +3573,15 @@ static __irq void ShaftIRQ()
 
 	HW::EIC->INTFLAG = 1<<SHAFT_EXTINT;
 
-#elif defined(CPU_XMC48)
+	SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
 
+#elif defined(CPU_XMC48)
+	
+	//SyncTmr->TCCLR = CC4_TCC;
+
+	SyncTmr->TCCLR = CC4_TRBC;
+	SyncTmr->TIMER = SyncTmr->PR >> 1;
+	SyncTmr->TCSET = CC4_TRBS;
 
 #endif
 

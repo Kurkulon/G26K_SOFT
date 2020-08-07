@@ -118,12 +118,11 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>d</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
           <Key>JL2CM3</Key>
-          <Name>-U29999997 -O78 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -N00("ARM CoreSight SW-DP") -D00(0BC11477) -L00(0) -TO18 -TC10000000 -TP21 -TDS8001 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO0 -FD10000000 -FC1000 -FN1 -FF0LPC8xx_32.FLM -FS00 -FL08000 -FP0($$Device:LPC824M201JHI33$Flash\LPC8xx_32.FLM)</Name>
+          <Name>-U29999997 -O78 -S2 -ZTIFSpeedSel5000 -A0 -C0 -JU1 -JI127.0.0.1 -JP0 -RST0 -N00("ARM CoreSight SW-DP") -D00(2BA01477) -L00(0) -TO18 -TC10000000 -TP21 -TDS8001 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -TB1 -TFE0 -FO0 -FD10000000 -FC1000 -FN1 -FF0LPC8xx_32.FLM -FS00 -FL08000 -FP0($$Device:LPC824M201JHI33$Flash\LPC8xx_32.FLM)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -151,45 +150,10 @@
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>shaftPos,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>1</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>curADC,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>2</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>msec,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>3</count>
-          <WinNumber>1</WinNumber>
           <ItemText>tachoPLL,0x0A</ItemText>
         </Ww>
         <Ww>
-          <count>4</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>fcurADC,0x10</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>avrCurADC,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>6</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>tachoCount,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>7</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>rpm,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>8</count>
+          <count>1</count>
           <WinNumber>1</WinNumber>
           <ItemText>buf</ItemText>
         </Ww>
@@ -278,12 +242,12 @@
         <Ww>
           <count>16</count>
           <WinNumber>2</WinNumber>
-          <ItemText>motorState</ItemText>
+          <ItemText>tahoCount,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>17</count>
           <WinNumber>2</WinNumber>
-          <ItemText>tahoCount,0x0A</ItemText>
+          <ItemText>pidOut</ItemText>
         </Ww>
         <Ww>
           <count>18</count>
@@ -293,20 +257,15 @@
         <Ww>
           <count>19</count>
           <WinNumber>2</WinNumber>
-          <ItemText>pidOut</ItemText>
+          <ItemText>maxOut</ItemText>
         </Ww>
         <Ww>
           <count>20</count>
           <WinNumber>2</WinNumber>
-          <ItemText>maxOut</ItemText>
-        </Ww>
-        <Ww>
-          <count>21</count>
-          <WinNumber>2</WinNumber>
           <ItemText>pidOut</ItemText>
         </Ww>
         <Ww>
-          <count>22</count>
+          <count>21</count>
           <WinNumber>2</WinNumber>
           <ItemText>maxOut</ItemText>
         </Ww>

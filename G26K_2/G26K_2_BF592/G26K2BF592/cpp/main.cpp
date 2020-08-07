@@ -491,7 +491,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 	if (imdsc == 0)
 	{
 		count = vavesPerRoundIM;
-		cmCount = count/8;
+		cmCount = (count + 4) / 8;
 		i = 0;
 
 		imdsc = AllocDscPPI();
@@ -504,12 +504,9 @@ static void ProcessDataIM(DSCPPI &dsc)
 		while (i < dsc.fireIndex)
 		{
 			*pPORTGIO_TOGGLE = 1<<6;
-			//rsp->data[i+1] = rsp->data[i];
-			//rsp->data[i+count+1] = rsp->data[i+count];
-			rsp->data[i+1] = -100; //rsp->data[i];
-			rsp->data[i+count+1] = -100;//rsp->data[i+count];
+			rsp->data[i+1] = rsp->data[i];
+			rsp->data[i+count+1] = rsp->data[i+count];
 			i++;
-//		*pPORTGIO_CLEAR = 1<<6;
 		};
 
 		if (i < count)
@@ -523,7 +520,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 			i++;
 		};
 
-		if (i >= count || i > (dsc.fireIndex+1))
+		if (i >= count)
 		{
 			*pPORTGIO_SET = 1<<7;
 
@@ -532,10 +529,6 @@ static void ProcessDataIM(DSCPPI &dsc)
 			rsp->rw = manReqWord|0x50;				//1. ответное слово
 			rsp->mmsecTime = 0;						//2. Время (0.1мс). младшие 2 байта
 			rsp->shaftTime = 0;						//4. Время датчика Холла (0.1мс). младшие 2 байта
-			//rsp->ax = 0;							//6. AX
-			//rsp->ay = 0;							//7. AY
-			//rsp->az = 0;							//8. AZ
-			//rsp->at = 0;							//9. AT
 			rsp->gain = dsc.gain;					//10. КУ
 			rsp->len = count;						//11. Длина (макс 1024)
 
@@ -547,21 +540,27 @@ static void ProcessDataIM(DSCPPI &dsc)
 			imdsc = 0;
 
 			*pPORTGIO_CLEAR = 1<<7;
+		}
+		else if (i > (dsc.fireIndex+1))
+		{
+			FreeDscPPI(imdsc);
+
+			imdsc = 0;
 		};
 	};
 
 	if (cmCount == 0)
 	{
-		cmCount = count / 8;
+		cmCount = (count + 4) / 8;
 
 		ProcessDataCM(dsc);
 	}
 	else
 	{
-		cmCount -= 1;
-	
 		FreeDscPPI(&dsc);
 	};
+
+	cmCount -= 1;
 }
 
 #pragma optimize_as_cmd_line
