@@ -479,9 +479,9 @@ static void ProcessDataCM(DSCPPI &dsc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//#pragma optimize_for_speed
+#pragma optimize_for_speed
 
-static void ProcessDataIM(DSCPPI &dsc)
+static void ProcessDataIM_old(DSCPPI &dsc)
 {
 	static DSCPPI *imdsc = 0;
 	static u32 count = 0;
@@ -552,6 +552,126 @@ static void ProcessDataIM(DSCPPI &dsc)
 	if (cmCount == 0)
 	{
 		cmCount = (count + 4) / 8;
+
+		ProcessDataCM(dsc);
+	}
+	else
+	{
+		FreeDscPPI(&dsc);
+	};
+
+	cmCount -= 1;
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
+static void SendReadyDataIM(DSCPPI *dsc, u16 len)
+{
+	*pPORTGIO_SET = 1<<7;
+
+	RspIM *rsp = (RspIM*)dsc->data;
+
+	rsp->rw = manReqWord|0x50;			//1. ответное слово
+	rsp->mmsecTime = 0;					//2. Время (0.1мс). младшие 2 байта
+	rsp->shaftTime = 0;					//4. Время датчика Холла (0.1мс). младшие 2 байта
+	rsp->gain = dsc->gain;				//10. КУ
+	rsp->len = len;						//11. Длина (макс 1024)
+
+	dsc->offset = (sizeof(*rsp) - sizeof(rsp->data)) / 2;
+	dsc->len = len*2;
+
+	processedPPI.Add(dsc);
+
+	*pPORTGIO_CLEAR = 1<<7;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
+static void ProcessDataIM(DSCPPI &dsc)
+{
+	static DSCPPI *imdsc = 0;
+	static u32 count = 0;
+	static u32 cmCount = 0;
+	static u32 i = 0;
+	static u16 prevShaftCount = 0;
+
+	if (dsc.shaftCount != prevShaftCount)
+	{
+		prevShaftCount = dsc.shaftCount;
+
+		if (imdsc != 0)
+		{
+			SendReadyDataIM(imdsc, i);
+
+			imdsc = 0;
+		};
+	};
+
+	if (imdsc == 0)
+	{
+		count = 500; //vavesPerRoundIM;
+		cmCount = (vavesPerRoundIM + 4) / 8;
+		i = 0;
+
+		imdsc = AllocDscPPI();
+
+		if (imdsc != 0)
+		{
+			RspIM *rsp = (RspIM*)imdsc->data;
+
+			u16 *d = rsp->data;
+
+			for (u32 i = 10; i > 0; i--)
+			{
+				*(d++) = 0;
+			};
+		};
+	};
+
+	if (imdsc != 0)
+	{
+		RspIM *rsp = (RspIM*)imdsc->data;
+
+		u16 *data = rsp->data + i*2;
+
+		if (dsc.fireIndex < count)
+		{
+			while (i < dsc.fireIndex)
+			{
+				*(data++) = 0;
+				*(data++) = 0;
+				i++;
+			};
+		};
+
+		if (i < count)
+		{
+			u16 amp, time;
+
+			GetAmpTimeIM_2(dsc, amp, time);
+
+			*(data++) = amp;
+			*(data++) = time;
+			i++;
+		};
+
+		if (i >= count)
+		{
+			SendReadyDataIM(imdsc, count);
+
+			imdsc = 0;
+		};
+	};
+
+	if (cmCount == 0)
+	{
+		cmCount = (vavesPerRoundIM + 4) / 8;
 
 		ProcessDataCM(dsc);
 	}

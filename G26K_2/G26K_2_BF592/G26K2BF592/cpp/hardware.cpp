@@ -57,9 +57,9 @@
 #define BM_SYNC			(1 << PIN_SYNC)
 
 #define PIN_GAIN_EN		1
-#define PIN_GAIN_0		3
+#define PIN_GAIN_0		0
 #define PIN_GAIN_1		2
-#define PIN_GAIN_2		0
+#define PIN_GAIN_2		3
 #define PIN_A0			4
 
 #define GAIN_EN		(1 << PIN_GAIN_EN)	
@@ -398,7 +398,7 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 
 	fireSyncCount += 1;
 
-	if (fireSyncCount >= firesPerRound) fireSyncCount = 0;
+	//if (fireSyncCount >= firesPerRound) fireSyncCount = 0;
 
 //	*pPORTGIO_CLEAR = 1<<7;
 }
