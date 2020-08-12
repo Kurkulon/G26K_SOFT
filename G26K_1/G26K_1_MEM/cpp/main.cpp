@@ -22,6 +22,7 @@
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 u32 fps;
 i16 tempClock = 0;
 i16 cpu_temp = 0;
@@ -218,7 +219,7 @@ void CallBackDspReq01(REQ *q)
 	 
 	if (rsp.rw == (dspReqWord|0x40))
 	{
-		q->crcOK = (q->rb->len == (rsp.CM.sl*2 + 19*2));
+		q->crcOK = (q->rb->len == (rsp.CM.sl*2 + 10 + sizeof(rsp.CM)-sizeof(rsp.CM.data)));
 
 		dspStatus |= 1;
 		dspRcv40++;
@@ -234,7 +235,7 @@ void CallBackDspReq01(REQ *q)
 	}
 	else if (rsp.rw == (dspReqWord|0x50))
 	{
-		q->crcOK = (q->rb->len == (rsp.IM.dataLen*4 + 11*2));
+		q->crcOK = (q->rb->len == (rsp.IM.dataLen*4 + 10 + sizeof(rsp.IM)-sizeof(rsp.IM.data)));
 
 		dspStatus |= 1;
 		dspRcv50++;
@@ -266,8 +267,10 @@ void CallBackDspReq01(REQ *q)
 		{
 			notRcv02++;
 		};
+	};
 
-
+	if (!q->crcOK)
+	{
 		if (q->tryCount > 0)
 		{
 			q->tryCount--;
@@ -332,12 +335,14 @@ R01* CreateDspReq01(u16 tryCount)
 	req.sd 				= sampleDelay;
 	req.thr				= descriminant;
 	req.descr			= deadTime;
+	req.freq			= freq;
 	req.refgain 		= gainRef;
 	req.refst			= sampleTimeRef;
 	req.refsl 			= sampleLenRef;
 	req.refsd 			= sampleDelayRef;
 	req.refthr			= deadTimeRef;
 	req.refdescr		= descriminantRef;
+	req.refFreq			= refFreq;
 	req.vavesPerRoundCM = cmSPR;
 	req.vavesPerRoundIM = imSPR;
 	req.filtrType		= filtrType;
@@ -369,7 +374,7 @@ void CallBackDspReq05(REQ *q)
 
 REQ* CreateDspReq05(u16 tryCount)
 {
-	static ReqDsp05 req[2];
+	static ReqDsp05 req;
 	static RspDsp05 rsp;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
@@ -385,16 +390,14 @@ REQ* CreateDspReq05(u16 tryCount)
 	q.checkCRC = true;
 	q.updateCRC = false;
 	
-	wb.data = req;
+	wb.data = &req;
 	wb.len = sizeof(req);
 	
 	rb.data = &rsp;
 	rb.maxLen = sizeof(rsp);
 
-	//req[1].len	= req[0].len	= sizeof(ReqDsp05) - 1;
-	//req[1].func = req[0].func	= 5;
-
-	//req[1].crc = req[0].crc = GetCRC16(&req[0].func, sizeof(ReqDsp05)-3);
+	req.rw = dspReqWord|5;
+	req.crc	= GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
 }
@@ -454,8 +457,6 @@ REQ* CreateDspReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u
 
 	req.stAdr = stAdr;
 	req.count = count+count2;
-
-	//req.crc = GetCRC16(&req, sizeof(req)-2);
 
 	byte *d = req.data;
 	byte *s = (byte*)data;
@@ -924,7 +925,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 
 			prevOff = 0;
 
-			u16 sz = 10 + r01->rsp.IM.dataLen*2;
+			u16 sz = 12 + r01->rsp.IM.dataLen*2;
 
 			if (reqlen == 1)
 			{
@@ -949,7 +950,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 	{
 		u16 off = prevOff + prevLen;
 		u16 len = prevLen;
-		u16 sz = 10 + r01->rsp.IM.dataLen*2;
+		u16 sz = 12 + r01->rsp.IM.dataLen*2;
 
 		if (reqlen == 3)
 		{
@@ -1817,6 +1818,82 @@ static void Update()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static const u32 dspFlashPages[] = {
+#include "G26K1BF592.LDR.H"
+};
+
+//static bool runMainMode = false;
+
+u16 dspFlashLen = 0;
+u16 dspFlashCRC = 0;
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FlashDSP()
+{
+	TM32 tm;
+
+	REQ *req = 0;
+
+	dspFlashLen = sizeof(dspFlashPages);
+	dspFlashCRC = GetCRC16(dspFlashPages, dspFlashLen);
+
+	tm.Reset();
+
+	while (!tm.Check(100));
+
+	req = CreateDspReq05(2);
+
+	qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
+
+	if (req->crcOK)
+	{
+		RspDsp05 *rsp = (RspDsp05*)req->rb->data;
+
+		//dspFlashLen = rsp->flashLen;
+		//dspFlashCRC = rsp->flashCRC;
+
+		if (rsp->flashCRC != dspFlashCRC || rsp->flashLen != dspFlashLen)
+		{
+			u16 count = dspFlashLen;
+			u16 adr = 0;
+			byte *p = (byte*)dspFlashPages;
+
+			while (count > 0)
+			{
+				u16 len = (count > 256) ? 256 : count;
+
+				req = CreateDspReq06(adr, len, p, 0, 0, 2);
+
+				qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
+
+				count -= len;
+				p += len;
+				adr += len;
+			};
+
+			req = CreateDspReq07();
+
+			qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
+
+			DisableDSP();
+			
+			tm.Reset();
+
+			while (!tm.Check(1));
+
+			EnableDSP();
+			
+			tm.Reset();
+
+			while (!tm.Check(100));
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifdef CPU_SAME53
 
 	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
@@ -1835,7 +1912,7 @@ int main()
 {
 	static bool c = true;
 
-	//static byte buf[100];
+	static byte buf[100];
 
 	//volatile byte * const FLD = (byte*)0x60000000;	
 	
@@ -1863,8 +1940,10 @@ int main()
 	Update_RPS_SPR();
 
 	commoto.Connect(ComPort::ASYNC, 0, 1562500, 0, 1);
-	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 0, 1);
+	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 2, 1);
 	commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
+
+	FlashDSP();
 
 	u32 fc = 0;
 
@@ -1873,8 +1952,10 @@ int main()
 
 	tm.pt = 0;
 
-
 	ComPort::WriteBuffer wb;
+
+	DSCSPI dsc;
+
 
 	while (1)
 	{
@@ -1892,12 +1973,13 @@ int main()
 		{ 
 			fps = fc; fc = 0; 
 
-			//wb.data = buf;
-			//wb.len = 5;
-			//
-			//commem.Write(&wb);
+			dsc.adr = 0x1;
+			dsc.alen = 4;
+			dsc.SELO = 1;
+			dsc.rdata = buf;
+			dsc.rlen = 10;
 
-			//HW::ResetWDT();
+			SPI_Read(&dsc);
 		};
 
 	}; // while (1)

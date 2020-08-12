@@ -102,11 +102,84 @@
 #define BRGIF       	(0x10000UL)               /*!< USIC_CH PSCR: CBRGIF (Bitfield-Mask: 0x01)                  */
 
 /* --------------------------------  USIC_CH_KSCFG  ------------------------------- */
-#define MODEN           (0x1UL)                   /*!< USIC_CH KSCFG: MODEN (Bitfield-Mask: 0x01)                  */
-#define BPMODEN         (0x2UL)                   /*!< USIC_CH KSCFG: BPMODEN (Bitfield-Mask: 0x01)                */
-#define NOMCFG(v)		(((v)&3)<<4)                  /*!< USIC_CH KSCFG: NOMCFG (Bitfield-Mask: 0x03)                 */
-#define BPNOM           (0x80UL)                  /*!< USIC_CH KSCFG: BPNOM (Bitfield-Mask: 0x01)                  */
-#define SUMCFG(v)		(((v)&3)<<8)                 /*!< USIC_CH KSCFG: SUMCFG (Bitfield-Mask: 0x03)                 */
-#define BPSUM           (0x800UL)                 /*!< USIC_CH KSCFG: BPSUM (Bitfield-Mask: 0x01)                  */
+#define MODEN           (0x1UL)                 	/*!< USIC_CH KSCFG: MODEN (Bitfield-Mask: 0x01)                  */
+#define BPMODEN         (0x2UL)                 	/*!< USIC_CH KSCFG: BPMODEN (Bitfield-Mask: 0x01)                */
+#define NOMCFG(v)		(((v)&3)<<4)				/*!< USIC_CH KSCFG: NOMCFG (Bitfield-Mask: 0x03)                 */
+#define BPNOM           (0x80UL)                	/*!< USIC_CH KSCFG: BPNOM (Bitfield-Mask: 0x01)                  */
+#define SUMCFG(v)		(((v)&3)<<8)            	/*!< USIC_CH KSCFG: SUMCFG (Bitfield-Mask: 0x03)                 */
+#define BPSUM           (0x800UL)               	/*!< USIC_CH KSCFG: BPSUM (Bitfield-Mask: 0x01)                  */
+
+/* --------------------------------  USIC_CH_TBCTR  ------------------------------- */
+#define TBCTR_DPTR(v)		(((v)&0x3F)<<0)         /*!< USIC_CH TBCTR: DPTR (Bit 0)                                 */
+#define TBCTR_LIMIT(v)		(((v)&0x3F)<<8)         /*!< USIC_CH TBCTR: LIMIT (Bit 8)                                */
+#define TBCTR_STBTM			(0x4000UL)            	/*!< USIC_CH TBCTR: STBTM (Bitfield-Mask: 0x01)                  */
+#define TBCTR_STBTEN        (0x8000UL)            	/*!< USIC_CH TBCTR: STBTEN (Bitfield-Mask: 0x01)                 */
+#define TBCTR_STBINP(v)		(((v)&7)<<16)			/*!< USIC_CH TBCTR: STBINP (Bit 16)                              */
+#define TBCTR_ATBINP(v)		(((v)&7)<<19)           /*!< USIC_CH TBCTR: ATBINP (Bit 19)                              */
+#define TBCTR_SIZE(v)		(((v)&7)<<24)           /*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE0			(0<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE2			(1<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE4			(2<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE8			(3<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE16		(4<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE32		(5<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_SIZE64		(6<<24)           		/*!< USIC_CH TBCTR: SIZE (Bit 24)                                */
+#define TBCTR_LOF		    (0x10000000UL)        	/*!< USIC_CH TBCTR: LOF (Bitfield-Mask: 0x01)                    */
+#define TBCTR_STBIEN        (0x40000000UL)        	/*!< USIC_CH TBCTR: STBIEN (Bitfield-Mask: 0x01)                 */
+#define TBCTR_TBERIEN       (0x80000000UL)        	/*!< USIC_CH TBCTR: TBERIEN (Bitfield-Mask: 0x01)                */
+
+/* --------------------------------  USIC_CH_RBCTR  ------------------------------- */
+#define RBCTR_DPTR(v)		(((v)&0x3F)<<0) 		/*!< USIC_CH RBCTR: DPTR (Bit 0)                                 */
+#define RBCTR_LIMIT(v)		(((v)&0x3F)<<8) 		/*!< USIC_CH RBCTR: LIMIT (Bit 8)                                */
+#define RBCTR_SRBTM		    (0x4000UL)				/*!< USIC_CH RBCTR: SRBTM (Bitfield-Mask: 0x01)                  */
+#define RBCTR_SRBTEN		(0x8000UL)				/*!< USIC_CH RBCTR: SRBTEN (Bitfield-Mask: 0x01)                 */
+#define RBCTR_SRBINP(v)		(((v)&7)<<16)   		/*!< USIC_CH RBCTR: SRBINP (Bit 16)                              */
+#define RBCTR_ARBINP(v)		(((v)&7)<<19)   		/*!< USIC_CH RBCTR: ARBINP (Bit 19)                              */
+#define RBCTR_RCIM(v)		(((v)&3)<<22)   		/*!< USIC_CH RBCTR: RCIM (Bit 22)                                */
+#define RBCTR_SIZE(v)		(((v)&7)<<24)   		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE0			(0<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE2			(1<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE4			(2<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE8			(3<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE16		(4<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE32		(5<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_SIZE64		(6<<24)         		/*!< USIC_CH RBCTR: SIZE (Bit 24)                                */
+#define RBCTR_RNM			(0x8000000UL)   		/*!< USIC_CH RBCTR: RNM (Bitfield-Mask: 0x01)                    */
+#define RBCTR_LOF			(0x10000000UL)  		/*!< USIC_CH RBCTR: LOF (Bitfield-Mask: 0x01)                    */
+#define RBCTR_ARBIEN        (0x20000000UL)  		/*!< USIC_CH RBCTR: ARBIEN (Bitfield-Mask: 0x01)                 */
+#define RBCTR_SRBIEN        (0x40000000UL)  		/*!< USIC_CH RBCTR: SRBIEN (Bitfield-Mask: 0x01)                 */
+#define RBCTR_RBERIEN       (0x80000000UL)  		/*!< USIC_CH RBCTR: RBERIEN (Bitfield-Mask: 0x01)                */
+
+/* --------------------------------  USIC_CH_INPR  -------------------------------- */
+#define TSINP(v)			(((v)&7)<<0)     		/*!< USIC_CH INPR: TSINP (Bit 0)                                 */
+#define TBINP(v)			(((v)&7)<<4)     		/*!< USIC_CH INPR: TBINP (Bit 4)                                 */
+#define RINP(v)				(((v)&7)<<8)     		/*!< USIC_CH INPR: RINP (Bit 8)                                  */
+#define AINP(v)				(((v)&7)<<12)    		/*!< USIC_CH INPR: AINP (Bit 12)                                 */
+#define PINP(v)				(((v)&7)<<16)    		/*!< USIC_CH INPR: PINP (Bit 16)                                 */
+
+/* --------------------------------  USIC_CH_TRBSR  ------------------------------- */
+#define TRBSR_SRBI                (0x1UL)                   /*!< USIC_CH TRBSR: SRBI (Bitfield-Mask: 0x01)                   */
+#define TRBSR_RBERI               (0x2UL)                   /*!< USIC_CH TRBSR: RBERI (Bitfield-Mask: 0x01)                  */
+#define TRBSR_ARBI                (0x4UL)                   /*!< USIC_CH TRBSR: ARBI (Bitfield-Mask: 0x01)                   */
+#define TRBSR_REMPTY              (0x8UL)                   /*!< USIC_CH TRBSR: REMPTY (Bitfield-Mask: 0x01)                 */
+#define TRBSR_RFULL               (0x10UL)                  /*!< USIC_CH TRBSR: RFULL (Bitfield-Mask: 0x01)                  */
+#define TRBSR_RBUS                (0x20UL)                  /*!< USIC_CH TRBSR: RBUS (Bitfield-Mask: 0x01)                   */
+#define TRBSR_SRBT                (0x40UL)                  /*!< USIC_CH TRBSR: SRBT (Bitfield-Mask: 0x01)                   */
+#define TRBSR_STBI                (0x100UL)                 /*!< USIC_CH TRBSR: STBI (Bitfield-Mask: 0x01)                   */
+#define TRBSR_TBERI               (0x200UL)                 /*!< USIC_CH TRBSR: TBERI (Bitfield-Mask: 0x01)                  */
+#define TRBSR_TEMPTY              (0x800UL)                 /*!< USIC_CH TRBSR: TEMPTY (Bitfield-Mask: 0x01)                 */
+#define TRBSR_TFULL               (0x1000UL)                /*!< USIC_CH TRBSR: TFULL (Bitfield-Mask: 0x01)                  */
+#define TRBSR_TBUS                (0x2000UL)                /*!< USIC_CH TRBSR: TBUS (Bitfield-Mask: 0x01)                   */
+#define TRBSR_STBT                (0x4000UL)                /*!< USIC_CH TRBSR: STBT (Bitfield-Mask: 0x01)                   */
+
+/* -------------------------------  USIC_CH_TRBSCR  ------------------------------- */
+#define TRBSCR_CSRBI              (0x1UL)                   /*!< USIC_CH TRBSCR: CSRBI (Bitfield-Mask: 0x01)                 */
+#define TRBSCR_CRBERI             (0x2UL)                   /*!< USIC_CH TRBSCR: CRBERI (Bitfield-Mask: 0x01)                */
+#define TRBSCR_CARBI              (0x4UL)                   /*!< USIC_CH TRBSCR: CARBI (Bitfield-Mask: 0x01)                 */
+#define TRBSCR_CSTBI              (0x100UL)                 /*!< USIC_CH TRBSCR: CSTBI (Bitfield-Mask: 0x01)                 */
+#define TRBSCR_CTBERI             (0x200UL)                 /*!< USIC_CH TRBSCR: CTBERI (Bitfield-Mask: 0x01)                */
+#define TRBSCR_CBDV               (0x400UL)                 /*!< USIC_CH TRBSCR: CBDV (Bitfield-Mask: 0x01)                  */
+#define TRBSCR_FLUSHRB            (0x4000UL)                /*!< USIC_CH TRBSCR: FLUSHRB (Bitfield-Mask: 0x01)               */
+#define TRBSCR_FLUSHTB            (0x8000UL)                /*!< USIC_CH TRBSCR: FLUSHTB (Bitfield-Mask: 0x01)               */
 
 #endif /*COM_DEF__12_10_2018__08_51*/

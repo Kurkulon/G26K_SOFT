@@ -82,6 +82,7 @@
 #define StopPPI()	{ *pTIMER_DISABLE = TIMDIS1; }
 
 #define StartFire()	{ *pTIMER_ENABLE = TIMEN0; }
+#define StopFire()	{ *pTIMER_DISABLE = TIMDIS0; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -156,6 +157,9 @@ struct PPI
 	u16 delay;
 	u16 gain;
 	u16 sensType;
+	u16 st;
+	u16 sd;
+	u16 fireDiv;
 };
 
 static PPI mainPPI;
@@ -179,6 +183,7 @@ void SetMux(byte a)
 
 void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 {
+	ppi.st = sens.st;
 	ppi.clkDiv = (sens.st+1) * NS2CLK(50);
 
 	//if (ppi.clkDiv == 0) ppi.clkDiv = 1;
@@ -187,12 +192,22 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 
 	if (ppi.len < 16) ppi.len = 16;
 
+	ppi.sd = sens.sd;
 	ppi.delay = sens.sd * (NS2CCLK(50));
 	
 	if (ppi.delay > US2CLK(500)) ppi.delay = US2CLK(500);
 
 	ppi.gain = sens.gain;
 	ppi.sensType = sensType;
+
+	if (sens.freq > 0)
+	{
+		ppi.fireDiv = (US2CLK(500) + sens.freq/2) / sens.freq;
+	}
+	else
+	{
+		ppi.fireDiv = US2CLK(1);
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -284,13 +299,20 @@ static void ReadPPI(PPI &ppi)
 	if (curDscPPI != 0)
 	{
 		curDscPPI->busy = false;
-		curDscPPI->delay = ppi.delay;
+		curDscPPI->ppidelay = ppi.delay;
+		curDscPPI->sampleDelay = ppi.sd;
+		curDscPPI->sampleTime = ppi.st;
+
 		SetMux(curDscPPI->sensType = ppi.sensType);
 		SetGain(curDscPPI->gain = ppi.gain);
 
+		//*pTIMER0_CONFIG = PWM_OUT|PULSE_HI;
+		//*pTIMER0_PERIOD = ppi.fireDiv*2;
+		*pTIMER0_WIDTH = ppi.fireDiv;
+
 		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
-		*pTIMER1_PERIOD = curDscPPI->clkdiv = ppi.clkDiv;
-		*pTIMER1_WIDTH = curDscPPI->clkdiv>>1;
+		*pTIMER1_PERIOD = curDscPPI->ppiclkdiv = ppi.clkDiv;
+		*pTIMER1_WIDTH = curDscPPI->ppiclkdiv>>1;
 
 		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
 		*pDMA0_X_COUNT = curDscPPI->len = ppi.len;
@@ -321,7 +343,7 @@ static void Fire()
 			curDscPPI->motoCount = dspVars.motoCount;
 			curDscPPI->shaftCount = shaftCount;
 
-			if (curDscPPI->delay == 0)
+			if (curDscPPI->ppidelay == 0)
 			{ 
 				*pTCNTL = 0;
 				StartPPI();
@@ -329,7 +351,7 @@ static void Fire()
 			else
 			{
 				*pTSCALE = 0;
-				*pTCOUNT = curDscPPI->delay;
+				*pTCOUNT = curDscPPI->ppidelay;
 				*pTCNTL = TINT|TMPWR|TMREN;
 			};
 		};
@@ -344,6 +366,8 @@ static void Fire()
 
 EX_INTERRUPT_HANDLER(PPI_ISR)
 {
+	static u32 pt = 0;
+
 	if (*pDMA0_IRQ_STATUS & (DMA_DONE|DMA_ERR))
 	{
 		*pDMA0_IRQ_STATUS = DMA_DONE|DMA_ERR;
@@ -355,8 +379,12 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 		curDscPPI->busy = false;
 		readyPPI.Add(curDscPPI);
 
-		if (curDscPPI->fireIndex == 0 && dspVars.mode == 0)
+		u32 t = mmsec;
+
+		if ((t - pt) >= 30011)
 		{
+			pt = t;
+
 			ReadPPI(refPPI);
 			
 			Fire();

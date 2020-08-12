@@ -271,7 +271,7 @@ u16 curShaftCounter = 0;
 
 	// Test Pins
 	// 63	- P2.13	- main loop
-	// 64	- P2.12
+	// 64	- P2.12 - SPI_Handler
 	// 76	- P2.6	- ManTrmIRQ
 	// 77	- P5.7	- MEM USART RTS	
 	// 78	- P5.6	- MEM USART RTS	
@@ -312,6 +312,14 @@ u16 curShaftCounter = 0;
 	#define	DSP_DMACH		HW::GPDMA0_CH6
 	#define	DSP_DMA_CHEN	(0x101<<6)
 	#define	DSP_DMA_CHST	(1<<6)
+
+	#define	SPI_DMA			HW::GPDMA0
+	#define	SPI_DMACH		HW::GPDMA0_CH5
+	#define	SPI_DMA_CHEN	(0x101<<5)
+	#define	SPI_DMA_CHDIS	(0x100<<5)
+	#define	SPI_DMA_CHST	(1<<5)
+	#define	SPI_DLR			(1)
+	#define	SPI_DLR_LNEN	(1<<SPI_DLR)
 
 	#define	CRC_DMA			HW::GPDMA1
 	#define	CRC_DMACH		HW::GPDMA1_CH2
@@ -423,10 +431,14 @@ u16 curShaftCounter = 0;
 	#define Pin_ShaftIRQ_Clr()		HW::P6->BCLR(6);
 
 	#define SPI				HW::USIC1_CH0
+	#define	SPI_INPR		(0)
 	#define PIO_SPCK		HW::P5
 	#define PIO_MOSI		HW::P2
 	#define PIO_MISO		HW::P2
 	#define PIO_CS			HW::P5
+
+	#define Pin_SPI_IRQ_Set()		HW::P2->BSET(12);
+	#define Pin_SPI_IRQ_Clr()		HW::P2->BCLR(12);
 
 	#define PIN_SPCK		8 
 	#define PIN_MOSI		14 
@@ -440,7 +452,7 @@ u16 curShaftCounter = 0;
 	#define CS0				(1<<PIN_CS0) 
 	#define CS1				(1<<PIN_CS1) 
 
-	#define SPI_IRQ			USIC1_0_IRQn
+	#define SPI_IRQ			USIC1_5_IRQn
 	#define SPI_PID			PID_USIC1
 
 
@@ -679,22 +691,22 @@ u16 curShaftCounter = 0;
 	#define AIF       	(0x8000UL)        	/*!< USIC_CH PSR_SSCMode: AIF (Bitfield-Mask: 0x01)              */
 	#define BRGIF     	(0x10000UL)       	/*!< USIC_CH PSR_SSCMode: BRGIF (Bitfield-Mask: 0x01)            */
 
-	#define SPI__SCTR (SDIR(1) | TRM(1) | FLE(8) | WLE(8))
+	#define SPI__SCTR (SDIR(1) | TRM(1) | FLE(0x3F) | WLE(7))
 
 	#define SPI__CCR (MODE(1))
 
-	#define SPI__BRG (DCTQ(0)|CLKSEL(3))
+	#define SPI__BRG (DCTQ(1)|CLKSEL(0))
 
-	#define SPI__DX0CR (DSEL(3) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+	#define SPI__DX0CR (DSEL(2) | INSW(1) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
 	#define SPI__DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
 	#define SPI__DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 	#define SPI__DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 
-	#define SPI__PCR ( MSLSEN | SELINV |  TIWEN )
+	#define SPI__PCR ( MSLSEN | SELINV |  TIWEN | MCLK)
 
 	#define SPI__FDR ((1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1))
 
-	#define SPI__TCSR (TDEN(1)|TDSSM(1))
+	#define SPI__TCSR (TDEN(1)|HPCMD(0))
 
 	static void delay(u32 cycles) { for(volatile u32 i = 0UL; i < cycles ;++i) { __nop(); }}
 
@@ -909,8 +921,8 @@ extern "C" void SystemInit()
 		P2->ModePin11(	G_PP	);
 		P2->ModePin12(	G_PP	);
 		P2->ModePin13(	G_PP	);
-		P2->ModePin14(	A2PP	);
-		P2->ModePin15(	I2DPU	);
+		//P2->ModePin14(	A2PP	);
+		//P2->ModePin15(	I2DPU	);
 
 		P2->PPS = 0;
 
@@ -952,10 +964,10 @@ extern "C" void SystemInit()
 		P5->ModePin5(	G_PP	);
 		P5->ModePin6(	G_PP	);
 		P5->ModePin7(	G_PP	);
-		P5->ModePin8(	A2PP	);
-		P5->ModePin9(	G_PP	);
+		//P5->ModePin8(	A2PP	);
+		//P5->ModePin9(	G_PP	);
 		P5->ModePin10(	G_PP	);
-		P5->ModePin11(	G_PP	);
+		//P5->ModePin11(	G_PP	);
 
 		P5->PPS = 0;
 
@@ -1011,6 +1023,7 @@ extern "C" void SystemInit()
 		//HW::DLR->SRSEL1 = SRSEL1(0,0,0,0);
 
 		HW::DLR->DRL0 = DRL0_USIC0_SR0;
+		HW::DLR->DRL1 = DRL1_USIC1_SR0;
 		HW::DLR->DRL2 = DRL2_USIC0_SR1;
 		HW::DLR->DRL9 = DRL9_USIC2_SR1;
 
@@ -3721,7 +3734,7 @@ static u16 spi_wrCount = 0;
 static u16 spi_rdCount = 0;
 static byte *spi_wrPtr2 = 0;
 static u16 spi_wrCount2 = 0;
-static byte spi_adr = 0;
+static u32 spi_adr = 0;
 static DSCSPI* spi_dsc = 0;
 static DSCSPI* spi_lastDsc = 0;
 
@@ -3845,108 +3858,48 @@ static __irq void SPI_Handler()
 {
 	using namespace HW;
 
-//	HW::P5->BSET(7);
+	Pin_SPI_IRQ_Set();
 
-	u32 a = SPI->PSR_IICMode;
+	volatile u32 a = SPI->PCR_SSCMode & SPI->CCR;
 
-	if(a & ACK)
+	if(a & TBIF)
 	{
-		if (spi_wrCount > 0)
-		{
-			SPI->TBUF[0] = TDF_MASTER_SEND | *spi_wrPtr++;
+		a = SPI->RBUF;
+		a = SPI->RBUF;
 
-			spi_wrCount--;
+		SPI->TBUF[0] = *(spi_wrPtr++);
+		spi_wrCount--;
 
-			spi_dsc->ack = true;
-
-			if(spi_wrCount == 0 && spi_wrCount2 != 0)
-			{
-				spi_wrPtr = spi_wrPtr2;
-				spi_wrCount = spi_wrCount2;
-				spi_wrCount2 = 0;
-			};
-		}
-		else if (spi_rdCount > 0)
+		if (spi_wrCount == 0)
 		{
-			if(a & (SCR|RSCR))
-			{
-				SPI->TBUF[0] = TDF_MASTER_RECEIVE_ACK; 
-			}
-			else
-			{
-				SPI->TBUF[0] = TDF_MASTER_RESTART | (spi_adr << 1) | 1;
-			};
-		}
-		else
-		{
-			SPI->TBUF[0] = TDF_MASTER_STOP;
+			SPI->CCR = SPI__CCR|TSIEN;
 		};
-	}
-	else if (a & (RIF|AIF))
-	{
-		byte t = SPI->RBUF;
-
-		if (spi_rdCount > 0)
-		{
-			*spi_rdPtr++ = t; // receive data
-			spi_rdCount--;
-		};
-			
-		SPI->TBUF[0] = (spi_rdCount > 0) ? TDF_MASTER_RECEIVE_ACK : TDF_MASTER_RECEIVE_NACK; 
-	}
-	else if ((a & PCR) == 0)
-	{
-		SPI->TBUF[0] = TDF_MASTER_STOP; 
-	}
-	else
-	{
-		spi_dsc->ready = true;
-		spi_dsc->readedLen = spi_dsc->rlen - spi_rdCount;
-
-//		state = 0;
 		
-		DSCSPI *ndsc = spi_dsc->next;
+		SPI->PSCR = ~0;
+	}
+	else if (a & TSIF)
+	{
+		a = SPI->RBUF;
+		a = SPI->RBUF;
 
-		if (ndsc != 0)
-		{
-			spi_dsc->next = 0;
-			spi_dsc = ndsc;
+		SPI->CCR = SPI__CCR|RIEN|DLIEN;
+		SPI->PSCR = ~0;
+		SPI->TCSR = SPI__TCSR|TDSSM(0);
+	}
+	else if(a & DLIF)
+	{
+		SPI_DMA->CHENREG = SPI_DMA_CHDIS;
 
-			spi_dsc->ready = false;
-			spi_dsc->ack = false;
-			spi_dsc->readedLen = 0;
+		SPI->RBCTR = 0;
+		SPI->TCSR = 0;
+		SPI->CCR = SPI__CCR;
 
-			spi_wrPtr = (byte*)spi_dsc->wdata;	
-			spi_rdPtr = (byte*)spi_dsc->rdata;	
-			spi_wrPtr2 = (byte*)spi_dsc->wdata2;	
-			spi_wrCount = spi_dsc->wlen;
-			spi_wrCount2 = spi_dsc->wlen2;
-			spi_rdCount = spi_dsc->rlen;
-			spi_adr = spi_dsc->adr;
+		SPI->PSCR = DLIF;
 
-			if (spi_wrPtr2 == 0) spi_wrCount2 = 0;
-
-			//SPI->CCR |= RIEN|AIEN;
-			//SPI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
-
-			SPI->PSCR = ~0;
-
-			SPI->TBUF[0] = TDF_MASTER_START | (spi_dsc->adr << 1) | ((spi_wrCount == 0) ? 1 : 0);
-		}
-		else
-		{
-			SPI->CCR = SPI__CCR;
-			SPI->PCR_IICMode = SPI__PCR;
-
-			spi_lastDsc = spi_dsc = 0;
-		};
-
-//		SPI->PSCR = PCR|NACK;
+		DLR->LNEN &= ~SPI_DLR_LNEN;
 	};
 
-	SPI->PSCR = a;
-
-//	HW::P5->BCLR(7);
+	Pin_SPI_IRQ_Clr();
 }
 
 #endif
@@ -3957,24 +3910,24 @@ bool SPI_Write(DSCSPI *d)
 {
 	using namespace HW;
 
-	if (spi_dsc != 0 || d == 0) { return false; };
-	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+	//if (spi_dsc != 0 || d == 0) { return false; };
+	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
 
 	spi_lastDsc = spi_dsc = d;
 
 	spi_dsc->ready = false;
-	spi_dsc->ack = false;
-	spi_dsc->readedLen = 0;
 
-	spi_wrPtr = (byte*)spi_dsc->wdata;	
+	spi_wrPtr = (byte*)spi_dsc->adr;	
+	spi_wrCount = spi_dsc->alen;
+
+	spi_wrPtr2 = (byte*)spi_dsc->wdata;	
+	spi_wrCount2 = spi_dsc->wlen;
+
 	spi_rdPtr = (byte*)spi_dsc->rdata;	
-	spi_wrPtr2 = (byte*)spi_dsc->wdata2;	
-	spi_wrCount = spi_dsc->wlen;
-	spi_wrCount2 = spi_dsc->wlen2;
 	spi_rdCount = spi_dsc->rlen;
-	spi_adr = spi_dsc->adr;
 
-	if (spi_wrPtr2 == 0) spi_wrCount2 = 0;
+	u32 alen = (spi_dsc->alen > 4) ? 4 : spi_dsc->alen; 
+	u32 adr = spi_dsc->adr;
 
 	__disable_irq();
 
@@ -3989,14 +3942,131 @@ bool SPI_Write(DSCSPI *d)
 
 	#elif defined(CPU_XMC48)
 
-		SPI->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
+		HW::DLR->LNEN |= SPI_DLR_LNEN;
 
-//		state = (wrCount == 0) ? 1 : 0;
+		SPI_DMA->DMACFGREG = 1;
 
-		SPI->TBUF[0] = TDF_MASTER_START | (spi_dsc->adr << 1) | ((spi_wrCount == 0) ? 1 : 0);
+		SPI_DMACH->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
+		SPI_DMACH->CTLH = BLOCK_TS(spi_dsc->wlen);
 
-		SPI->CCR |= RIEN|AIEN;
-		SPI->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
+		SPI_DMACH->SAR = (u32)spi_dsc->wdata;
+		SPI_DMACH->DAR = (u32)&SPI->IN[4];
+		SPI_DMACH->CFGL = HS_SEL_SRC;
+		SPI_DMACH->CFGH = PROTCTL(1)|DEST_PER(SPI_DLR&7);
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		SPI->CCR = SPI__CCR;
+		SPI->PCR_SSCMode = SPI__PCR|SELO(spi_dsc->SELO);
+
+		while(alen > 0)
+		{
+			SPI->IN[4] = (byte)adr;
+			adr >>= 8;
+			alen--;
+		};
+
+		SPI_DMA->CHENREG = SPI_DMA_CHEN;
+
+		SPI->PSCR = ~0;
+		SPI->CCR = SPI__CCR|TBIEN;
+		SPI->INPR = SPI_INPR<<4;
+
+		if ((SPI->PSR & TBIF) == 0)
+		{
+			SPI->FMR = USIC_CH_FMR_SIO0_Msk<<SPI_INPR;
+		};
+
+	#endif
+		
+	__enable_irq();
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool SPI_Read(DSCSPI *d)
+{
+	using namespace HW;
+
+	//if (spi_dsc != 0 || d == 0) { return false; };
+	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+
+	spi_lastDsc = spi_dsc = d;
+
+	spi_dsc->ready = false;
+
+	u32 alen = (spi_dsc->alen > 4) ? 4 : spi_dsc->alen; 
+
+	spi_wrPtr = (byte*)spi_dsc->adr;	
+	spi_wrCount = alen;
+
+	spi_wrPtr2 = (byte*)spi_dsc->wdata;	
+	spi_wrCount2 = spi_dsc->wlen;
+
+	spi_rdPtr = (byte*)spi_dsc->rdata;	
+	spi_rdCount = spi_dsc->rlen;
+
+
+	__disable_irq();
+
+	#ifdef CPU_SAME53
+
+		//SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
+
+		SPI->INTFLAG = ~0;
+		SPI->INTENSET = I2C_MB|I2C_SB;
+
+		SPI->ADDR = (spi_dsc->adr << 1) | ((spi_wrCount == 0) ? 1 : 0);
+
+	#elif defined(CPU_XMC48)
+
+		volatile u32 t;
+
+		SPI_DMA->DMACFGREG = 1;
+		SPI_DMA->CHENREG = SPI_DMA_CHDIS;
+
+		SPI_DMACH->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
+		SPI_DMACH->CTLH = BLOCK_TS(spi_dsc->rlen);
+
+		SPI_DMACH->SAR = (u32)&SPI->RBUF;
+		SPI_DMACH->DAR = (u32)spi_dsc->rdata;
+		SPI_DMACH->CFGL = HS_SEL_DST;
+		SPI_DMACH->CFGH = PROTCTL(1)|SRC_PER(SPI_DLR&7);
+
+		SPI->RBCTR = 0;
+		SPI->TBCTR = 0;
+		SPI->PSCR = ~0;
+
+		SPI->TCSR = SPI__TCSR|TDSSM(1);
+
+		SPI->CCR = SPI__CCR;
+		SPI->PCR_SSCMode = SPI__PCR|SELO(spi_dsc->SELO);
+
+		SPI_DMA->CHENREG = SPI_DMA_CHEN;
+
+		t = SPI->RBUF;
+		t = SPI->RBUF;
+
+		SPI->PSCR = ~0;
+
+		VectorTableExt[SPI_IRQ] = SPI_Handler;
+		CM4::NVIC->CLR_PR(SPI_IRQ);
+		CM4::NVIC->SET_ER(SPI_IRQ);
+
+		HW::DLR->LNEN |= SPI_DLR_LNEN;
+
+		SPI->INPR = RINP(0)|PINP(5)|TBINP(5)|TSINP(5);
+
+		SPI->PSCR = ~0;
+
+		SPI->CCR = SPI__CCR | ((spi_wrCount > 1) ? TBIEN : TSIEN);
+	
+		SPI->TBUF[0] = *(spi_wrPtr++);
+		spi_wrCount--;
+		
+		//SPI->IN[4] = 0;
 
 	#endif
 		
@@ -4014,8 +4084,6 @@ bool SPI_AddRequest(DSCSPI *d)
 
 	d->next = 0;
 	d->ready = false;
-
-	if (d->wdata2 == 0) d->wlen2 = 0;
 
 	__disable_irq();
 
@@ -4094,20 +4162,18 @@ bool SPI_Init()
 
 	HW::Peripheral_Enable(SPI_PID);
 
-	PIO_SPCK->ModePin(PIN_SPCK, A2PP);
-	PIO_MOSI->ModePin(PIN_MOSI, A2PP);
- 	PIO_MISO->ModePin(PIN_MISO, I2DPU);
-	PIO_CS->ModePin(PIN_CS0, A2PP);
-	PIO_CS->ModePin(PIN_CS1, A2PP);
 
 	SPI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
-	SPI->SCTR = SPI__SCTR;
+	SPI->CCR = 0;
 
 	SPI->FDR = SPI__FDR;
 	SPI->BRG = SPI__BRG;
     
+	SPI->SCTR = SPI__SCTR;
 	SPI->TCSR = SPI__TCSR;
+
+	SPI->PCR_SSCMode = SPI__PCR;
 
 	SPI->PSCR = ~0;
 
@@ -4116,14 +4182,31 @@ bool SPI_Init()
 	SPI->DX0CR = SPI__DX0CR;
 	SPI->DX1CR = SPI__DX1CR;
 
+	SPI->TBCTR = TBCTR_SIZE8|TBCTR_LIMIT(0);
+	SPI->RBCTR = RBCTR_SIZE8|RBCTR_LIMIT(0);
+
 	SPI->CCR = SPI__CCR;
 
+	PIO_SPCK->ModePin(PIN_SPCK, A2PP);
+	PIO_MOSI->ModePin(PIN_MOSI, A2PP);
+ 	PIO_MISO->ModePin(PIN_MISO, I0DNP);
+	PIO_CS->ModePin(PIN_CS0, A2PP);
+	PIO_CS->ModePin(PIN_CS1, A2PP);
 
-	SPI->PCR_IICMode = SPI__PCR;
+	//SPI->PCR_SSCMode = SPI__PCR|SELO(1);
+	
+//	SPI->PSCR |= TBIF;
 
-	VectorTableExt[SPI_IRQ] = SPI_Handler;
-	CM4::NVIC->CLR_PR(SPI_IRQ);
-	CM4::NVIC->SET_ER(SPI_IRQ);
+//	SPI->CCR = SPI__CCR|TBIEN;
+//	SPI->INPR = 0;
+
+	//SPI->IN[0] = 0x55;
+	//SPI->IN[0] = 0x55;
+
+	//while ((SPI->PSR & TSIF) == 0);
+
+//	SPI->CCR = SPI__CCR;
+
 
 #endif
 
@@ -4179,6 +4262,8 @@ void InitHardware()
 	InitShaft();
 
 	DisableVCORE();
+
+	SPI_Init();
 
 	WDT_Init();
 }

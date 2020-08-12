@@ -61,12 +61,14 @@ __packed struct ReqDsp01	// чтение вектора
 	u16 	sd; 
 	u16		thr;
 	u16		descr;
+	u16		freq;
 	u16 	refgain; 
 	u16 	refst;	 
 	u16 	refsl; 
 	u16 	refsd; 
 	u16		refthr;
 	u16		refdescr;
+	u16		refFreq;
 	u16		vavesPerRoundCM;
 	u16		vavesPerRoundIM;
 	u16		filtrType;
@@ -86,7 +88,7 @@ __packed struct RspDsp01	// чтение вектора
 	__packed union
 	{
 		__packed struct { u16 motoCount; u16 headCount; u16 ax; u16 ay; u16 az; u16 at; u16 sensType; u16 angle; u16 gain; u16 st; u16 sl; u16 sd; u16 pakType; u16 pakLen; u16 data[2048]; } CM;
-		__packed struct { u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 dataLen; u16 data[2048];} IM;
+		__packed struct { u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 refAmp;u16 refTime; u16 dataLen; u16 data[2048];} IM;
 	};
 };
 
