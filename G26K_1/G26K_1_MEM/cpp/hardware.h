@@ -119,13 +119,12 @@ struct DSCSPI
 	u16				wlen;
 	u16				rlen;
 	volatile bool	ready;
-	byte			SELO;
+	byte			csnum;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-extern bool SPI_Write(DSCSPI *d);
-extern bool SPI_Read(DSCSPI *d);
+extern bool SPI_AddRequest(DSCSPI *d);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

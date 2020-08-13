@@ -1541,6 +1541,173 @@ static void MainMode()
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static DSCSPI dscAccel;
+
+//static i16 ax = 0, ay = 0, az = 0, at = 0;
+
+
+static u8 txAccel[25] = { 0 };
+static u8 rxAccel[25];
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool AccelReadReg(byte reg, u16 count)
+{
+	dscAccel.adr = (reg<<1)|1;
+	dscAccel.alen = 1;
+	dscAccel.csnum = 0;
+	dscAccel.wdata = 0;
+	dscAccel.wlen = 0;
+	dscAccel.rdata = rxAccel;
+	dscAccel.rlen = count;
+
+	return SPI_AddRequest(&dscAccel);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool AccelWriteReg(byte reg, u16 count)
+{
+	dscAccel.adr = (reg<<1)|0;
+	dscAccel.alen = 1;
+	dscAccel.csnum = 0;
+	dscAccel.wdata = txAccel;
+	dscAccel.wlen = count;
+	dscAccel.rdata = 0;
+	dscAccel.rlen = 0;
+
+	return SPI_AddRequest(&dscAccel);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateAccel()
+{
+	static byte i = 0; 
+	static i32 x = 0, y = 0, z = 0, t = 0;
+	static i32 fx = 0, fy = 0, fz = 0, ft = 0;
+
+	static TM32 tm;
+
+	switch (i)
+	{
+		case 0:
+
+			txAccel[0] = 0x52;
+			AccelWriteReg(0x2F, 1); // Reset
+
+			i++;
+
+			break;
+
+		case 1:
+
+			if (dscAccel.ready)
+			{
+				tm.Reset();
+
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			if (tm.Check(35))
+			{
+				AccelReadReg(0, 4);
+
+				i++;
+			};
+
+			break;
+
+		case 3:
+
+			if (dscAccel.ready)
+			{
+				txAccel[0] = 0;
+				AccelWriteReg(0x2D, 1); // CTRL Set PORST to zero
+
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (dscAccel.ready)
+			{
+				AccelReadReg(0x2D, 1);
+
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if (dscAccel.ready)
+			{
+				if (rxAccel[0] != 0)
+				{
+					txAccel[0] = 0;
+					AccelWriteReg(0x2D, 1); // CTRL Set PORST to zero
+					i--; 
+				}
+				else
+				{
+					tm.Reset();
+					i++;
+				};
+			};
+
+			break;
+
+		case 6:
+
+			if (tm.Check(10))
+			{
+				AccelReadReg(6, 11); // X_MSB 
+
+				i++;
+			};
+
+			break;
+
+		case 7:
+
+			if (dscAccel.ready)
+			{
+				t = (rxAccel[0] << 8) | rxAccel[1];
+				x = (rxAccel[2] << 24) | (rxAccel[3] << 16) | (rxAccel[4]<<8);
+				y = (rxAccel[5] << 24) | (rxAccel[6] << 16) | (rxAccel[7]<<8);
+				z = (rxAccel[8] << 24) | (rxAccel[9] << 16) | (rxAccel[10]<<8);
+
+				x /= 4096;
+				y /= 4096;
+				z /= 4096;
+
+				fx += (((i32)x * 65536) - fx) / 16;
+				fy += (((i32)y * 65536) - fy) / 16;
+				fz += (((i32)z * 65536) - fz) / 16;
+
+				ax = (i32)fx / 23617;
+				ay = (i32)fy / 23617;
+				az = (i32)fz / 23617;
+
+				//at = 250 + ((1852 - t) * 72416)/65536;
+				at = 250 + (1852 - t) * 1.1049723756906077348066298342541f;
+
+				i--;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateTemp()
 {
 	static byte i = 0;
@@ -1767,7 +1934,7 @@ static void UpdateParams()
 		CALL( FLASH_Update();	);
 		CALL( UpdateTraps();	);
 		CALL( UpdateHardware();	);
-//		CALL( I2C_Update();		);
+		CALL( UpdateAccel();	);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -1954,7 +2121,7 @@ int main()
 
 	ComPort::WriteBuffer wb;
 
-	DSCSPI dsc;
+	DSCSPI dsc, dsc2;
 
 
 	while (1)
@@ -1973,13 +2140,24 @@ int main()
 		{ 
 			fps = fc; fc = 0; 
 
-			dsc.adr = 0x1;
-			dsc.alen = 4;
-			dsc.SELO = 1;
-			dsc.rdata = buf;
-			dsc.rlen = 10;
+			//dsc.adr = (0x2D<<1)|1;
+			//dsc.alen = 1;
+			//dsc.csnum = 0;
+			//dsc.wdata = buf;
+			//dsc.wlen = 0;
+			//dsc.rdata = buf;
+			//dsc.rlen = 1;
 
-			SPI_Read(&dsc);
+			//dsc2.adr = 0x2D<<1;
+			//dsc2.alen = 1;
+			//dsc2.csnum = 0;
+			//dsc2.wdata = buf;
+			//dsc2.wlen = 1;
+			//dsc2.rdata = 0;
+			//dsc2.rlen = 0;
+
+			//SPI_AddRequest(&dsc2);
+			//SPI_AddRequest(&dsc);
 		};
 
 	}; // while (1)
