@@ -5,19 +5,12 @@
 #include "common.h"
 #include "trap.h"
 #include "main.h"
-//#include "power.h"
-//#include "fram.h"
 #include "flash.h"
-//#include "sensors.h"
 #include "emac.h"
-//#include "mode_online.h"
-//#include "mode_ethernet.h"
-//#include "bootloader.h"
 #include "hardware.h"
 
 #include "trap_def.h"
 #include "xtrap.h"
-//#include "CRC16.h"
 
 #pragma diag_suppress 2548,546,550,177
 

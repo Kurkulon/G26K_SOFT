@@ -8,6 +8,7 @@
 #include "CRC16_CCIT.h"
 #include "req.h"
 #include "list.h"
+#include "PointerCRC.h"
 
 #ifdef CPU_SAME53	
 #elif defined(CPU_XMC48)
@@ -26,6 +27,7 @@
 u32 fps;
 i16 tempClock = 0;
 i16 cpu_temp = 0;
+u32 i2cResetCount = 0;
 
 //inline u16 ReverseWord(u16 v) { __asm	{ rev16 v, v };	return v; }
 
@@ -71,7 +73,7 @@ static List<R01> readyR01;
 
 static byte fireType = 0;
 
-static byte gain = 0;
+static u16 gain = 0;
 static u16 sampleTime = 5;
 static u16 sampleLen = 1024;
 static u16 sampleDelay = 200;
@@ -79,7 +81,7 @@ static u16 deadTime = 400;
 static u16 descriminant = 400;
 static u16 freq = 500;
 
-static byte gainRef = 0;
+static u16 gainRef = 0;
 static u16 sampleTimeRef = 5;
 static u16 sampleLenRef = 1024;
 static u16 sampleDelayRef = 200;
@@ -150,7 +152,30 @@ i16 temperature = 0;
 i16 cpuTemp = 0;
 i16 temp = 0;
 
+static byte savesCount = 0;
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SaveParams()
+{
+
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetNumDevice(u16 num)
+{
+	numDevice = num;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+extern u16 GetNumDevice()
+{
+	return numDevice;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void Update_RPS_SPR()
 {
@@ -708,10 +733,10 @@ static u32 InitRspMan_20(__packed u16 *data)
 	*(data++)  	= motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
 	*(data++)  	= GetShaftRPS();	//	9. Частота вращения головки (0.01 об/сек)
 	*(data++)  	= GetShaftCount();	//	10. Счётчик оборотов головки (об)
-	*(data++)  	= -ax;				//	11. AX (уе)
-	*(data++)  	= az;				//	12. AY (уе)
-	*(data++)  	= -ay;				//	13. AZ (уе)
-	*(data++)  	= tempClock;		//	14. AT (short 0.01 гр)
+	*(data++)  	= ax;				//	11. AX (уе)
+	*(data++)  	= ay;				//	12. AY (уе)
+	*(data++)  	= az;				//	13. AZ (уе)
+	*(data++)  	= at;				//	14. AT (short 0.01 гр)
 	*(data++)	= temp;				//	15. Температура в приборе (short)(0.1гр)
 	
 	return data - start;
@@ -1287,7 +1312,7 @@ static bool RequestMem_F0(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	SaveParams();
+	//SaveParams();
 
 	manTrmData[0] = (memReqWord & memReqMask) | 0xF0;
 
@@ -1555,6 +1580,7 @@ static bool AccelReadReg(byte reg, u16 count)
 {
 	dscAccel.adr = (reg<<1)|1;
 	dscAccel.alen = 1;
+	//dscAccel.baud = 8000000;
 	dscAccel.csnum = 0;
 	dscAccel.wdata = 0;
 	dscAccel.wlen = 0;
@@ -1626,8 +1652,8 @@ static void UpdateAccel()
 
 			if (dscAccel.ready)
 			{
-				txAccel[0] = 0;
-				AccelWriteReg(0x2D, 1); // CTRL Set PORST to zero
+				txAccel[0] = 4;
+				AccelWriteReg(0x28, 1); // FILTER SETTINGS REGISTER
 
 				i++;
 			};
@@ -1638,7 +1664,8 @@ static void UpdateAccel()
 
 			if (dscAccel.ready)
 			{
-				AccelReadReg(0x2D, 1);
+				txAccel[0] = 0;
+				AccelWriteReg(0x2D, 1); // CTRL Set PORST to zero
 
 				i++;
 			};
@@ -1646,6 +1673,17 @@ static void UpdateAccel()
 			break;
 
 		case 5:
+
+			if (dscAccel.ready)
+			{
+				AccelReadReg(0x2D, 1);
+
+				i++;
+			};
+
+			break;
+
+		case 6:
 
 			if (dscAccel.ready)
 			{
@@ -1664,7 +1702,7 @@ static void UpdateAccel()
 
 			break;
 
-		case 6:
+		case 7:
 
 			if (tm.Check(10))
 			{
@@ -1675,7 +1713,7 @@ static void UpdateAccel()
 
 			break;
 
-		case 7:
+		case 8:
 
 			if (dscAccel.ready)
 			{
@@ -1684,20 +1722,20 @@ static void UpdateAccel()
 				y = (rxAccel[5] << 24) | (rxAccel[6] << 16) | (rxAccel[7]<<8);
 				z = (rxAccel[8] << 24) | (rxAccel[9] << 16) | (rxAccel[10]<<8);
 
-				x /= 4096;
-				y /= 4096;
-				z /= 4096;
+				//x /= 4096;
+				//y /= 4096;
+				//z /= 4096;
 
-				fx += (((i32)x * 65536) - fx) / 16;
-				fy += (((i32)y * 65536) - fy) / 16;
-				fz += (((i32)z * 65536) - fz) / 16;
+				fx += (x - fx) / 8;
+				fy += (y - fy) / 8;
+				fz += (z - fz) / 8;
 
-				ax = (i32)fx / 23617;
-				ay = (i32)fy / 23617;
-				az = (i32)fz / 23617;
+				ax = -(fz / 32768); 
+				ay = (fx / 32768); 
+				az = -(fy / 32768);
 
-				//at = 250 + ((1852 - t) * 72416)/65536;
-				at = 250 + (1852 - t) * 1.1049723756906077348066298342541f;
+				at = 250 + ((1852 - t) * 1000 + 452) / 905;
+				//at = 250 + (1852 - t) * 1.1049723756906077348066298342541f;
 
 				i--;
 			};
@@ -1861,6 +1899,21 @@ static void UpdateTemp()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateI2C()
+{
+	if (!comdsp.Update())
+	{
+		if (I2C_Update())
+		{
+			comdsp.InitHW();
+
+			i2cResetCount++;
+		};
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateMoto()
 {
 	static TM32 tm;
@@ -1935,6 +1988,7 @@ static void UpdateParams()
 		CALL( UpdateTraps();	);
 		CALL( UpdateHardware();	);
 		CALL( UpdateAccel();	);
+		CALL( UpdateI2C();		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -2061,6 +2115,172 @@ static void FlashDSP()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void LoadVars()
+{
+//	PointerCRC p(buf);
+//
+//	static DSCI2C dsc;
+//	static u16 romAdr = 0;
+//
+//	romAdr = ReverseWord(0);
+//
+//	dsc.wdata = &romAdr;
+//	dsc.wlen = sizeof(romAdr);
+//	dsc.wdata2 = 0;
+//	dsc.wlen2 = 0;
+//	dsc.rdata = buf;
+//	dsc.rlen = sizeof(buf);
+//	dsc.adr = 0x50;
+//
+//
+//	if (I2C_AddRequest(&dsc))
+//	{
+//		while (!dsc.ready);
+//	};
+//
+////	bool c = false;
+//
+//	loadVarsOk = false;
+//
+//	for (byte i = 0; i < 2; i++)
+//	{
+//		p.CRC.w = 0xFFFF;
+//		p.ReadArrayB(&nvv, sizeof(nvv)+2);
+//
+//		if (p.CRC.w == 0) { loadVarsOk = true; break; };
+//	};
+//
+//	if (!loadVarsOk)
+//	{
+//		//nvv.numDevice = 0;
+//		nvv.index = 0;
+//		nvv.prevFilePage = -1;
+//
+//		nvv.f.session = 0;
+//		nvv.f.size = 0;
+//		nvv.f.startPage = 0;
+//		nvv.f.lastPage = 0;
+//		GetTime(&nvv.f.start_rtc);
+//		GetTime(&nvv.f.stop_rtc);
+//		nvv.f.flags = 0;
+//
+//		for (u32 i = 0; i < ArraySize(nvv.badBlocks); i++)
+//		{
+//			nvv.badBlocks[i] = 0;
+//		};
+//
+//		savesCount = 2;
+//	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void SaveVars()
+{
+	static DSCI2C dsc;
+	static DSCSPI spi;
+	static u16 romAdr = 0;
+	static byte buf[100];
+
+	static byte i = 0;
+//	static RTM32 tm;
+
+	PointerCRC p(buf);
+
+	switch (i)
+	{
+		case 0:
+
+			if (savesCount > 0)
+			{
+				savesCount--;
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			for (byte j = 0; j < 2; j++)
+			{
+				p.CRC.w = 0xFFFF;
+				p.WriteW(numDevice			);
+				p.WriteW(numMemDevice		);
+				p.WriteW(gain				);
+				p.WriteW(sampleTime			);
+				p.WriteW(sampleLen			);
+				p.WriteW(sampleDelay 		);
+				p.WriteW(deadTime			);
+				p.WriteW(descriminant		);
+				p.WriteW(freq				);
+				p.WriteW(gainRef			);
+				p.WriteW(sampleTimeRef		);
+				p.WriteW(sampleLenRef		);
+				p.WriteW(sampleDelayRef 	);
+				p.WriteW(deadTimeRef		);
+				p.WriteW(descriminantRef	);
+				p.WriteW(refFreq			);
+				p.WriteW(filtrType			);
+				p.WriteW(packType			);
+				p.WriteW(cmSPR				);
+				p.WriteW(imSPR				);
+				p.WriteW(p.CRC.w			);
+			};
+
+			spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|2;
+			spi.alen = 4;
+			spi.csnum = 1;
+			spi.wdata = buf;
+			spi.wlen = p.b-buf;
+			spi.rdata = 0;
+			spi.rlen = 0;
+
+			romAdr = ReverseWord(FRAM_I2C_MAINVARS_ADR);
+
+			dsc.wdata = &romAdr;
+			dsc.wlen = sizeof(romAdr);
+			dsc.wdata2 = buf;
+			dsc.wlen2 = p.b-buf;
+			dsc.rdata = 0;
+			dsc.rlen = 0;
+			dsc.adr = 0x50;
+
+			SPI_AddRequest(&spi);
+
+			i++;
+
+			break;
+
+		case 2:
+
+			I2C_AddRequest(&dsc);
+
+			i++;
+
+			break;
+
+		case 3:
+
+			if (spi.ready)
+			{
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (dsc.ready)
+			{
+				i = 0;
+			};
+
+			break;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifdef CPU_SAME53
 
 	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
@@ -2140,13 +2360,14 @@ int main()
 		{ 
 			fps = fc; fc = 0; 
 
-			//dsc.adr = (0x2D<<1)|1;
-			//dsc.alen = 1;
-			//dsc.csnum = 0;
-			//dsc.wdata = buf;
+			//dsc.adr = 3;
+			//dsc.alen = 4;
+			//dsc.baud = 30000000;
+			//dsc.csnum = 1;
+			//dsc.wdata = 0;
 			//dsc.wlen = 0;
 			//dsc.rdata = buf;
-			//dsc.rlen = 1;
+			//dsc.rlen = 100;
 
 			//dsc2.adr = 0x2D<<1;
 			//dsc2.alen = 1;

@@ -16,6 +16,11 @@
 #define NAND_RAWBLOCK_MASK	((1 << (NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 #define NAND_RAWADR_MASK	(((u64)1 << (NAND_COL_BITS + NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 
+#define FRAM_SPI_MAINVARS_ADR 0
+#define FRAM_SPI_SESSIONS_ADR 0
+
+#define FRAM_I2C_MAINVARS_ADR 0
+#define FRAM_I2C_SESSIONS_ADR 0
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -103,15 +108,15 @@ struct DSCI2C
 //inline bool Read_I2C(DSCI2C *d) { return Write_I2C(d); }
 //extern bool Check_I2C_ready();
 extern bool I2C_AddRequest(DSCI2C *d);
-extern void I2C_Update();
+extern bool I2C_Update();
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct DSCSPI
 {
 	DSCSPI*			next;
-	u32				baud;
-	u32				FDR;
+	//u32				baud;
+	//u32				FDR;
 	void*			wdata;
 	void*			rdata;
 	u32				adr;

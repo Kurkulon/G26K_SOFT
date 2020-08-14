@@ -110,6 +110,9 @@ class ComPort
 		u32					_dmaChMask;
 		u32					_dlr;
 		u32					_inpr_sr;
+		u32					_brg;
+		u32					_pcr;
+
 
 		bool IsTransmited() { return (_SU->PSR & BUSY) == 0 && !(_dma->CHENREG & _dmaChMask); }
 //		u16	GetDmaCounter() { return BLOCK_TS(_chdma->CTLH); }
@@ -173,6 +176,7 @@ class ComPort
 	bool		ConnectSync(byte port, dword speed, byte parity, byte stopBits);
 	bool		Disconnect();
 	bool		Update();
+	void		InitHW();
 
 	bool		Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword postTimeout);
 	bool		Write(ComPort::WriteBuffer *writeBuffer);

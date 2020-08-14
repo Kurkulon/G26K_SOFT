@@ -49,7 +49,7 @@ extern void GetTime(RTC *t);
 
 inline u32 GetMilliseconds()
 {
-	extern u32 msec;
+	extern volatile u32 msec;
 	return msec;
 }
 
@@ -57,7 +57,7 @@ inline u32 GetMilliseconds()
 
 inline word GetMillisecondsLow()
 {
-	extern u32 msec;
+	extern volatile u32 msec;
 	return (u16)msec;
 }
 

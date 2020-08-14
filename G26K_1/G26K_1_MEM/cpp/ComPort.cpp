@@ -162,52 +162,62 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 
 		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
 
-		HW::Peripheral_Enable(cb.usic_pid);
-
-		_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
 		switch (ct)
 		{
 			case ASYNC:
 
-				_SU->BRG = __BRG_ASYN;
-				_SU->PCR_ASCMode = __PCR_ASYN | ((stopBits == 2) ? STPB(1) : 0);;
-				_BaudRateRegister = BoudToPresc(speed) | DM(1);
+				_brg				= __BRG_ASYN;
+				_pcr				= __PCR_ASYN | ((stopBits == 2) ? STPB(1) : 0);;
+				_BaudRateRegister	= BoudToPresc(speed) | DM(1);
 
 				break;
 
 			case SYNC_M:
 
-				_SU->BRG			= __BRG_SYNC;
-				_SU->PCR_ASCMode	= __PCR_SYNC | ((stopBits == 2) ? STPB(1) : 0);
-				_BaudRateRegister = BoudToPresc(speed) | DM(1);
+				_brg				= __BRG_SYNC;
+				_pcr				= __PCR_SYNC | ((stopBits == 2) ? STPB(1) : 0);
+				_BaudRateRegister	= BoudToPresc(speed) | DM(1);
 
 				break;
 
 			case SYNC_S:
 
-				_SU->BRG			= __BRG_SYNC;
-				_SU->PCR_ASCMode	= __PCR_SYNC | ((stopBits == 2) ? STPB(1) : 0);
-				_BaudRateRegister = 0;
+				_brg				= __BRG_SYNC;
+				_pcr				= __PCR_SYNC | ((stopBits == 2) ? STPB(1) : 0);
+				_BaudRateRegister	= 0;
 
 				break;
 
 		};
 
-		_SU->FDR			= _BaudRateRegister;
-		_SU->SCTR			= __SCTR;
-		_SU->DX0CR			= DSEL(cb.dsel);//__DX0CR;
-		_SU->DX1CR			= DPOL(1);
-		_SU->TCSR			= __TCSR;
-		_SU->PSCR			= ~0;
-		_SU->CCR			= _ModeRegister;
-
+		InitHW();
 
 	#endif
 
 	_status485 = READ_END;
 
 	return _connected = cb.used = true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void ComPort::InitHW()
+{
+	HW::Peripheral_Enable(_cb->usic_pid);
+
+	_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+	_SU->BRG = _brg;		
+	_SU->PCR_ASCMode = _pcr;
+
+	_SU->FDR			= _BaudRateRegister;
+	_SU->SCTR			= __SCTR;
+	_SU->DX0CR			= DSEL(_cb->dsel);//__DX0CR;
+	_SU->DX1CR			= DPOL(1);
+	_SU->TCSR			= __TCSR;
+	_SU->PSCR			= ~0;
+	_SU->CCR			= _ModeRegister;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -6,8 +6,8 @@
 #include "hardware.h"
 //#include "options.h"
 
-//#pragma O3
-//#pragma Otime
+#pragma O3
+#pragma Otime
 
 #ifdef CPU_SAME53	
 #elif defined(CPU_XMC48)
@@ -704,7 +704,11 @@ u16 curShaftCounter = 0;
 
 	#define SPI__PCR (MSLSEN | SELINV |  TIWEN | MCLK | CTQSEL1(0) | PCTQ1(0) | DCTQ1(0))
 
-	#define SPI__FDR ((1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1))
+	#define SPI__BAUD (8000000)
+
+	#define SPI__FDR ((1024 - ((MCK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
+
+	#define SPI__BAUD2FDR(v) ((1024 - ((MCK + (v)/2) / (v) + 1) / 2) | DM(1))
 
 	#define SPI__TCSR (TDEN(1)|HPCMD(0))
 
@@ -1144,7 +1148,7 @@ void NAND_WRITE(byte data)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void CMD_LATCH(byte cmd)
+static void NAND_CMD_LATCH(byte cmd)
 { 
 	#ifdef CPU_SAME53	
 
@@ -1162,7 +1166,7 @@ static void CMD_LATCH(byte cmd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void ADR_LATCH(byte cmd)
+static void NAND_ADR_LATCH(byte cmd)
 {
 	#ifdef CPU_SAME53	
 
@@ -1180,7 +1184,7 @@ static void ADR_LATCH(byte cmd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void ADR_LATCH_COL(u16 col) 
+static void NAND_ADR_LATCH_COL(u16 col) 
 { 
 	#ifdef CPU_SAME53	
 
@@ -1199,7 +1203,7 @@ static void ADR_LATCH_COL(u16 col)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void ADR_LATCH_ROW(u32 row) 
+static void NAND_ADR_LATCH_ROW(u32 row) 
 { 
 	#ifdef CPU_SAME53	
 
@@ -1219,7 +1223,7 @@ static void ADR_LATCH_ROW(u32 row)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void ADR_LATCH_COL_ROW(u16 col, u32 row)
+static void NAND_ADR_LATCH_COL_ROW(u16 col, u32 row)
 { 
 	#ifdef CPU_SAME53	
 
@@ -1287,7 +1291,7 @@ inline void DisableWriteProtect()
 byte NAND_CmdReadStatus()
 {
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_READ_STATUS);
+	NAND_CMD_LATCH(NAND_CMD_READ_STATUS);
 	NAND_DIR_IN();
 	return NAND_READ();
 }
@@ -1331,7 +1335,8 @@ bool ResetNand()
 {
 	while(NAND_BUSY());
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_RESET);
+	NAND_CMD_LATCH(NAND_CMD_RESET);
+	NAND_CmdReadStatus();
 	while(NAND_BUSY());
 	return true;
 }
@@ -1379,8 +1384,8 @@ bool NAND_CheckDataComplete()
 static bool NAND_Read_ID(NandID *id)
 {
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_READ_ID);
-	ADR_LATCH(0);
+	NAND_CMD_LATCH(NAND_CMD_READ_ID);
+	NAND_ADR_LATCH(0);
 	NAND_DIR_IN();
 
 	NAND_ReadDataDMA(id, sizeof(NandID));
@@ -1403,9 +1408,9 @@ void NAND_CmdEraseBlock(u32 bl)
 {
 	bl = NAND_ROW(bl, 0);
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_BLOCK_ERASE_1);
-	ADR_LATCH_ROW(bl);
-	CMD_LATCH(NAND_CMD_BLOCK_ERASE_2);
+	NAND_CMD_LATCH(NAND_CMD_BLOCK_ERASE_1);
+	NAND_ADR_LATCH_ROW(bl);
+	NAND_CMD_LATCH(NAND_CMD_BLOCK_ERASE_2);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1413,9 +1418,9 @@ void NAND_CmdEraseBlock(u32 bl)
 void NAND_CmdRandomRead(u16 col)
 {
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_RANDREAD_1);
-	ADR_LATCH_COL(col);
-	CMD_LATCH(NAND_CMD_RANDREAD_2);
+	NAND_CMD_LATCH(NAND_CMD_RANDREAD_1);
+	NAND_ADR_LATCH_COL(col);
+	NAND_CMD_LATCH(NAND_CMD_RANDREAD_2);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1424,9 +1429,9 @@ void NAND_CmdReadPage(u16 col, u32 bl, u16 pg)
 {
 	bl = NAND_ROW(bl, pg);
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_READ_1);
-	ADR_LATCH_COL_ROW(col, bl);
-	CMD_LATCH(NAND_CMD_READ_2);
+	NAND_CMD_LATCH(NAND_CMD_READ_1);
+	NAND_ADR_LATCH_COL_ROW(col, bl);
+	NAND_CMD_LATCH(NAND_CMD_READ_2);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1435,8 +1440,8 @@ void NAND_CmdWritePage(u16 col, u32 bl, u16 pg)
 {
 	bl = NAND_ROW(bl, pg);
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_PAGE_PROGRAM_1);
-	ADR_LATCH_COL_ROW(col, bl);
+	NAND_CMD_LATCH(NAND_CMD_PAGE_PROGRAM_1);
+	NAND_ADR_LATCH_COL_ROW(col, bl);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1444,7 +1449,7 @@ void NAND_CmdWritePage(u16 col, u32 bl, u16 pg)
 void NAND_CmdWritePage2()
 {
 	NAND_DIR_OUT();
-	CMD_LATCH(NAND_CMD_PAGE_PROGRAM_2);
+	NAND_CMD_LATCH(NAND_CMD_PAGE_PROGRAM_2);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2995,8 +3000,10 @@ bool I2C_AddRequest(DSCI2C *d)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void I2C_Update()
+bool I2C_Update()
 {
+	bool result = false;
+
 #ifdef CPU_SAME53
 
 #elif defined(CPU_XMC48)
@@ -3015,6 +3022,8 @@ void I2C_Update()
 		}
 		else if (tm.Check(10))
 		{
+			result = true;
+
 			HW::Peripheral_Disable(PID_USIC2);
 
  			P5->ModePin0(A1OD);
@@ -3095,6 +3104,7 @@ void I2C_Update()
 
 #endif
 
+	return result;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -4243,6 +4253,7 @@ static bool SPI_WriteRead(DSCSPI *d)
 
 			SPI->TCSR = SPI__TCSR|TDSSM(1);
 
+			//SPI->FDR = SPI__BAUD2FDR(spi_dsc->baud);
 			SPI->CCR = SPI__CCR;
 			SPI->PCR_SSCMode = SPI__PCR|SELO(1<<spi_dsc->csnum);
 
@@ -4513,7 +4524,7 @@ void InitHardware()
 
 	InitShaft();
 
-	DisableVCORE();
+	EnableVCORE();
 
 	SPI_Init();
 

@@ -13,4 +13,8 @@
 //	MAIN_MODE_AUTONOM,
 //} main_mode_type;
 
+extern void SetNumDevice(u16 num);
+extern u16 GetNumDevice();
+extern void SaveParams();
+
 #endif

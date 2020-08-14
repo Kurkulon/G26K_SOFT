@@ -103,7 +103,7 @@ u16 deviceID = 0;
 
 __packed struct NVV // NonVolatileVars  
 {
-	u16 numDevice;
+	//u16 numDevice;
 
 	FileDsc f;
 
@@ -148,7 +148,10 @@ static bool loadSessionsOk = false;
 
 u32 verifyFlashErrors = 0;
 
+inline void SaveParams() { savesCount = 1; }
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 const SessionInfo* GetLastSessionInfo()
 {
@@ -196,20 +199,6 @@ static u32		invalidBlocks = 0;
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //static ComPort com1;
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void SetNumDevice(u16 num)
-{
-	nvv.numDevice = num;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-extern u16 GetNumDevice()
-{
-	return nvv.numDevice;
-}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2446,7 +2435,7 @@ static void LoadVars()
 	static DSCI2C dsc;
 	static u16 romAdr = 0;
 
-	romAdr = ReverseWord(0);
+	romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR);
 
 	dsc.wdata = &romAdr;
 	dsc.wlen = sizeof(romAdr);
@@ -2476,7 +2465,7 @@ static void LoadVars()
 
 	if (!loadVarsOk)
 	{
-		nvv.numDevice = 0;
+		//nvv.numDevice = 0;
 		nvv.index = 0;
 		nvv.prevFilePage = -1;
 
@@ -2551,7 +2540,7 @@ static void SaveVars()
 		case 1:
 
 
-			romAdr = ReverseWord(0);
+			romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR);
 
 			dsc.wdata = &romAdr;
 			dsc.wlen = sizeof(romAdr);
@@ -2588,7 +2577,7 @@ static void SaveVars()
 
 				//u32 adr = sa+sizeof(si)*nvv.index;
 
-				romAdr = ReverseWord(sa+sizeof(si)*nvv.index);
+				romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa+sizeof(si)*nvv.index);
 
 				dsc.wdata = &romAdr;
 				dsc.wlen = sizeof(romAdr);
@@ -2609,7 +2598,7 @@ static void SaveVars()
 
 		case 4:
 
-			romAdr = ReverseWord(sa);
+			romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa);
 
 			dsc.wdata = &romAdr;
 			dsc.wlen = sizeof(romAdr);
@@ -2644,7 +2633,7 @@ static void LoadSessions()
 
 		//u32 adr = sa+sizeof(si)*i;
 
-		romAdr = ReverseWord(sa+sizeof(si)*i);
+		romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa+sizeof(si)*i);
 
 		dsc.wdata = &romAdr;
 		dsc.wlen = sizeof(romAdr);

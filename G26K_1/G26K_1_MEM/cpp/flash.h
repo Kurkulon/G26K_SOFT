@@ -210,8 +210,6 @@ extern void NAND_Idle();
 extern void NAND_FullErase();
 //extern void NAND_NextSession();
 
-extern void SetNumDevice(u16 num);
-extern u16 GetNumDevice();
 inline u16 GetDeviceID() { extern u16 deviceID; return deviceID; }
 
 extern void StartSendSession();
@@ -219,7 +217,6 @@ extern FileDsc* GetSessionInfo(u16 session, u64 adr);
 
 //extern const SessionInfo* GetLastSessionInfo();
 
-inline void SaveParams() { extern byte savesCount; savesCount = 1; }
 
 /*************************/
 extern void FLASH_Init();
