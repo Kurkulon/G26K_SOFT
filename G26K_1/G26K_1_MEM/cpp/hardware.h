@@ -17,10 +17,10 @@
 #define NAND_RAWADR_MASK	(((u64)1 << (NAND_COL_BITS + NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 
 #define FRAM_SPI_MAINVARS_ADR 0
-#define FRAM_SPI_SESSIONS_ADR 0
+#define FRAM_SPI_SESSIONS_ADR 0x200
 
 #define FRAM_I2C_MAINVARS_ADR 0
-#define FRAM_I2C_SESSIONS_ADR 0
+#define FRAM_I2C_SESSIONS_ADR 0x200
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

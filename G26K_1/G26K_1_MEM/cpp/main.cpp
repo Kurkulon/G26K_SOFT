@@ -21,6 +21,36 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+__packed struct MainVars // NonVolatileVars  
+{
+	u16 numDevice;
+	u16 numMemDevice;
+
+	u16 gain;
+	u16 sampleTime;
+	u16 sampleLen;
+	u16 sampleDelay;
+	u16 deadTime;
+	u16 descriminant;
+	u16 freq;
+
+	u16 gainRef;
+	u16 sampleTimeRef;
+	u16 sampleLenRef;
+	u16 sampleDelayRef;
+	u16 deadTimeRef;
+	u16 descriminantRef;
+	u16 refFreq;
+	u16 filtrType;
+	u16 packType;
+	u16 cmSPR;
+	u16 imSPR;
+};
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static MainVars mv;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -73,25 +103,26 @@ static List<R01> readyR01;
 
 static byte fireType = 0;
 
-static u16 gain = 0;
-static u16 sampleTime = 5;
-static u16 sampleLen = 1024;
-static u16 sampleDelay = 200;
-static u16 deadTime = 400;
-static u16 descriminant = 400;
-static u16 freq = 500;
+//static u16 gain = 0;
+//static u16 sampleTime = 5;
+//static u16 sampleLen = 1024;
+//static u16 sampleDelay = 200;
+//static u16 deadTime = 400;
+//static u16 descriminant = 400;
+//static u16 freq = 500;
 
-static u16 gainRef = 0;
-static u16 sampleTimeRef = 5;
-static u16 sampleLenRef = 1024;
-static u16 sampleDelayRef = 200;
-static u16 deadTimeRef = 400;
-static u16 descriminantRef = 400;
-static u16 refFreq = 500;
-static u16 filtrType = 0;
-static u16 packType = 0;
+//static u16 gainRef = 0;
+//static u16 sampleTimeRef = 5;
+//static u16 sampleLenRef = 1024;
+//static u16 sampleDelayRef = 200;
+//static u16 deadTimeRef = 400;
+//static u16 descriminantRef = 400;
+//static u16 refFreq = 500;
+//static u16 filtrType = 0;
+//static u16 packType = 0;
 //static u16 vavesPerRoundCM = 100;	
 //static u16 vavesPerRoundIM = 100;
+
 static u16 mode = 0;
 
 static TM32 imModeTimeout;
@@ -102,8 +133,8 @@ static u16 motoRPS = 0;			// обороты двигателя, об/сек
 static u16 motoCur = 0;			// ток двигателя, мА
 static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
 static u16 motoCounter = 0;		// счётчик оборотов двигателя 1/6 оборота
-static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
-static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
+//static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
+//static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
 //static u16 *curSPR = &cmSPR;	// Количество импульсов излучателя на оборот в текущем режиме
 
 static u32 dspMMSEC = 0;
@@ -118,10 +149,10 @@ static u16 manReqMask = 0xFF00;
 static u16 memReqWord = 0x3D00;
 static u16 memReqMask = 0xFF00;
 
-static u16 numDevice = 0;
+//static u16 numDevice = 0;
 static u16 verDevice = 0x100;
 
-static u16 numMemDevice = 0;
+//static u16 numMemDevice = 0;
 static u16 verMemDevice = 0x100;
 
 static u32 manCounter = 0;
@@ -158,28 +189,28 @@ static byte savesCount = 0;
 
 void SaveParams()
 {
-
+	savesCount = 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void SetNumDevice(u16 num)
 {
-	numDevice = num;
+	mv.numDevice = num;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 extern u16 GetNumDevice()
 {
-	return numDevice;
+	return mv.numDevice;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void Update_RPS_SPR()
 {
-	Set_Sync_Rot(motoTargetRPS, (mode == 0) ? cmSPR : imSPR);
+	Set_Sync_Rot(motoTargetRPS, (mode == 0) ? mv.cmSPR : mv.imSPR);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -354,24 +385,24 @@ R01* CreateDspReq01(u16 tryCount)
 	req.rw				= dspReqWord|1;
 	req.mode 			= mode;
 	req.motoCount		= motoCounter;
-	req.gain 			= gain;
-	req.st	 			= sampleTime;
-	req.sl 				= sampleLen;
-	req.sd 				= sampleDelay;
-	req.thr				= descriminant;
-	req.descr			= deadTime;
-	req.freq			= freq;
-	req.refgain 		= gainRef;
-	req.refst			= sampleTimeRef;
-	req.refsl 			= sampleLenRef;
-	req.refsd 			= sampleDelayRef;
-	req.refthr			= deadTimeRef;
-	req.refdescr		= descriminantRef;
-	req.refFreq			= refFreq;
-	req.vavesPerRoundCM = cmSPR;
-	req.vavesPerRoundIM = imSPR;
-	req.filtrType		= filtrType;
-	req.packType		= packType;
+	req.gain 			= mv.gain;
+	req.st	 			= mv.sampleTime;
+	req.sl 				= mv.sampleLen;
+	req.sd 				= mv.sampleDelay;
+	req.thr				= mv.descriminant;
+	req.descr			= mv.deadTime;
+	req.freq			= mv.freq;
+	req.refgain 		= mv.gainRef;
+	req.refst			= mv.sampleTimeRef;
+	req.refsl 			= mv.sampleLenRef;
+	req.refsd 			= mv.sampleDelayRef;
+	req.refthr			= mv.deadTimeRef;
+	req.refdescr		= mv.descriminantRef;
+	req.refFreq			= mv.refFreq;
+	req.vavesPerRoundCM = mv.cmSPR;
+	req.vavesPerRoundIM = mv.imSPR;
+	req.filtrType		= mv.filtrType;
+	req.packType		= mv.packType;
 
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
 
@@ -628,7 +659,7 @@ static u32 InitRspMan_00(__packed u16 *data)
 	__packed u16 *start = data;
 
 	*(data++)	= (manReqWord & manReqMask) | 0;
-	*(data++)	= numDevice;
+	*(data++)	= mv.numDevice;
 	*(data++)	= verDevice;
 	
 	return data - start;
@@ -668,24 +699,24 @@ static u32 InitRspMan_10(__packed u16 *data)
 	__packed u16 *start = data;
 
 	*(data++)	= (manReqWord & manReqMask) | 0x10;		//1. Ответное слово
-	*(data++)	= gain;									//2. КУ (измерительный датчик)
-	*(data++)	= sampleTime;							//3. Шаг оцифровки
-	*(data++)	= sampleLen;							//4. Длина оцифровки
-	*(data++)	= sampleDelay; 							//5. Задержка оцифровки
-	*(data++)	= deadTime;								//6. Мертвая зона датчика
-	*(data++)	= descriminant;							//7. Уровень дискриминации датчика
-	*(data++)	= freq;
-	*(data++)	= gainRef;								//8. КУ (опорный датчик)
-	*(data++)	= sampleTimeRef;						//9. Шаг оцифровки
-	*(data++)	= sampleLenRef;							//10. Длина оцифровки
-	*(data++)	= sampleDelayRef; 						//11. Задержка оцифровки
-	*(data++)	= deadTimeRef;							//12. Мертвая зона датчика
-	*(data++)	= descriminantRef;						//13. Уровень дискриминации датчика
-	*(data++)	= refFreq;
-	*(data++)	= filtrType;							//14. Фильтр
-	*(data++)	= packType;								//15. Упаковка
-	*(data++)	= cmSPR;								//16. Количество волновых картин на оборот головки в режиме цементомера
-	*(data++)	= imSPR;								//17. Количество точек на оборот головки в режиме имиджера
+	*(data++)	= mv.gain;									//2. КУ (измерительный датчик)
+	*(data++)	= mv.sampleTime;							//3. Шаг оцифровки
+	*(data++)	= mv.sampleLen;							//4. Длина оцифровки
+	*(data++)	= mv.sampleDelay; 							//5. Задержка оцифровки
+	*(data++)	= mv.deadTime;								//6. Мертвая зона датчика
+	*(data++)	= mv.descriminant;							//7. Уровень дискриминации датчика
+	*(data++)	= mv.freq;
+	*(data++)	= mv.gainRef;								//8. КУ (опорный датчик)
+	*(data++)	= mv.sampleTimeRef;						//9. Шаг оцифровки
+	*(data++)	= mv.sampleLenRef;							//10. Длина оцифровки
+	*(data++)	= mv.sampleDelayRef; 						//11. Задержка оцифровки
+	*(data++)	= mv.deadTimeRef;							//12. Мертвая зона датчика
+	*(data++)	= mv.descriminantRef;						//13. Уровень дискриминации датчика
+	*(data++)	= mv.refFreq;
+	*(data++)	= mv.filtrType;							//14. Фильтр
+	*(data++)	= mv.packType;								//15. Упаковка
+	*(data++)	= mv.cmSPR;								//16. Количество волновых картин на оборот головки в режиме цементомера
+	*(data++)	= mv.imSPR;								//17. Количество точек на оборот головки в режиме имиджера
 	
 	return data - start;
 }
@@ -1007,7 +1038,7 @@ static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 	{
 		case 1:
 
-			numDevice = data[2];
+			mv.numDevice = data[2];
 
 			break;
 
@@ -1036,27 +1067,27 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 	switch(data[1])
 	{
-		case 0x1:	gain			= data[2];	break;
-		case 0x2:	sampleTime		= data[2];	break;
-		case 0x3:	sampleLen		= data[2];	break;
-		case 0x4:	sampleDelay 	= data[2];	break;
-		case 0x5:	deadTime		= data[2];	break;
-		case 0x6:	descriminant	= data[2];	break;
-		case 0x7:	freq			= data[2];	break;
+		case 0x1:	mv.gain				= data[2];	break;
+		case 0x2:	mv.sampleTime		= data[2];	break;
+		case 0x3:	mv.sampleLen		= data[2];	break;
+		case 0x4:	mv.sampleDelay 		= data[2];	break;
+		case 0x5:	mv.deadTime			= data[2];	break;
+		case 0x6:	mv.descriminant		= data[2];	break;
+		case 0x7:	mv.freq				= data[2];	break;
 
-		case 0x11:	gainRef			= data[2];	break;
-		case 0x12:	sampleTimeRef	= data[2];	break;
-		case 0x13:	sampleLenRef	= data[2];	break;
-		case 0x14:	sampleDelayRef 	= data[2];	break;
-		case 0x15:	deadTimeRef		= data[2];	break;
-		case 0x16:	descriminantRef	= data[2];	break;
-		case 0x17:	refFreq			= data[2];	break;
+		case 0x11:	mv.gainRef			= data[2];	break;
+		case 0x12:	mv.sampleTimeRef	= data[2];	break;
+		case 0x13:	mv.sampleLenRef		= data[2];	break;
+		case 0x14:	mv.sampleDelayRef 	= data[2];	break;
+		case 0x15:	mv.deadTimeRef		= data[2];	break;
+		case 0x16:	mv.descriminantRef	= data[2];	break;
+		case 0x17:	mv.refFreq			= data[2];	break;
 
-		case 0x20:	filtrType		= data[2];	break;
-		case 0x21:	packType		= data[2];	break;
+		case 0x20:	mv.filtrType		= data[2];	break;
+		case 0x21:	mv.packType			= data[2];	break;
 
-		case 0x30:	cmSPR = data[2]; Update_RPS_SPR();	break;
-		case 0x31:	imSPR = data[2]; Update_RPS_SPR();	break;
+		case 0x30:	mv.cmSPR = data[2]; Update_RPS_SPR();	break;
+		case 0x31:	mv.imSPR = data[2]; Update_RPS_SPR();	break;
 
 		default:
 
@@ -1124,7 +1155,7 @@ static bool RequestMem_00(u16 *data, u16 len, MTB* mtb)
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
 	manTrmData[0] = (memReqWord & memReqMask) | 0;
-	manTrmData[1] = numMemDevice;
+	manTrmData[1] = mv.numMemDevice;
 	manTrmData[2] = verMemDevice;
 
 	mtb->data1 = manTrmData;
@@ -1269,7 +1300,7 @@ static bool RequestMem_80(u16 *data, u16 len, MTB* mtb)
 	{
 		case 1:
 
-			numMemDevice = data[2];
+			mv.numMemDevice = data[2];
 
 			break;
 
@@ -1971,74 +2002,6 @@ static void UpdateDSP()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateParams()
-{
-	static byte i = 0;
-
-	#define CALL(p) case (__LINE__-S): p; break;
-
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( MainMode()		);
-		CALL( UpdateMoto()		);
-		CALL( UpdateTemp()		);
-		CALL( UpdateMan(); 		);
-		CALL( FLASH_Update();	);
-		CALL( UpdateTraps();	);
-		CALL( UpdateHardware();	);
-		CALL( UpdateAccel();	);
-		CALL( UpdateI2C();		);
-	};
-
-	i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	#undef CALL
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void UpdateMisc()
-{
-	static byte i = 0;
-
-	#define CALL(p) case (__LINE__-S): p; break;
-
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( UpdateEMAC();		);
-		CALL( UpdateDSP();		);
-		CALL( UpdateParams();	);
-	};
-
-	i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	#undef CALL
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void Update()
-{
-	static byte i = 0;
-
-	#define CALL(p) case (__LINE__-S): p; break;
-
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( NAND_Idle();		);
-		CALL( UpdateMisc();		);
-	};
-
-	i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	#undef CALL
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static const u32 dspFlashPages[] = {
 #include "G26K1BF592.LDR.H"
 };
@@ -2115,62 +2078,102 @@ static void FlashDSP()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitMainVars()
+{
+	mv.numDevice		= 0;
+	mv.numMemDevice		= 0;
+	mv.gain				= 0; 
+	mv.sampleTime		= 8; 
+	mv.sampleLen		= 500; 
+	mv.sampleDelay 		= 400; 
+	mv.deadTime			= 400; 
+	mv.descriminant		= 400; 
+	mv.freq				= 500; 
+	mv.gainRef			= 0; 
+	mv.sampleTimeRef	= 8; 
+	mv.sampleLenRef		= 500; 
+	mv.sampleDelayRef 	= 400; 
+	mv.deadTimeRef		= 400; 
+	mv.descriminantRef	= 400; 
+	mv.refFreq			= 500; 
+	mv.filtrType		= 0;
+	mv.packType			= 0;
+	mv.cmSPR			= 32;
+	mv.imSPR			= 100;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void LoadVars()
 {
-//	PointerCRC p(buf);
-//
-//	static DSCI2C dsc;
-//	static u16 romAdr = 0;
-//
-//	romAdr = ReverseWord(0);
-//
-//	dsc.wdata = &romAdr;
-//	dsc.wlen = sizeof(romAdr);
-//	dsc.wdata2 = 0;
-//	dsc.wlen2 = 0;
-//	dsc.rdata = buf;
-//	dsc.rlen = sizeof(buf);
-//	dsc.adr = 0x50;
-//
-//
-//	if (I2C_AddRequest(&dsc))
-//	{
-//		while (!dsc.ready);
-//	};
-//
-////	bool c = false;
-//
-//	loadVarsOk = false;
-//
-//	for (byte i = 0; i < 2; i++)
-//	{
-//		p.CRC.w = 0xFFFF;
-//		p.ReadArrayB(&nvv, sizeof(nvv)+2);
-//
-//		if (p.CRC.w == 0) { loadVarsOk = true; break; };
-//	};
-//
-//	if (!loadVarsOk)
-//	{
-//		//nvv.numDevice = 0;
-//		nvv.index = 0;
-//		nvv.prevFilePage = -1;
-//
-//		nvv.f.session = 0;
-//		nvv.f.size = 0;
-//		nvv.f.startPage = 0;
-//		nvv.f.lastPage = 0;
-//		GetTime(&nvv.f.start_rtc);
-//		GetTime(&nvv.f.stop_rtc);
-//		nvv.f.flags = 0;
-//
-//		for (u32 i = 0; i < ArraySize(nvv.badBlocks); i++)
-//		{
-//			nvv.badBlocks[i] = 0;
-//		};
-//
-//		savesCount = 2;
-//	};
+
+	static DSCI2C dsc;
+	static DSCSPI spi;
+	static u16 romAdr = 0;
+	
+	byte buf[sizeof(mv)*2+4];
+
+	PointerCRC p(buf);
+
+	bool loadVarsOk = false;
+
+	spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|3;
+	spi.alen = 4;
+	spi.csnum = 1;
+	spi.wdata = 0;
+	spi.wlen = 0;
+	spi.rdata = buf;
+	spi.rlen = sizeof(buf);
+
+	if (SPI_AddRequest(&spi))
+	{
+		while (!spi.ready);
+	};
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&mv, sizeof(mv)+2);
+
+		if (p.CRC.w == 0) { loadVarsOk = true; break; };
+	};
+
+	if (!loadVarsOk)
+	{
+		romAdr = ReverseWord(FRAM_I2C_MAINVARS_ADR);
+
+		dsc.wdata = &romAdr;
+		dsc.wlen = sizeof(romAdr);
+		dsc.wdata2 = 0;
+		dsc.wlen2 = 0;
+		dsc.rdata = buf;
+		dsc.rlen = sizeof(buf);
+		dsc.adr = 0x50;
+
+
+		if (I2C_AddRequest(&dsc))
+		{
+			while (!dsc.ready);
+		};
+
+	//	bool c = false;
+
+
+		for (byte i = 0; i < 2; i++)
+		{
+			p.CRC.w = 0xFFFF;
+			p.ReadArrayB(&mv, sizeof(mv)+2);
+
+			if (p.CRC.w == 0) { loadVarsOk = true; break; };
+		};
+	};
+
+	if (!loadVarsOk)
+	{
+		InitMainVars();
+
+		savesCount = 2;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2178,12 +2181,12 @@ static void LoadVars()
 static void SaveVars()
 {
 	static DSCI2C dsc;
-	static DSCSPI spi;
+	static DSCSPI spi,spi2;
 	static u16 romAdr = 0;
 	static byte buf[100];
 
 	static byte i = 0;
-//	static RTM32 tm;
+	static TM32 tm;
 
 	PointerCRC p(buf);
 
@@ -2204,27 +2207,8 @@ static void SaveVars()
 			for (byte j = 0; j < 2; j++)
 			{
 				p.CRC.w = 0xFFFF;
-				p.WriteW(numDevice			);
-				p.WriteW(numMemDevice		);
-				p.WriteW(gain				);
-				p.WriteW(sampleTime			);
-				p.WriteW(sampleLen			);
-				p.WriteW(sampleDelay 		);
-				p.WriteW(deadTime			);
-				p.WriteW(descriminant		);
-				p.WriteW(freq				);
-				p.WriteW(gainRef			);
-				p.WriteW(sampleTimeRef		);
-				p.WriteW(sampleLenRef		);
-				p.WriteW(sampleDelayRef 	);
-				p.WriteW(deadTimeRef		);
-				p.WriteW(descriminantRef	);
-				p.WriteW(refFreq			);
-				p.WriteW(filtrType			);
-				p.WriteW(packType			);
-				p.WriteW(cmSPR				);
-				p.WriteW(imSPR				);
-				p.WriteW(p.CRC.w			);
+				p.WriteArrayB(&mv, sizeof(mv));
+				p.WriteW(p.CRC.w);
 			};
 
 			spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|2;
@@ -2245,6 +2229,17 @@ static void SaveVars()
 			dsc.rlen = 0;
 			dsc.adr = 0x50;
 
+			spi2.adr = 6;
+			spi2.alen = 1;
+			spi2.csnum = 1;
+			spi2.wdata = 0;
+			spi2.wlen = 0;
+			spi2.rdata = 0;
+			spi2.rlen = 0;
+
+			tm.Reset();
+
+			SPI_AddRequest(&spi2);
 			SPI_AddRequest(&spi);
 
 			i++;
@@ -2253,30 +2248,91 @@ static void SaveVars()
 
 		case 2:
 
-			I2C_AddRequest(&dsc);
+			if ((spi.ready && spi2.ready) || tm.Check(10))
+			{
 
-			i++;
+				i++;
+			};
 
 			break;
 
 		case 3:
 
-			if (spi.ready)
+			if (spi.ready || tm.Check(10))
 			{
 				i++;
+
+				I2C_AddRequest(&dsc);
 			};
 
 			break;
 
 		case 4:
 
-			if (dsc.ready)
+			if (dsc.ready || tm.Check(100))
 			{
 				i = 0;
 			};
 
 			break;
 	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateParams()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( MainMode()		);
+		CALL( UpdateMoto()		);
+		CALL( UpdateTemp()		);
+		CALL( UpdateMan(); 		);
+		CALL( FLASH_Update();	);
+		CALL( UpdateHardware();	);
+		CALL( UpdateAccel();	);
+		CALL( UpdateI2C();		);
+		CALL( SaveVars();		);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateMisc()
+{
+	static byte i = 0;
+
+	#define CALL(p) case (__LINE__-S): p; break;
+
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateDSP();		);
+		CALL( UpdateParams();	);
+	};
+
+	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	#undef CALL
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Update()
+{
+	NAND_Idle();	
+	UpdateEMAC();
+	UpdateTraps();
+	UpdateMisc();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2314,6 +2370,8 @@ int main()
 
 	InitHardware();
 
+	LoadVars();
+
 	EnableDSP();
 
 	InitEMAC();
@@ -2343,7 +2401,6 @@ int main()
 
 	DSCSPI dsc, dsc2;
 
-
 	while (1)
 	{
 		FPS_PIN_SET();
@@ -2360,24 +2417,14 @@ int main()
 		{ 
 			fps = fc; fc = 0; 
 
-			//dsc.adr = 3;
-			//dsc.alen = 4;
-			//dsc.baud = 30000000;
+			//dsc.adr = 6;
+			//dsc.alen = 1;
 			//dsc.csnum = 1;
 			//dsc.wdata = 0;
 			//dsc.wlen = 0;
-			//dsc.rdata = buf;
-			//dsc.rlen = 100;
+			//dsc.rdata = 0;
+			//dsc.rlen = 0;
 
-			//dsc2.adr = 0x2D<<1;
-			//dsc2.alen = 1;
-			//dsc2.csnum = 0;
-			//dsc2.wdata = buf;
-			//dsc2.wlen = 1;
-			//dsc2.rdata = 0;
-			//dsc2.rlen = 0;
-
-			//SPI_AddRequest(&dsc2);
 			//SPI_AddRequest(&dsc);
 		};
 
