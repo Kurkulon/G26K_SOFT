@@ -204,215 +204,25 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 
 void ComPort::InitHW()
 {
-	HW::Peripheral_Enable(_cb->usic_pid);
+	#ifdef CPU_XMC48	
 
-	_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
-
-	_SU->BRG = _brg;		
-	_SU->PCR_ASCMode = _pcr;
-
-	_SU->FDR			= _BaudRateRegister;
-	_SU->SCTR			= __SCTR;
-	_SU->DX0CR			= DSEL(_cb->dsel);//__DX0CR;
-	_SU->DX1CR			= DPOL(1);
-	_SU->TCSR			= __TCSR;
-	_SU->PSCR			= ~0;
-	_SU->CCR			= _ModeRegister;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/*bool ComPort::ConnectAsyn(byte port, dword speed, byte parity, byte stopBits)
-{
-	if (_connected || port >= ArraySize(_bases) || _bases[port].used)
-	{
-		return false;
-	};
-
-	_portNum = port;
-
-	ComBase &cb = _bases[port];
-
-	_cb = &cb;
-	_SU = cb.HU;
-	_pm = cb.pm;
-	_pinRTS = cb.pinRTS;
-
-	#ifdef CPU_SAME53	
-
-		_dmaCh = cb.dmaCh;
-		_chdma = &HW::DMAC->CH[cb.dmaCh];
-		_dmadsc = &DmaTable[cb.dmaCh];
-		_dmawrb = &DmaWRB[cb.dmaCh];
-
-		_BaudRateRegister = BoudToPresc(speed);
-
-		_SU->CTRLA = USART_SWRST;
-
-		while(_SU->SYNCBUSY);
-
-		_CTRLA = USART_MODE_INT_CLK|USART_RXPO_3|USART_DORD;
-		_CTRLB = ((stopBits == 2) ? USART_SBMODE : 0);
-		_CTRLC = 0;
-
-		switch (parity)
-		{
-			case 0:		// нет четности
-
-				break;
-
-			case 1:
-				_CTRLA |= USART_FORM_USART_PARITY;
-				_CTRLB |= USART_PMODE;
-				break;
-
-			case 2:
-				_CTRLA |= USART_FORM_USART_PARITY;
-				_CTRLB &= ~USART_PMODE;
-				break;
-		};
-
-		_SU->CTRLA = USART_MODE_INT_CLK;
-
-		_SU->CTRLA = _CTRLA;
-		_SU->CTRLB = _CTRLB;
-		_SU->CTRLC = _CTRLC;
-
-		_SU->BAUD = _BaudRateRegister;
-
-		_SU->CTRLA |= USART_ENABLE;
-
-		while(_SU->SYNCBUSY);
-
-
-	#elif defined(CPU_XMC48)
-
-		_dma = cb.dma;
-		_dmaChMask = 1<<cb.dmaCh;
-		_chdma = &(_dma->CH[cb.dmaCh]);
-		_dlr = cb.dmaCh;
-
-		_BaudRateRegister = BoudToPresc(speed) | DM(1);
-
-		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
-
-		HW::Peripheral_Enable(cb.usic_pid);
+		HW::Peripheral_Enable(_cb->usic_pid);
 
 		_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
-		_SU->FDR = _BaudRateRegister;
-		_SU->BRG = __BRG_ASYN;
-		_SU->PCR_ASCMode = __PCR_ASYN | ((stopBits == 2) ? STPB(1) : 0);;
-		_SU->SCTR = __SCTR;
-		_SU->DX0CR = DSEL(cb.dsel);//__DX0CR;
+		_SU->BRG = _brg;		
+		_SU->PCR_ASCMode = _pcr;
 
-		_SU->TCSR = __TCSR;
-		_SU->PSCR = ~0;
-
-		_SU->CCR = _ModeRegister;
-
-	#endif
-
-	_status485 = READ_END;
-
-	return _connected = cb.used = true;
-}*/
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/*bool ComPort::ConnectSync(byte port, dword speed, byte parity, byte stopBits)
-{
-	if (_connected || port >= ArraySize(_bases) || _bases[port].used)
-	{
-		return false;
-	};
-
-	_portNum = port;
-
-	ComBase &cb = _bases[port];
-
-	_cb = &cb;
-	_SU = cb.HU;
-	_pm = cb.pm;
-	_pinRTS = cb.pinRTS;
-
-	#ifdef CPU_SAME53	
-
-		_dmaCh = cb.dmaCh;
-		_chdma = &HW::DMAC->CH[cb.dmaCh];
-		_dmadsc = &DmaTable[cb.dmaCh];
-		_dmawrb = &DmaWRB[cb.dmaCh];
-
-		//_BaudRateRegister = BoudToPresc(speed);
-
-		_SU->CTRLA = USART_SWRST;
-
-		while(_SU->SYNCBUSY);
-
-		_CTRLA = USART_MODE_EXT_CLK|USART_RXPO_3|USART_CMODE|USART_DORD;//|USART_CPOL;
-		_CTRLB = ((stopBits == 2) ? USART_SBMODE : 0);
-		_CTRLC = 0;
-
-		switch (parity)
-		{
-			case 0:		// нет четности
-
-				break;
-
-			case 1:
-				_CTRLA |= USART_FORM_USART_PARITY;
-				_CTRLB |= USART_PMODE;
-				break;
-
-			case 2:
-				_CTRLA |= USART_FORM_USART_PARITY;
-				_CTRLB &= ~USART_PMODE;
-				break;
-		};
-
-		_SU->CTRLA = USART_MODE_INT_CLK;
-
-		_SU->CTRLA = _CTRLA;
-		_SU->CTRLB = _CTRLB;
-		_SU->CTRLC = _CTRLC;
-
-	//	_SU->BAUD = _BaudRateRegister;
-
-		_SU->CTRLA |= USART_ENABLE;
-
-		while(_SU->SYNCBUSY);
-
-	#elif defined(CPU_XMC48)
-
-		_dma = cb.dma;
-		_dmaChMask = 1<<cb.dmaCh;
-		_chdma = &(_dma->CH[cb.dmaCh]);
-		_dlr = cb.dmaCh;
-
-		//_BaudRateRegister = BoudToPresc(speed) | DM(1);
-
-		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
-
-		HW::Peripheral_Enable(cb.usic_pid);
-
-		_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
-
-	//	_SU->FDR			= _BaudRateRegister;
-		_SU->BRG			= __BRG_SYNC;
-		_SU->PCR_ASCMode	= __PCR_SYNC | ((stopBits == 2) ? STPB(1) : 0);
+		_SU->FDR			= _BaudRateRegister;
 		_SU->SCTR			= __SCTR;
-		_SU->DX0CR			= DSEL(cb.dsel);//__DX0CR;
+		_SU->DX0CR			= DSEL(_cb->dsel);//__DX0CR;
 		_SU->DX1CR			= DPOL(1);
 		_SU->TCSR			= __TCSR;
 		_SU->PSCR			= ~0;
 		_SU->CCR			= _ModeRegister;
 
 	#endif
-
-	_status485 = READ_END;
-
-	return _connected = cb.used = true;
-}*/
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

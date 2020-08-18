@@ -6,8 +6,8 @@
 #include "hardware.h"
 //#include "options.h"
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
 #ifdef CPU_SAME53	
 #elif defined(CPU_XMC48)
@@ -30,44 +30,16 @@ u16 curShaftCounter = 0;
 #ifdef CPU_SAME53	
 
 	// Test Pins
-	// 3	- PC00	- EN_VCORE
-	// 4	- PC01	- FCS3
-	// 5	- PC02	- FCS4
-	// 6	- PC03
-	// 14	- PB07
-	// 15	- PB08
-	// 16	- PB09
-	// 28	- PA10
-	// 29	- PA11
-	// 32	- PB10
-	// 33	- PB11
-	// 40	- PC10
-	// 41	- PC11
+	// 37	- PB15	- SPI_Handler
 	// 42	- PC12
 	// 43	- PC13
-	// 44	- PC14
 	// 52	- PA16
-	// 56	- PC16	- PHY_INT
 	// 57	- PC17
+	// 58	- PC18
 	// 59	- PC19
-	// 60	- PC20	- GRXDV
-	// 61	- PC21
-	// 64	- PB16
-	// 65	- PB17	- GEN_1M
 	// 66	- PB18	- ManRcvIRQ sync true
-	// 68	- PB20	- I2C_Handler	
-	// 69	- PB21	- ManTrmIRQ
 	// 74	- PA24	- ManRcvIRQ
 	// 75	- PA25	- main loop
-	// 80	- PB24
-	// 81	- PB25
-	// 82	- PC24
-	// 83	- PC25
-	// 84	- PC26	- CRC_CCITT_DMA
-	// 85	- PC27	- MEM USART READ
-	// 86	- PC28	- MEM USART RTS	
-	// 87	- PA27
-	// 97	- PB00	- nc
 
 
 
@@ -76,6 +48,15 @@ u16 curShaftCounter = 0;
 	#define GEN_25M		2
 	#define GEN_1M		3
 	//#define GEN_500K	4
+
+	#define	NAND_DMACH		0
+	#define	COM1_DMACH		1
+	#define	COM2_DMACH		2
+	#define	COM3_DMACH		3
+	#define	SPI_DMACH_TX	4
+	#define	SPI_DMACH_RX	5
+	#define	DSP_DMACH		30
+	#define	CRC_DMACH		31
 
 	#define I2C			HW::I2C3
 	#define PIO_I2C		HW::PIOA 
@@ -106,7 +87,11 @@ u16 curShaftCounter = 0;
 	#define CS1				(1<<PIN_CS1) 
 
 	#define SPI_IRQ			SERCOM0_0_IRQ
-	#define SPI_PID			PID_USIC1
+	//#define SPI_PID			PID_USIC1
+
+	#define Pin_SPI_IRQ_Set() HW::PIOB->BSET(15)		
+	#define Pin_SPI_IRQ_Clr() HW::PIOB->BCLR(15)		
+
 
 	#define EVENT_NAND_1	0
 	//#define EVENT_NAND_2	1
@@ -186,7 +171,7 @@ u16 curShaftCounter = 0;
 	#define PIN_FCS7		3 
 
 	#define WP				(1<<PIN_WP) 
-	#define FLREADY			(1<<PIN_FLREADY) 
+	#define FLREADY			(1UL<<PIN_FLREADY) 
 	#define FCS0			(1<<PIN_FCS0) 
 	#define FCS1			(1<<PIN_FCS1) 
 	#define FCS2			(1<<PIN_FCS2) 
@@ -263,9 +248,6 @@ u16 curShaftCounter = 0;
 	#define UTXD2			(1<<PIN_UTXD2) 
 	#define URXD2			(1<<PIN_URXD2) 
 
-	#define	NAND_DMACH		0
-	#define	DSP_DMACH		30
-	#define	CRC_DMACH		31
 
 #elif defined(CPU_XMC48) //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -751,7 +733,7 @@ extern "C" void SystemInit()
 		PIO_USART1->SetWRCONFIG(UTXD1|URXD1, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN);
 		PIO_USART2->SetWRCONFIG(UTXD2|URXD2, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN);
 
-		HW::PIOB->DIRSET = (1<<18)|(1<<24)|(1<<21);
+		HW::PIOB->DIRSET = (1<<15)|(1<<18)|(1<<24)|(1<<21);
 		//HW::PIOB->WRCONFIG = ((1<<17)>>16) |PORT_HWSEL_HI|PORT_PMUX(11)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX;
 
 		HW::PIOC->DIRSET = (1<<5)|(1<<10)|(1<<11)|(1<<12)|(1<<13)|(1<<14)|(1<<15)|(1<<17)|(1<<18)|(1<<19)|(1<<21);
@@ -1488,7 +1470,7 @@ static void NAND_Init()
 	PIO_WE_RE->DIRSET = WE; PIO_WE_RE->SET(WE); PIO_WE_RE->SetWRCONFIG(WE, PORT_DRVSTR|PORT_WRPINCFG|PORT_PMUX(6)|PORT_WRPMUX/*|PORT_PMUXEN*/);
 	PIO_WE_RE->DIRSET = RE; PIO_WE_RE->SET(RE); PIO_WE_RE->SetWRCONFIG(RE, PORT_DRVSTR|PORT_WRPINCFG|PORT_PMUX(6)|PORT_WRPMUX/*|PORT_PMUXEN*/);
 
-	PIO_FLREADY->DIRCLR = FLREADY; PIO_FLREADY->PINCFG[PIN_FLREADY] = FLREADY|PINGFG_INEN|PINGFG_PULLEN; PIO_FLREADY->CTRL |= FLREADY; PIO_FLREADY->SET(FLREADY);
+	PIO_FLREADY->DIRCLR = FLREADY; PIO_FLREADY->PINCFG[PIN_FLREADY] = PINGFG_INEN|PINGFG_PULLEN; PIO_FLREADY->CTRL |= FLREADY; PIO_FLREADY->SET(FLREADY);
 	PIO_WP->DIRSET = WP; PIO_WP->SET(WP);
 
 	nandTCC->CTRLA = 0;
@@ -3762,110 +3744,81 @@ static __irq void SPI_Handler()
 {
 	using namespace HW;
 
-	HW::PIOB->BSET(20);
 
-	byte state = SPI->INTFLAG;
-	bool nextdsc = false;
+	byte state = SPI->INTFLAG & SPI->INTENSET;
 
-	if(state & I2C_ERROR) // Received data is available
+	if (state & SPI_DRE)
 	{
-		SPI->INTFLAG = I2C_ERROR;
-		SPI->STATUS = ~0;
-		nextdsc = true;
-	}
-	else if(state & I2C_SB) // Received data is available
-	{
-		*spi_rdPtr++ = SPI->DATA; // receive data
+		Pin_SPI_IRQ_Set();
 
-		spi_rdCount--;
-
-		if (spi_rdCount > 0)
+		if (spi_wrCount == 0)
 		{
-			SPI->CTRLB = I2C_CMD_2;
-		}
-		else
-		{
-			SPI->CTRLB = I2C_ACKACT;
-
-			nextdsc = true; 
-		};
-	}
-	else if(state & I2C_MB) // Data can be transmitted 
-	{
-		if (spi_wrCount > 0)
-		{
-			SPI->DATA = *spi_wrPtr++;
-
-			spi_wrCount--;
-
-			spi_dsc->ack = true;
-
-			if(spi_wrCount == 0 && spi_wrCount2 != 0)
+			if (spi_wrCount2 != 0)
 			{
-				spi_wrPtr = spi_wrPtr2;
-				spi_wrCount = spi_wrCount2;
+				HW::DMAC->CH[SPI_DMACH_TX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX;
 				spi_wrCount2 = 0;
+				spi_rdCount = 0;
 			};
-		}
-		else if (spi_rdCount > 0)
-		{
-			SPI->ADDR = (spi_adr << 1) | 1;
+
+			SPI->INTENCLR = ~0;
+			SPI->INTENSET = SPI_TXC;
 		}
 		else
 		{
-			nextdsc = true; //SPI->CTRLB |= I2C_CMD_STOP;
+			SPI->DATA = *(spi_wrPtr++); 
+			spi_wrCount--;
 		};
 	}
-	else
+	else if (state & SPI_TXC)
 	{
-		spi_rdCount = 0;
-		spi_wrCount = 0;
+		Pin_SPI_IRQ_Set();
+		Pin_SPI_IRQ_Clr();
+		Pin_SPI_IRQ_Set();
 
-		nextdsc = true; //SPI->CTRLB |= I2C_CMD_STOP;
-	};
-
-	if (nextdsc)
-	{
-		spi_dsc->ready = true;
-		spi_dsc->readedLen = spi_dsc->rlen - spi_rdCount;
-
-		DSCSPI *ndsc = spi_dsc->next;
-
-		if (ndsc != 0)
+		if (spi_rdCount != 0)
 		{
-			spi_dsc->next = 0;
-			spi_dsc = ndsc;
+			spi_rdCount = 0;
 
-			spi_dsc->ready = false;
-			spi_dsc->ack = false;
-			spi_dsc->readedLen = 0;
+			//SPI->DATA = 0; 
+			SPI->INTFLAG = SPI_TXC;
 
-			spi_wrPtr = (byte*)spi_dsc->wdata;	
-			spi_rdPtr = (byte*)spi_dsc->rdata;	
-			spi_wrPtr2 = (byte*)spi_dsc->wdata2;	
-			spi_wrCount = spi_dsc->wlen;
-			spi_wrCount2 = spi_dsc->wlen2;
-			spi_rdCount = spi_dsc->rlen;
-			spi_adr = spi_dsc->adr;
+			HW::DMAC->CH[SPI_DMACH_TX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX;
+			HW::DMAC->CH[SPI_DMACH_RX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_RX;
 
-			if (spi_wrPtr2 == 0) spi_wrCount2 = 0;
-
-			//SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
-
-			SPI->INTFLAG = ~0;
-			SPI->INTENSET = I2C_MB|I2C_SB;
-
-			SPI->ADDR = (spi_dsc->adr << 1) | ((spi_wrCount == 0) ? 1 : 0);
+			SPI->CTRLB |= SPI_RXEN;
 		}
 		else
 		{
-			SPI->CTRLB = I2C_CMD_STOP|I2C_ACKACT;
+			HW::DMAC->CH[SPI_DMACH_TX].CTRLA = 0;
+			HW::DMAC->CH[SPI_DMACH_RX].CTRLA = 0;
 
-			spi_lastDsc = spi_dsc = 0;
+			SPI->INTENCLR = ~0;
+			SPI->INTFLAG = ~0;
+
+			DSCSPI *ndsc = spi_dsc->next;
+				
+			spi_dsc->next = 0;
+
+			spi_dsc->ready = true;
+
+			SPI->CTRLB &= ~SPI_RXEN;
+
+			PIO_CS->SET(CS0|CS1);
+			
+			spi_dsc = 0;
+
+			if (ndsc != 0)
+			{
+				SPI_WriteRead(ndsc);
+			}
+			else
+			{
+				spi_lastDsc = 0;
+			};
 		};
 	};
 
-	HW::PIOB->BCLR(20);
+	Pin_SPI_IRQ_Clr();
 }
 
 #elif defined(CPU_XMC48)
@@ -4038,14 +3991,38 @@ static bool SPI_WriteRead(DSCSPI *d)
 
 	__disable_irq();
 
+	PIO_CS->CLR(SPI_CS_MASK[spi_dsc->csnum]);
+
 	#ifdef CPU_SAME53
 
-		//SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
-
 		SPI->INTFLAG = ~0;
-		SPI->INTENSET = I2C_MB|I2C_SB;
+		SPI->INTENSET = SPI_DRE;
+		SPI->CTRLB &= ~SPI_RXEN;
 
-		SPI->ADDR = (spi_dsc->adr << 1) | ((spi_wrCount == 0) ? 1 : 0);
+		if (spi_wrCount2 != 0)
+		{
+			spi_rdCount = 0;
+
+			DmaTable[SPI_DMACH_TX].SRCADDR = spi_wrPtr2 + spi_wrCount2;
+			DmaTable[SPI_DMACH_TX].DSTADDR = &SPI->DATA;
+			DmaTable[SPI_DMACH_TX].DESCADDR = 0;
+			DmaTable[SPI_DMACH_TX].BTCNT = spi_wrCount2;
+			DmaTable[SPI_DMACH_TX].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
+		}
+		else if (spi_rdCount != 0)
+		{
+			DmaTable[SPI_DMACH_TX].SRCADDR = spi_wrPtr;
+			DmaTable[SPI_DMACH_TX].DSTADDR = &SPI->DATA;
+			DmaTable[SPI_DMACH_TX].DESCADDR = 0;
+			DmaTable[SPI_DMACH_TX].BTCNT = spi_rdCount+1;
+			DmaTable[SPI_DMACH_TX].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE;
+
+			DmaTable[SPI_DMACH_RX].SRCADDR = &SPI->DATA;
+			DmaTable[SPI_DMACH_RX].DSTADDR = spi_rdPtr + spi_rdCount;
+			DmaTable[SPI_DMACH_RX].DESCADDR = 0;
+			DmaTable[SPI_DMACH_RX].BTCNT = spi_rdCount;
+			DmaTable[SPI_DMACH_RX].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
+		};
 
 	#elif defined(CPU_XMC48)
 
@@ -4055,8 +4032,6 @@ static bool SPI_WriteRead(DSCSPI *d)
 
 		SPI_DMA->CHENREG = SPI_DMA_CHDIS;
 		SPI_DMA->DMACFGREG = 1;
-
-		PIO_CS->CLR(SPI_CS_MASK[spi_dsc->csnum]);
 
 		if (spi_wrCount2 != 0)
 		{
@@ -4239,38 +4214,44 @@ bool SPI_Init()
 
 #ifdef CPU_SAME53	
 
-	HW::GCLK->PCHCTRL[GCLK_SERCOM3_CORE]	= GCLK_GEN(GEN_25M)|GCLK_CHEN;	// 25 MHz
+	HW::GCLK->PCHCTRL[GCLK_SERCOM0_CORE] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;	// 25 MHz
 
-	MCLK->APBBMASK |= APBB_SERCOM3;
+	MCLK->APBAMASK |= APBA_SERCOM0;
 
-	PIO_I2C->SetWRCONFIG(SDA|SCL, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+	PIO_SPCK->SetWRCONFIG(SPCK, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+	PIO_MOSI->SetWRCONFIG(MOSI, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+	PIO_MISO->SetWRCONFIG(MISO, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+	PIO_CS->DIRSET = CS0|CS1; 
+	PIO_CS->SetWRCONFIG(CS0|CS1, PORT_WRPINCFG|PORT_WRPMUX);
 
-	SPI->CTRLA = I2C_SWRST;
+	SPI->CTRLA = SPI_SWRST;
 
 	while(SPI->SYNCBUSY);
 
 	SPI->CTRLA = SERCOM_MODE_SPI_MASTER;
 
-	SPI->CTRLA = SERCOM_MODE_SPI_MASTER|I2C_INACTOUT_205US|I2C_SPEED_SM;
+	SPI->CTRLA = SERCOM_MODE_SPI_MASTER|SPI_DIPO(2)|SPI_DOPO(0);
 	SPI->CTRLB = 0;
-	SPI->BAUD = 0x0018;
+	SPI->CTRLC = 1;
+	SPI->BAUD = 240;
 
-	SPI->CTRLA |= I2C_ENABLE;
+	SPI->DBGCTRL = 1;
+
+	SPI->CTRLA |= SPI_ENABLE;
 
 	while(SPI->SYNCBUSY);
 
-	SPI->STATUS = 0;
-//	SPI->STATUS.BUSSTATE = BUSSTATE_IDLE;
+	SPI->STATUS = ~0;
 
-	VectorTableExt[SERCOM3_0_IRQ] = SPI_Handler;
-	VectorTableExt[SERCOM3_1_IRQ] = SPI_Handler;
-	VectorTableExt[SERCOM3_3_IRQ] = SPI_Handler;
-	CM4::NVIC->CLR_PR(SERCOM3_0_IRQ);
-	CM4::NVIC->CLR_PR(SERCOM3_1_IRQ);
-	CM4::NVIC->CLR_PR(SERCOM3_3_IRQ);
-	CM4::NVIC->SET_ER(SERCOM3_0_IRQ);
-	CM4::NVIC->SET_ER(SERCOM3_1_IRQ);
-	CM4::NVIC->SET_ER(SERCOM3_3_IRQ);
+	VectorTableExt[SERCOM0_0_IRQ] = SPI_Handler;
+	VectorTableExt[SERCOM0_1_IRQ] = SPI_Handler;
+	VectorTableExt[SERCOM0_3_IRQ] = SPI_Handler;
+	CM4::NVIC->CLR_PR(SERCOM0_0_IRQ);
+	CM4::NVIC->CLR_PR(SERCOM0_1_IRQ);
+	CM4::NVIC->CLR_PR(SERCOM0_3_IRQ);
+	CM4::NVIC->SET_ER(SERCOM0_0_IRQ);
+	CM4::NVIC->SET_ER(SERCOM0_1_IRQ);
+	CM4::NVIC->SET_ER(SERCOM0_3_IRQ);
 
 #elif defined(CPU_XMC48)
 

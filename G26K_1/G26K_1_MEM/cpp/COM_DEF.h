@@ -1,6 +1,10 @@
 #ifndef COM_DEF__12_10_2018__08_51
 #define COM_DEF__12_10_2018__08_51
 
+#ifdef CPU_SAME53	
+
+#elif defined(CPU_XMC48)
+
 #define SDIR(v)         (v<<0)                     /*!< USIC_CH SCTR: SDIR (Bit 0)                                  */
 #define PDL(v)          (v<<1)                     /*!< USIC_CH SCTR: PDL (Bit 1)                                   */
 #define DSM(v)          (v<<2)                     /*!< USIC_CH SCTR: DSM (Bit 2)                                   */
@@ -181,5 +185,7 @@
 #define TRBSCR_CBDV               (0x400UL)                 /*!< USIC_CH TRBSCR: CBDV (Bitfield-Mask: 0x01)                  */
 #define TRBSCR_FLUSHRB            (0x4000UL)                /*!< USIC_CH TRBSCR: FLUSHRB (Bitfield-Mask: 0x01)               */
 #define TRBSCR_FLUSHTB            (0x8000UL)                /*!< USIC_CH TRBSCR: FLUSHTB (Bitfield-Mask: 0x01)               */
+
+#endif
 
 #endif /*COM_DEF__12_10_2018__08_51*/

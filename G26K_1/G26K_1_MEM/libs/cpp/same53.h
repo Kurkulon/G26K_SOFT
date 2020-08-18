@@ -1006,7 +1006,7 @@ namespace T_HW
 	{
 		RW32    CTRLA;       		/**< \brief Offset: 0x00 (R/W 32) SPI Control A */
 		RW32    CTRLB;       		/**< \brief Offset: 0x04 (R/W 32) SPI Control B */
-		RO8     z__Reserved1[0x4];	
+		RW32    CTRLC;       		/**< \brief Offset: 0x04 (R/W 32) SPI Control B */
 		RW8		BAUD;				/**< \brief Offset: 0x0C (R/W  8) SPI Baud Rate */
 		RO8     z__Reserved2[0x7];	
 		RW8		INTENCLR;			/**< \brief Offset: 0x14 (R/W  8) SPI Interrupt Enable Clear */
@@ -1017,7 +1017,8 @@ namespace T_HW
 		RO8     z__Reserved5[0x1];	
 		RW16	STATUS;      		/**< \brief Offset: 0x1A (R/W 16) SPI Status */
 		RO32	SYNCBUSY;    		/**< \brief Offset: 0x1C (R/  32) SPI Syncbusy */
-		RO8		z__Reserved6[0x4];	
+		RO8		z__Reserved6[0x2];	
+		RW16	LENGTH;      		
 		RW32    ADDR;        		/**< \brief Offset: 0x24 (R/W 32) SPI Address */
 		RW32    DATA;        		/**< \brief Offset: 0x28 (R/W 32) SPI Data */
 		RO8     z__Reserved7[0x4];	
@@ -1031,8 +1032,8 @@ namespace T_HW
 	#define SPI_RUNSTDBY		(1<<7)            /**< \brief (SERCOM_SPI_CTRLA) Run during Standby */
 	#define SPI_IBON			(1<<8)            /**< \brief (SERCOM_SPI_CTRLA) Immediate Buffer Overflow Notification */
 
-	#define SPI_DOPO(value) 	((value)&3 << 16)
-	#define SPI_DIPO(value) 	((value)&3 << 20)
+	#define SPI_DOPO(value) 	(((value)&3) << 16)
+	#define SPI_DIPO(value) 	(((value)&3) << 20)
 
 	#define SPI_FORM_SPI		(0<<24)
 	#define SPI_FORM_SPI_ADDR	(2<<24)

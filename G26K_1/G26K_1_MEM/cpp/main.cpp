@@ -2361,6 +2361,11 @@ int main()
 	
 	static ComPort commem;
 
+	DSCSPI dsc, dsc2;
+
+	TM32 tm;
+
+
 //	RTM32 tm;
 //	Dbt db(100);
 
@@ -2369,6 +2374,25 @@ int main()
 	DisableDSP();
 
 	InitHardware();
+
+	//while (1)
+	//{
+	//	if (tm.Check(100))
+	//	{ 
+	//		dsc.adr = 1;
+	//		dsc.alen = 1;
+	//		dsc.csnum = 0;
+	//		dsc.wdata = 0;
+	//		dsc.wlen = 0;
+	//		dsc.rdata = buf;
+	//		dsc.rlen = 10;
+
+	//		buf[0] = 0x55;
+
+	//		SPI_AddRequest(&dsc);
+	//	};
+	//};
+
 
 	LoadVars();
 
@@ -2392,14 +2416,7 @@ int main()
 
 	u32 fc = 0;
 
-	TM32 tm;
-//	RTM rtm;
-
-	tm.pt = 0;
-
-	ComPort::WriteBuffer wb;
-
-	DSCSPI dsc, dsc2;
+	//ComPort::WriteBuffer wb;
 
 	while (1)
 	{
