@@ -2477,6 +2477,8 @@ static void LoadVars()
 
 		loadVarsOk = false;
 
+		p.b = buf;
+
 		for (byte i = 0; i < 2; i++)
 		{
 			p.CRC.w = 0xFFFF;
@@ -2707,7 +2709,7 @@ static void SaveVars()
 
 static void LoadSessions()
 {
-	PointerCRC p(buf);
+	//PointerCRC p(buf);
 
 	static DSCI2C dsc;
 	static DSCSPI spi, spi2;

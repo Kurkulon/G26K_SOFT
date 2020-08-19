@@ -1762,8 +1762,8 @@ static void UpdateAccel()
 				fz += (z - fz) / 8;
 
 				ax = -(fz / 32768); 
-				ay = (fx / 32768); 
-				az = -(fy / 32768);
+				ay = (fy / 32768); 
+				az = -(fx / 32768);
 
 				at = 250 + ((1852 - t) * 1000 + 452) / 905;
 				//at = 250 + (1852 - t) * 1.1049723756906077348066298342541f;
@@ -2113,7 +2113,18 @@ static void LoadVars()
 	
 	byte buf[sizeof(mv)*2+4];
 
-	PointerCRC p(buf);
+	spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|0x9F;
+	spi.alen = 1;
+	spi.csnum = 1;
+	spi.wdata = 0;
+	spi.wlen = 0;
+	spi.rdata = buf;
+	spi.rlen = 9;
+
+	if (SPI_AddRequest(&spi))
+	{
+		while (!spi.ready);
+	};
 
 	bool loadVarsOk = false;
 
@@ -2129,6 +2140,8 @@ static void LoadVars()
 	{
 		while (!spi.ready);
 	};
+
+	PointerCRC p(buf);
 
 	for (byte i = 0; i < 2; i++)
 	{
@@ -2158,6 +2171,7 @@ static void LoadVars()
 
 	//	bool c = false;
 
+		p.b = buf;
 
 		for (byte i = 0; i < 2; i++)
 		{
@@ -2240,7 +2254,6 @@ static void SaveVars()
 			tm.Reset();
 
 			SPI_AddRequest(&spi2);
-			SPI_AddRequest(&spi);
 
 			i++;
 
@@ -2248,8 +2261,9 @@ static void SaveVars()
 
 		case 2:
 
-			if ((spi.ready && spi2.ready) || tm.Check(10))
+			if (spi2.ready || tm.Check(10))
 			{
+				SPI_AddRequest(&spi);
 
 				i++;
 			};
@@ -2260,9 +2274,9 @@ static void SaveVars()
 
 			if (spi.ready || tm.Check(10))
 			{
-				i++;
-
 				I2C_AddRequest(&dsc);
+				
+				i++;
 			};
 
 			break;
