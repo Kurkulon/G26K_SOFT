@@ -635,8 +635,8 @@ static REQ* CreateMotoReq()
 	rb.maxLen = sizeof(rspMoto);
 	
 	req.rw = 0x101;
-	req.enableMotor	= 0;
-	req.tRPM = 0;
+	req.enableMotor	= 1;
+	req.tRPM = motoTargetRPS;
 	req.crc	= GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
@@ -1067,24 +1067,24 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 	switch(data[1])
 	{
-		case 0x1:	mv.gain				= data[2];	break;
-		case 0x2:	mv.sampleTime		= data[2];	break;
-		case 0x3:	mv.sampleLen		= data[2];	break;
-		case 0x4:	mv.sampleDelay 		= data[2];	break;
-		case 0x5:	mv.deadTime			= data[2];	break;
-		case 0x6:	mv.descriminant		= data[2];	break;
-		case 0x7:	mv.freq				= data[2];	break;
+		case 0x1:	mv.gain				= data[2];			break;
+		case 0x2:	mv.sampleTime		= data[2];			break;
+		case 0x3:	mv.sampleLen		= data[2];			break;
+		case 0x4:	mv.sampleDelay 		= data[2];			break;
+		case 0x5:	mv.deadTime			= data[2];			break;
+		case 0x6:	mv.descriminant		= data[2];			break;
+		case 0x7:	mv.freq				= data[2];			break;
 
-		case 0x11:	mv.gainRef			= data[2];	break;
-		case 0x12:	mv.sampleTimeRef	= data[2];	break;
-		case 0x13:	mv.sampleLenRef		= data[2];	break;
-		case 0x14:	mv.sampleDelayRef 	= data[2];	break;
-		case 0x15:	mv.deadTimeRef		= data[2];	break;
-		case 0x16:	mv.descriminantRef	= data[2];	break;
-		case 0x17:	mv.refFreq			= data[2];	break;
+		case 0x11:	mv.gainRef			= data[2];			break;
+		case 0x12:	mv.sampleTimeRef	= data[2];			break;
+		case 0x13:	mv.sampleLenRef		= data[2];			break;
+		case 0x14:	mv.sampleDelayRef 	= data[2];			break;
+		case 0x15:	mv.deadTimeRef		= data[2];			break;
+		case 0x16:	mv.descriminantRef	= data[2];			break;
+		case 0x17:	mv.refFreq			= data[2];			break;
 
-		case 0x20:	mv.filtrType		= data[2];	break;
-		case 0x21:	mv.packType			= data[2];	break;
+		case 0x20:	mv.filtrType		= data[2];			break;
+		case 0x21:	mv.packType			= data[2];			break;
 
 		case 0x30:	mv.cmSPR = data[2]; Update_RPS_SPR();	break;
 		case 0x31:	mv.imSPR = data[2]; Update_RPS_SPR();	break;

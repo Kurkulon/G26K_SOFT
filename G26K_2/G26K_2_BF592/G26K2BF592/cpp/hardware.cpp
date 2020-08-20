@@ -183,7 +183,7 @@ void SetMux(byte a)
 
 void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 {
-	ppi.st = sens.st;
+	ppi.st = sens.st+1;
 	ppi.clkDiv = (sens.st+1) * NS2CLK(50);
 
 	//if (ppi.clkDiv == 0) ppi.clkDiv = 1;
@@ -193,7 +193,12 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 	if (ppi.len < 16) ppi.len = 16;
 
 	ppi.sd = sens.sd;
-	ppi.delay = sens.sd * (NS2CCLK(50));
+
+	i32 d = (i32)ppi.sd - (i32)ppi.st*10;
+
+	if (d < 0) d = 0;
+
+	ppi.delay = d * (NS2CCLK(50));
 	
 	if (ppi.delay > US2CLK(500)) ppi.delay = US2CLK(500);
 

@@ -75,6 +75,8 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	if (wb == 0 || len < 2) return false;
 
+	SetTargetRPM(data[2]);
+
 	rsp.rw = manReqWord|1;	// 	1. ответное слово
 	rsp.mororStatus = 1;
 	rsp.current = GetAvrCurrent();
@@ -219,7 +221,7 @@ int main()
 
 	InitHardware();
 
-	Init_TWI();
+	//Init_TWI();
 
 	com.Connect(0, 1562500, 0);
 

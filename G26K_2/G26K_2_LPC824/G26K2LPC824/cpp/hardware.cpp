@@ -9,6 +9,9 @@
 //#define OPEN_VALVE_CUR 600
 //#define CLOSE_VALVE_CUR 600
 
+#define GEAR_RATIO 12.25
+const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
+
 #define LOCK_CLOSE_POSITION 0
 #define INIT_CLOSE_POSITION 55
 #define OPEN_POSITION		60
@@ -33,6 +36,9 @@ u16 vAP = 0;
 u32 fvAP = 0;
 u32 tachoCount = 0;
 u32 motoCounter = 0;
+u32 targetRPM = 0;
+u32 tachoLim = 0;
+u32 tachoStep = 1;
 
 u32 rpmCounter = 0;
 u32 rpmPrevTime = 0;
@@ -222,7 +228,7 @@ static u32 closeValveTime = 0;
 static i8 tachoDir = 1;
 
 static u32 tachoPLL = 0;
-static u32 curPLL = 0;
+//static u32 curPLL = 0;
 
 
 
@@ -256,10 +262,43 @@ static i8 tachoEncoder[8][8] = {
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void SetTargetRPM(u32 v)
+{ 
+	if (targetRPM != v)
+	{
+		targetRPM = v;
+
+		__disable_irq();
+
+		tachoStep = 1;
+
+		tachoLim = v * 4 + 100;
+
+		tachoCount = 0;
+
+		v *= pulsesPerHeadRoundFix4;
+		v /= 16;
+
+		if (v > 0)
+		{
+			HW::MRT->Channel[3].INTVAL = (((u32)MCK * 100 + v/2) / v)|(1UL<<31);
+			HW::MRT->Channel[3].CTRL = 1;
+		}
+		else
+		{
+			HW::MRT->Channel[3].CTRL = 0;
+		};
+
+		__enable_irq();
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void EnableDriver() 
 { 
 	HW::GPIO->SET((1<<14)|(1<<4)); 
-	HW::MRT->Channel[3].CTRL = 1;
+	//HW::MRT->Channel[3].CTRL = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1254,12 +1293,12 @@ static __irq void TahoHandler()
 		//	if (tachoPLL > 0) tachoPLL -= 1;
 		//};
 
-		if (tachoPLL > 0) { tachoPLL -= 1; };
+		if (tachoPLL > tachoStep) { tachoPLL -= tachoStep; } else { tachoPLL = 0; };
 
 
-		if (tachoCount >= 900)
+		if (tachoCount >= tachoLim)
 		{
-			tachoCount = 900;
+			tachoCount = tachoLim;
 
 			//u16 t1 = GetMillisecondsLow();
 
@@ -1269,7 +1308,7 @@ static __irq void TahoHandler()
 
 			//if ((t1 - prevR1) > dt1 && tachoPLL > 0) { tachoPLL -= 1; };
 
-			SetDutyPWM(tachoPLL<<6);
+			SetDutyPWM(tachoPLL);
 		};
 
 		rpmCounter++;
@@ -1316,17 +1355,12 @@ static void TahoSync()
 		//	curPLL--;
 		//};
 
-		if (tachoCount >= 900)
+		if (tachoCount >= tachoLim)
 		{
-			tachoCount = 900;
+			tachoCount = tachoLim;
+			tachoStep = 64;
 
 			//SetDutyPWMDir(tachoPLL<<6);
-		}
-		else if (tachoCount >= 600)
-		{
-			tachoCount = 900;
-
-			tachoPLL >>= 6;
 		}
 		else
 		{
@@ -1390,7 +1424,7 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (avrCurADC > 2500)
+		if (avrCurADC > 1500)
 		{
 			if (limDuty > 0) limDuty -= 1;
 		}
@@ -1398,9 +1432,9 @@ __irq void ROT_Handler()
 		{
 			if (limDuty < maxDuty) limDuty += 1;
 
-			if (tachoPLL < (((u32)maxDuty)<<6))
+			if (tachoPLL < (u32)maxDuty)
 			{ 
-				tachoPLL += 1; 
+				tachoPLL += tachoStep; 
 			};
 		};
 
@@ -1412,11 +1446,11 @@ __irq void ROT_Handler()
 
 		//if ((t1 - prevT1) > dt1 && tachoPLL < 0x7FFFFFFF) { tachoPLL += 1; };
 
-		if (tachoCount >= 900)
+		if (tachoCount >= tachoLim)
 		{
-			tachoCount = 900;
+			tachoCount = tachoLim;
 
-			SetDutyPWM(tachoPLL<<6);
+			SetDutyPWM(tachoPLL);
 		};
 
 		HW::PIN_INT->IST = 8;
@@ -1448,13 +1482,27 @@ __irq void MRT_Handler()
 {
 	if (HW::MRT->IRQ_FLAG & 8)
 	{
-		if (curADC > 1000)
+		HW::GPIO->BTGL(15);
+
+		if (avrCurADC > 1500)
 		{
-			if (tachoPLL > 0) tachoPLL -= 1;
+			if (limDuty > 0) limDuty -= 1;
 		}
-		else if (tachoPLL < 0x7FFFFFFF)
-		{ 
-			tachoPLL += 1; 
+		else 
+		{
+			if (limDuty < maxDuty) limDuty += 1;
+
+			if (tachoPLL < (u32)maxDuty)
+			{ 
+				tachoPLL += tachoStep; 
+			};
+		};
+
+		if (tachoCount >= tachoLim)
+		{
+			tachoCount = tachoLim;
+
+			SetDutyPWM(tachoPLL);
 		};
 	};
 
@@ -1490,9 +1538,9 @@ void InitHardware()
 
 //	com.Connect(0, 921600, 0);
 
-	InitRot();
+	//InitRot();
 
-	//InitRotMRT();
+	InitRotMRT();
 
 	SYSCON->SYSAHBCLKCTRL |= HW::CLK::WWDT_M;
 	SYSCON->PDRUNCFG &= ~(1<<6); // WDTOSC_PD = 0
@@ -1901,8 +1949,7 @@ void UpdateHardware()
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
 
-	//CALL( UpdateMotor() );
-	//CALL( if (db.Check(HW::GPIO->B0[15] != 0)) OpenValve(); else CloseValve(); );
+	HW::ResetWDT();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
