@@ -128,7 +128,7 @@ static u16 mode = 0;
 static TM32 imModeTimeout;
 
 static u16 motoEnable = 0;		// двигатель включить или выключить
-static u16 motoTargetRPS = 0;	// заданные обороты двигателя
+static u16 motoTargetRPS = 800;	// заданные обороты двигателя
 static u16 motoRPS = 0;			// обороты двигателя, об/сек
 static u16 motoCur = 0;			// ток двигателя, мА
 static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
