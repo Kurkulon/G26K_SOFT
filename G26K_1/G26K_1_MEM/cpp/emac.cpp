@@ -147,12 +147,14 @@ static void ReqReadPHY(byte PhyReg);
 	inline bool IsReadyPHY() { return HW::GMAC->NSR & GMAC_IDLE; }
 	inline u16 ResultPHY() { return HW::GMAC->MAN; }
 	inline bool CheckStatusUDP(u32 stat) { return (stat & RD_IP_CHECK) == RD_IP_UDP_OK; }
+	inline bool CheckRecievedFrame(Buf_Desc &buf) { return (buf.stat & (RD_EOF|RD_SOF)) == (RD_EOF|RD_SOF); }
 #elif defined(CPU_XMC48)
 	inline void EnableMDI() { /*HW::GMAC->NCR |= GMAC_MPE;*/ }
 	inline void DisableMDI() { /*HW::GMAC->NCR &= ~GMAC_MPE;*/ }
 	inline bool IsReadyPHY() { return (HW::ETH0->GMII_ADDRESS & GMII_MB) == 0; }
 	inline u16 ResultPHY() { return HW::ETH0->GMII_DATA; }
 	inline bool CheckStatusUDP(u32 stat) { return (stat & RD_UDP_ERR) == 0; }
+	inline bool CheckRecievedFrame(Receive_Desc &buf) { return (buf.stat & (RD0_LS|RD0_FS|RD0_CE|RD0_FT)) == (RD0_LS|RD0_FS|RD0_FT); }
 #endif
 
 inline bool IsBusyPHY() { return !IsReadyPHY(); }
