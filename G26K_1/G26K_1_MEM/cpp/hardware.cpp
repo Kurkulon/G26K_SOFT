@@ -3224,7 +3224,7 @@ static void InitClock()
 
 	I2C_AddRequest(&dsc);
 
-	while (!dsc.ready);
+	while (!dsc.ready) { I2C_Update(); };
 
 	t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
 	t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);

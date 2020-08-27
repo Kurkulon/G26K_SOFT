@@ -2136,20 +2136,20 @@ static void LoadVars()
 	spi.rdata = buf;
 	spi.rlen = sizeof(buf);
 
-	//if (SPI_AddRequest(&spi))
-	//{
-	//	while (!spi.ready);
-	//};
+	if (SPI_AddRequest(&spi))
+	{
+		while (!spi.ready);
+	};
 
 	PointerCRC p(buf);
 
-	//for (byte i = 0; i < 2; i++)
-	//{
-	//	p.CRC.w = 0xFFFF;
-	//	p.ReadArrayB(&mv, sizeof(mv)+2);
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&mv, sizeof(mv)+2);
 
-	//	if (p.CRC.w == 0) { loadVarsOk = true; break; };
-	//};
+		if (p.CRC.w == 0) { loadVarsOk = true; break; };
+	};
 
 	if (!loadVarsOk)
 	{
@@ -2166,7 +2166,7 @@ static void LoadVars()
 
 		if (I2C_AddRequest(&dsc))
 		{
-			while (!dsc.ready);
+			while (!dsc.ready) { I2C_Update(); };
 		};
 
 	//	bool c = false;
@@ -2253,7 +2253,7 @@ static void SaveVars()
 
 			tm.Reset();
 
-			//SPI_AddRequest(&spi2);
+			SPI_AddRequest(&spi2);
 
 			i++;
 
@@ -2261,9 +2261,9 @@ static void SaveVars()
 
 		case 2:
 
-			//if (spi2.ready || tm.Check(10))
+			if (spi2.ready || tm.Check(10))
 			{
-				//SPI_AddRequest(&spi);
+				SPI_AddRequest(&spi);
 
 				i++;
 			};
@@ -2272,7 +2272,7 @@ static void SaveVars()
 
 		case 3:
 
-			//if (spi.ready || tm.Check(10))
+			if (spi.ready || tm.Check(10))
 			{
 				I2C_AddRequest(&dsc);
 				

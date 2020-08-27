@@ -2754,7 +2754,7 @@ static void LoadSessions()
 
 			if (I2C_AddRequest(&dsc))
 			{
-				while (!(dsc.ready || tm.Check(100)));
+				while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
 			};
 
 			if (GetCRC16(&si, sizeof(si)) != 0)
@@ -2807,7 +2807,7 @@ static void LoadSessions()
 
 				I2C_AddRequest(&dsc);
 
-				while (!(dsc.ready || tm.Check(100)));
+				while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
 			};
 		};
 	};
