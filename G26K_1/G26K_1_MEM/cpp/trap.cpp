@@ -544,7 +544,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
 						SetNumDevice(ts.number);
-						SaveParams();
+						SaveMainParams();
 
 						break;
 

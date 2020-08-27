@@ -183,13 +183,13 @@ i16 temperature = 0;
 i16 cpuTemp = 0;
 i16 temp = 0;
 
-static byte savesCount = 0;
+static byte svCount = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SaveParams()
+void SaveMainParams()
 {
-	savesCount = 1;
+	svCount = 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1110,7 +1110,7 @@ static bool RequestMan_F0(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	SaveParams();
+	SaveMainParams();
 
 	manTrmData[0] = (manReqWord & manReqMask) | 0xF0;
 
@@ -2113,18 +2113,18 @@ static void LoadVars()
 	
 	byte buf[sizeof(mv)*2+4];
 
-	spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|0x9F;
-	spi.alen = 1;
-	spi.csnum = 1;
-	spi.wdata = 0;
-	spi.wlen = 0;
-	spi.rdata = buf;
-	spi.rlen = 9;
+	//spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|0x9F;
+	//spi.alen = 1;
+	//spi.csnum = 1;
+	//spi.wdata = 0;
+	//spi.wlen = 0;
+	//spi.rdata = buf;
+	//spi.rlen = 9;
 
-	if (SPI_AddRequest(&spi))
-	{
-		while (!spi.ready);
-	};
+	//if (SPI_AddRequest(&spi))
+	//{
+	//	while (!spi.ready);
+	//};
 
 	bool loadVarsOk = false;
 
@@ -2136,20 +2136,20 @@ static void LoadVars()
 	spi.rdata = buf;
 	spi.rlen = sizeof(buf);
 
-	if (SPI_AddRequest(&spi))
-	{
-		while (!spi.ready);
-	};
+	//if (SPI_AddRequest(&spi))
+	//{
+	//	while (!spi.ready);
+	//};
 
 	PointerCRC p(buf);
 
-	for (byte i = 0; i < 2; i++)
-	{
-		p.CRC.w = 0xFFFF;
-		p.ReadArrayB(&mv, sizeof(mv)+2);
+	//for (byte i = 0; i < 2; i++)
+	//{
+	//	p.CRC.w = 0xFFFF;
+	//	p.ReadArrayB(&mv, sizeof(mv)+2);
 
-		if (p.CRC.w == 0) { loadVarsOk = true; break; };
-	};
+	//	if (p.CRC.w == 0) { loadVarsOk = true; break; };
+	//};
 
 	if (!loadVarsOk)
 	{
@@ -2186,7 +2186,7 @@ static void LoadVars()
 	{
 		InitMainVars();
 
-		savesCount = 2;
+		svCount = 2;
 	};
 }
 
@@ -2208,9 +2208,9 @@ static void SaveVars()
 	{
 		case 0:
 
-			if (savesCount > 0)
+			if (svCount > 0)
 			{
-				savesCount--;
+				svCount--;
 				i++;
 			};
 
@@ -2253,7 +2253,7 @@ static void SaveVars()
 
 			tm.Reset();
 
-			SPI_AddRequest(&spi2);
+			//SPI_AddRequest(&spi2);
 
 			i++;
 
@@ -2261,9 +2261,9 @@ static void SaveVars()
 
 		case 2:
 
-			if (spi2.ready || tm.Check(10))
+			//if (spi2.ready || tm.Check(10))
 			{
-				SPI_AddRequest(&spi);
+				//SPI_AddRequest(&spi);
 
 				i++;
 			};
@@ -2272,7 +2272,7 @@ static void SaveVars()
 
 		case 3:
 
-			if (spi.ready || tm.Check(10))
+			//if (spi.ready || tm.Check(10))
 			{
 				I2C_AddRequest(&dsc);
 				

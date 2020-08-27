@@ -15,6 +15,6 @@
 
 extern void SetNumDevice(u16 num);
 extern u16 GetNumDevice();
-extern void SaveParams();
+extern void SaveMainParams();
 
 #endif

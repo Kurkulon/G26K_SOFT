@@ -2445,18 +2445,18 @@ static void LoadVars()
 	spi.rdata = buf;
 	spi.rlen = sizeof(buf);
 
-	if (SPI_AddRequest(&spi))
-	{
-		while (!(spi.ready || tm.Check(10)));
-	};
+	//if (SPI_AddRequest(&spi))
+	//{
+	//	while (!(spi.ready || tm.Check(10)));
+	//};
 
-	for (byte i = 0; i < 2; i++)
-	{
-		p.CRC.w = 0xFFFF;
-		p.ReadArrayB(&nvv, sizeof(nvv)+2);
+	//for (byte i = 0; i < 2; i++)
+	//{
+	//	p.CRC.w = 0xFFFF;
+	//	p.ReadArrayB(&nvv, sizeof(nvv)+2);
 
-		if (p.CRC.w == 0) { loadVarsOk = true; break; };
-	};
+	//	if (p.CRC.w == 0) { loadVarsOk = true; break; };
+	//};
 
 	if (!loadVarsOk)
 	{
@@ -2610,8 +2610,8 @@ static void SaveVars()
 			{
 				tm.Reset();
 
-				SPI_AddRequest(&spi2);
-				SPI_AddRequest(&spi);
+				//SPI_AddRequest(&spi2);
+				//SPI_AddRequest(&spi);
 
 				i++;
 			};
@@ -2620,7 +2620,7 @@ static void SaveVars()
 
 		case 3:
 
-			if ((spi.ready && spi2.ready ) || tm.Check(10))
+//			if ((spi.ready && spi2.ready ) || tm.Check(10))
 			{
 				i = 0;
 			};
@@ -2734,11 +2734,11 @@ static void LoadSessions()
 
 		tm.Reset();
 
-		SPI_AddRequest(&spi);
+		//SPI_AddRequest(&spi);
 
-		while (!(spi.ready || tm.Check(10)));
+		//while (!(spi.ready || tm.Check(10)));
 
-		if (GetCRC16(&si, sizeof(si)) != 0)
+		//if (GetCRC16(&si, sizeof(si)) != 0)
 		{
 			romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa+sizeof(si)*i);
 
@@ -2796,12 +2796,12 @@ static void LoadSessions()
 				spi2.rdata = 0;
 				spi2.rlen = 0;
 
-				tm.Reset();
+				//tm.Reset();
 
-				SPI_AddRequest(&spi2);
-				SPI_AddRequest(&spi);
+				//SPI_AddRequest(&spi2);
+				//SPI_AddRequest(&spi);
 
-				while (!((spi.ready && spi2.ready) || tm.Check(10)));
+				//while (!((spi.ready && spi2.ready) || tm.Check(10)));
 
 				tm.Reset();
 
