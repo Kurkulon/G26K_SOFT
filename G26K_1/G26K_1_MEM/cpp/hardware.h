@@ -172,7 +172,7 @@ extern void SetClock(const RTC &t);
 extern void EnableDSP();	
 extern void DisableDSP();	
 inline u16 GetShaftRPS() { extern u16 shaftRPS; return shaftRPS; }
-inline u16 GetShaftCount() { extern u16 curShaftCounter; return curShaftCounter; }
+inline u16 GetShaftCount() { extern volatile u16 curShaftCounter; return curShaftCounter; }
 extern void Set_Sync_Rot(u16 RPS, u16 samplePerRound);
 extern void EnableDSP();	
 extern void DisableDSP();	

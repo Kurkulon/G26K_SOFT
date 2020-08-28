@@ -18,12 +18,12 @@
 
 const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
 
-static u32 shaftCounter = 0;
-static u32 shaftPrevTime = 0;
-static u32 shaftCount = 0;
-static u32 shaftTime = 0;
+static volatile u32 shaftCounter = 0;
+static volatile u32 shaftPrevTime = 0;
+static volatile u32 shaftCount = 0;
+static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
-u16 curShaftCounter = 0;
+volatile u16 curShaftCounter = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3618,6 +3618,10 @@ static void UpdateShaft()
 		shaftRPS = shaftCount * 100000 / shaftTime;
 		
 		shaftCount = 0;
+	}
+	else if ((GetMilliseconds() - shaftPrevTime) > 1500)
+	{
+		shaftRPS = 0;
 	};
 }
 
