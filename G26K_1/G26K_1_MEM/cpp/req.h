@@ -41,6 +41,39 @@ __packed struct RspMoto
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+__packed struct ReqBootMotoHS { unsigned __int64 guid; u16 crc; };
+__packed struct RspBootMotoHS { unsigned __int64 guid; u16 crc; };
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct ReqBootMoto
+{
+	u32 func;
+
+	union
+	{
+		struct { u32 flashLen;  u16 align; u16 crc; } F01; // Get Flash CRC
+		struct { u32 padr; u32 page[16]; u16 align; u16 crc; } F02; // Write page
+		struct { u16 align; u16 crc; } F03; // Exit boot loader
+	};
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct RspBootMoto
+{
+	u32 func;
+
+	union
+	{
+		struct { u32 flashLen; u16 flashCRC; u16 crc; } F01;
+		struct { u32 padr; u32 status; u16 align; u16 crc; } F02;
+		struct { u16 align; u16 crc; } F03;							// Exit boot loader
+	};
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 __packed struct ReqDsp01	// чтение вектора
 {
 	u16 	rw;

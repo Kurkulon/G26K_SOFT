@@ -1,0 +1,122 @@
+
+##################################################################################################
+
+!ifndef version
+version = Release
+!endif
+
+##################################################################################################
+
+curdir = $+ $(%cdrive):$(%cwd) $-
+hdir = cpp
+libdir = $(curdir)\..\G26K2LPC824\libs
+bindir = $(%ARMCC50BIN)
+
+!ifeq version Debug
+
+debug_compiler_options = -O1 --debug -D_DEBUG
+debug_linker_options = 
+libsuffix=r
+
+!else ifeq version Win32_Debug
+
+debug_compiler_options = -Od
+debug_linker_options = 
+libsuffix=Win32
+
+!else
+
+debug_compiler_options = -O3 -Ospace --debug
+debug_linker_options = 
+libsuffix=r
+
+!endif
+
+##################################################################################################
+
+target_name = G26K2_BOOT_LPC824
+
+##################################################################################################
+
+libname = $(libdir)\LPC824_$(libsuffix).a
+
+##################################################################################################
+
+.ERASE
+.EXTENSIONS:
+.EXTENSIONS: .exe .o .cpp .h .s .d
+
+##################################################################################################
+
+.cpp:	$(cppdir)
+.o:	$(objdir)
+.h:	$(hdir)
+.s: $(cppdir)
+.d:	$(objdir)
+
+
+##################################################################################################
+
+.BEFORE
+	@if NOT EXIST $(objdir) @md $(objdir) >nul
+	@call echo Building $(version) version ...
+	@call buildnum.bat
+
+
+##################################################################################################
+
+compiler_options = $(debug_compiler_options) --asm --interleave -g -c --cpu=CORTEX-M0plus --thumb --diag_style=ide &
+	  --feedback "$(objdir)\$(target_name).fed" --diag_suppress=68,368,1165,1299,3017 &
+	 -D__MICROLIB --no_depend_system_headers --reduce_paths -I$(libdir)\cpp
+
+##################################################################################################
+
+asm_options = --cpu CORTEX-M0plus -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"BOOT G26K.2(AS76C_MOTOR)-2.1\"" --cpreproc
+
+##################################################################################################
+
+link_options = --cpu CORTEX-M0plus --bestdebug --strict --map --xref --callgraph --symbols --summary_stderr --library_type=microlib
+  
+##################################################################################################
+
+!include $(objdir)\mkoutcpp
+!include $(objdir)\mkoutobj
+
+##################################################################################################
+
+$(objdir)\$(target_name).axf : $(objdir)\startup_LPC82x.o $(modules_obj)
+	@echo Linking ...
+	@$(bindir)\armlink	$(link_options) &
+	--feedback "$^*.fed" &
+	--scatter "$^&.sct" &
+	--list "$^&.map" &
+	-o "$^@" &
+	$(objdir)\startup_lpc82x.o $(modules_obj) $(libname)
+	@$(bindir)\fromelf --i32 --output .\OBJ\$^&.hex $^@ 
+	@$(bindir)\fromelf --bin --output .\OBJ\$^&.bin $^@ 
+	@$(bindir)\fromelf --text -z $^@ 
+	@if NOT EXIST .\OBJ @md .\OBJ >nul
+	@copy /Y $^@ .\OBJ\ >nul
+	
+##################################################################################################
+
+$(objdir)\startup_LPC82x.o : $(cppdir)\startup_LPC82x.s
+
+##################################################################################################
+
+!include $(objdir)\mkoutdep
+
+##################################################################################################
+
+.cpp.o:
+	@echo Compiling $[. ...
+	@$(bindir)\armcc $(compiler_options) --depend="$(objdir)\$^&.d" -o "$(objdir)\$^." $[@
+
+##################################################################################################
+
+.s.o:
+	@echo Assembling $[. ...
+	@$(bindir)\armasm $(asm_options) --list $(objdir)\$^&.lst  -o $(objdir)\$^. $[@	
+
+##################################################################################################
+

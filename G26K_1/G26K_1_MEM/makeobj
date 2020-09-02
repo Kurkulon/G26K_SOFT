@@ -135,7 +135,7 @@ link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph
 #
 ##################################################################################################
 
-$(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cpu_obj) $(modules_obj)
+$(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cppdir)\G26K2LPC824.BIN.H $(cpu_obj) $(modules_obj)
 	@echo Linking ...
 	@$(bindir)\armlink	$(link_options) &
 	--feedback "$^*.fed" &
@@ -150,7 +150,12 @@ $(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cpu_obj) $(modules_o
 	
 ##################################################################################################
 
-$(cppdir)\G26K1BF592.LDR.H : ..\..\G26K_2\G26K_2_BF592\G26K2BF592\\Release\G26K1BF592.ldr
+$(cppdir)\G26K1BF592.LDR.H : ..\..\G26K_2\G26K_2_BF592\G26K2BF592\Release\G26K1BF592.ldr
+	@bin2cpp $[@ $^@
+
+##################################################################################################
+
+$(cppdir)\G26K2LPC824.BIN.H : ..\..\G26K_2\G26K_2_LPC824\G26K2LPC824\OBJ\G26K2LPC824.bin
 	@bin2cpp $[@ $^@
 
 ##################################################################################################

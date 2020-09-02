@@ -67,7 +67,7 @@ compiler_options = $(debug_compiler_options) --asm --interleave -g -c --cpu=CORT
 
 ##################################################################################################
 
-asm_options = --cpu CORTEX-M0plus -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"KAPCAP G26K.2(AS76C_MOTOR)-1.1\"" --cpreproc
+asm_options = --cpu CORTEX-M0plus -g --apcs /interwork --xref --diag_style=ide --pd "__MICROLIB SETA 1" --pd "__PROGNAME__ SETS \"KAPCAP G26K.2(AS76C_MOTOR)-2.1\"" --cpreproc
 
 ##################################################################################################
 

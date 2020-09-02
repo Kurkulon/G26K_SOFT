@@ -42,6 +42,19 @@ inline bool dIsValid(float v) { return (((u32*)&v)[2] & 0x7FF0) != 0x7FF0; }
 #define GD(adr, t, i) (*(((t*)adr)+i))
 #define GB(adr,i) (*(((byte*)adr)+i))
 
+#define INCLIM16(v) { if ((v) < 0xFFFF) {(v) += 1;}; }
+#define DECLIM16(v) { u16 t = v; if (t != 0) { (v) = t - 1; }; }
+#define INCLIM32(v) { if ((u32)(v) < ((u32)~0)) {(v) += 1;}; }
+#define LIM(v, lim) { if ((v) > (lim)) { (v) = (lim); }; }
+
+
+__forceinline u32 MIN(u32 a, u32 b) { return (a < b) ? a : b; }
+__forceinline u32 MAX(u32 a, u32 b) { return (a >= b) ? a : b; }
+
+__forceinline u32 ABSDIF(u32 a, u32 b) { return (a >= b) ? (a - b) : (b - a); }
+
+
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 union DataCRC
 {

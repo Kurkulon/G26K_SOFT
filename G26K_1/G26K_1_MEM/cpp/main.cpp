@@ -644,6 +644,167 @@ static REQ* CreateMotoReq()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void CallBackBootMotoReq01(REQ *q)
+{
+	if (!q->crcOK) 
+	{
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qmoto.Add(q);
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateBootMotoReq01(u16 flashLen, u16 tryCount)
+{
+	static ReqBootMoto req;
+	static RspBootMoto rsp;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = CallBackBootMotoReq01;
+	q.preTimeOut = US2RT(500);
+	q.postTimeOut = US2RT(100);
+	q.rb = &rb;
+	q.wb = &wb;
+	q.ready = false;
+	q.tryCount = tryCount;
+	q.checkCRC = true;
+	q.updateCRC = false;
+	
+	wb.data = &req;
+	wb.len = sizeof(req.F01) + sizeof(req.func);
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	req.func = 1;
+	req.F01.flashLen = flashLen;
+	req.F01.align = ~flashLen;
+
+	req.F01.crc	= GetCRC16(&req, wb.len - sizeof(req.F01.crc));
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CallBackBootMotoReq02(REQ *q)
+{
+	if (!q->crcOK) 
+	{
+		if (q->tryCount > 0)
+		{
+			q->tryCount--;
+			qmoto.Add(q);
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateBootMotoReq02(u16 stAdr, u16 count, const u32* data, u16 tryCount)
+{
+	static ReqBootMoto req;
+	static RspBootMoto rsp;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = CallBackBootMotoReq02;
+	q.preTimeOut = MS2RT(10);
+	q.postTimeOut = US2RT(100);
+	q.rb = &rb;
+	q.wb = &wb;
+	q.ready = false;
+	q.tryCount = tryCount;
+	q.checkCRC = true;
+	q.updateCRC = false;
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	req.func = 2;
+
+	u16 max = ArraySize(req.F02.page);
+
+	if (count > max)
+	{
+		count = max;
+	};
+
+	u32 count2 = max - count;
+
+	req.F02.padr = stAdr;
+
+	u32 *d = req.F02.page;
+
+	while(count > 0)
+	{
+		*d++ = *data++;
+		count--;
+	};
+
+	if (count2 > 0)
+	{
+		*d++ = ~0;
+		count2--;
+	};
+
+	u16 len = sizeof(req.F02) + sizeof(req.func) - sizeof(req.F02.crc);
+
+	req.F02.align = 0xAAAA;
+	req.F02.crc = GetCRC16(&req, len);
+
+	wb.data = &req;
+	wb.len = len+sizeof(req.F02.crc);
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+REQ* CreateBootMotoReq03()
+{
+	static ReqBootMoto req;
+	static RspBootMoto rsp;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer rb;
+	static REQ q;
+
+	q.CallBack = 0;
+	q.preTimeOut = MS2RT(10);
+	q.postTimeOut = US2RT(100);
+	q.rb = &rb;
+	q.wb = &wb;
+	q.ready = false;
+	q.tryCount = 1;
+	q.checkCRC = true;
+	q.updateCRC = false;
+	
+	rb.data = &rsp;
+	rb.maxLen = sizeof(rsp);
+
+	
+	req.func = 3;
+	req.F03.align += 1; 
+
+	u16 len = sizeof(req.F03) + sizeof(req.func) - sizeof(req.F03.crc);
+
+	req.F03.crc = GetCRC16(&req, len);
+
+	wb.data = &req;
+	wb.len = len + sizeof(req.F03.crc);
+
+	return &q;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void InitRmemList()
 {
 	for (u16 i = 0; i < ArraySize(r02); i++)
@@ -2006,11 +2167,8 @@ static const u32 dspFlashPages[] = {
 #include "G26K1BF592.LDR.H"
 };
 
-//static bool runMainMode = false;
-
 u16 dspFlashLen = 0;
 u16 dspFlashCRC = 0;
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2072,6 +2230,106 @@ static void FlashDSP()
 			tm.Reset();
 
 			while (!tm.Check(100));
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static const u32 motoFlashPages[] = {
+#include "G26K2LPC824.BIN.H"
+};
+
+u16 motoFlashLen = 0;
+u16 motoFlashCRC = 0;
+
+#define SGUID	0x0A89D55DD5274785 
+#define MGUID	0x9119CC18AC79DE35
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FlashMoto()
+{
+	static ReqBootMotoHS		reqHS;
+	static RspBootMotoHS		rspHS;
+	static ComPort::WriteBuffer wb;
+	static ComPort::ReadBuffer	rb;
+
+	const unsigned __int64 masterGUID = MGUID;
+	const unsigned __int64 slaveGUID = SGUID;
+
+	TM32 tm;
+
+	REQ *req = 0;
+
+	motoFlashLen = sizeof(motoFlashPages);
+	motoFlashCRC = GetCRC16(motoFlashPages, motoFlashLen);
+
+	tm.Reset();
+
+	bool hs = false;
+
+	while (!tm.Check(100))
+	{
+		reqHS.guid = masterGUID;
+		reqHS.crc = GetCRC16(&reqHS, sizeof(reqHS) - sizeof(reqHS.crc));
+		wb.data = &reqHS;
+		wb.len = sizeof(reqHS);
+
+		commoto.Write(&wb);
+
+		while (commoto.Update());
+
+		rb.data = &rspHS;
+		rb.maxLen = sizeof(rspHS);
+		commoto.Read(&rb, MS2RT(5), US2RT(100));
+
+		while (commoto.Update());
+
+		if (rb.recieved && rb.len == sizeof(rspHS) && GetCRC16(&rspHS, sizeof(rspHS)) == 0 && rspHS.guid == slaveGUID)
+		{
+			hs = true;
+			break;
+		};
+	};
+
+	if (hs)
+	{
+		req = CreateBootMotoReq01(motoFlashLen, 2);
+
+		qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+
+		if (req->crcOK)
+		{
+			RspBootMoto *rsp = (RspBootMoto*)req->rb->data;
+
+			if (rsp->F01.flashCRC != motoFlashCRC || rsp->F01.flashLen != motoFlashLen)
+			{
+				u16 count = motoFlashLen/4;
+				u32 adr = 0;
+				const u32 *p = motoFlashPages;
+
+				while (count > 0)
+				{
+					u16 len = (count > 16) ? 16 : count;
+
+					req = CreateBootMotoReq02(adr, len, p, 2);
+
+					qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+
+					count -= len;
+					p += len;
+					adr += len*4;
+				};
+
+				req = CreateBootMotoReq03();
+
+				qmoto.Add(req); while(!req->ready) { qmoto.Update();	};
+
+				tm.Reset();
+
+				while (!tm.Check(1));
+			};
 		};
 	};
 }
@@ -2379,38 +2637,13 @@ int main()
 
 	TM32 tm;
 
-
-//	RTM32 tm;
-//	Dbt db(100);
-
-	//__breakpoint(0);
+	__breakpoint(0);
 
 	DisableDSP();
 
 	InitHardware();
 
-	//while (1)
-	//{
-	//	if (tm.Check(100))
-	//	{ 
-	//		dsc.adr = 1;
-	//		dsc.alen = 1;
-	//		dsc.csnum = 0;
-	//		dsc.wdata = 0;
-	//		dsc.wlen = 0;
-	//		dsc.rdata = buf;
-	//		dsc.rlen = 10;
-
-	//		buf[0] = 0x55;
-
-	//		SPI_AddRequest(&dsc);
-	//	};
-	//};
-
-
 	LoadVars();
-
-	EnableDSP();
 
 	InitEMAC();
 
@@ -2425,6 +2658,10 @@ int main()
 	commoto.Connect(ComPort::ASYNC, 0, 1562500, 0, 1);
 	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 2, 1);
 	commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
+
+	EnableDSP();
+
+	FlashMoto();
 
 	FlashDSP();
 
