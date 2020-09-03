@@ -1688,6 +1688,8 @@ static void MainMode()
 				else
 				{
 					freeR01.Add(r01);
+
+					r01 = 0;
 				};
 			}
 			else if ((r01->rsp.rw & 0xFF) == 0x50)
@@ -2637,7 +2639,7 @@ int main()
 
 	TM32 tm;
 
-	__breakpoint(0);
+	//__breakpoint(0);
 
 	DisableDSP();
 
@@ -2661,7 +2663,7 @@ int main()
 
 	EnableDSP();
 
-	FlashMoto();
+	//FlashMoto();
 
 	FlashDSP();
 

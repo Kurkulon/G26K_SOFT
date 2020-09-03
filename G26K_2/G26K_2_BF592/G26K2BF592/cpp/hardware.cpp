@@ -184,7 +184,7 @@ void SetMux(byte a)
 void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 {
 	ppi.st = sens.st+1;
-	ppi.clkDiv = (sens.st+1) * NS2CLK(50);
+	ppi.clkDiv = ppi.st * NS2CLK(50);
 
 	//if (ppi.clkDiv == 0) ppi.clkDiv = 1;
 

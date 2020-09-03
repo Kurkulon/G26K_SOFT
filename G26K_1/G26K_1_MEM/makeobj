@@ -14,7 +14,7 @@ bindir = $(%ARMCC50BIN)
 
 !ifeq version Debug
 
-debug_compiler_options = -O0 --debug -D_DEBUG
+debug_compiler_options = -O1 --debug -D_DEBUG
 debug_linker_options = 
 libsuffix=d
 
