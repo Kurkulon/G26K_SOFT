@@ -667,7 +667,7 @@ REQ* CreateBootMotoReq01(u16 flashLen, u16 tryCount)
 	static REQ q;
 
 	q.CallBack = CallBackBootMotoReq01;
-	q.preTimeOut = US2RT(500);
+	q.preTimeOut = MS2RT(10);
 	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
 	q.wb = &wb;
@@ -2315,24 +2315,28 @@ static void FlashMoto()
 				{
 					u16 len = (count > 16) ? 16 : count;
 
-					req = CreateBootMotoReq02(adr, len, p, 2);
+					req = CreateBootMotoReq02(adr, len, p, 3);
 
 					qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+
+					tm.Reset();
+
+					while (!tm.Check(50));
 
 					count -= len;
 					p += len;
 					adr += len*4;
 				};
-
-				req = CreateBootMotoReq03();
-
-				qmoto.Add(req); while(!req->ready) { qmoto.Update();	};
-
-				tm.Reset();
-
-				while (!tm.Check(1));
 			};
 		};
+
+		req = CreateBootMotoReq03();
+
+		qmoto.Add(req); while(!req->ready) { qmoto.Update();	};
+
+		tm.Reset();
+
+		while (!tm.Check(1));
 	};
 }
 
@@ -2663,7 +2667,7 @@ int main()
 
 	EnableDSP();
 
-	//FlashMoto();
+	FlashMoto();
 
 	FlashDSP();
 

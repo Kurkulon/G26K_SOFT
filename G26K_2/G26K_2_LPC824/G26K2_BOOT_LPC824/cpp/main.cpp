@@ -523,7 +523,7 @@ static void UpdateCom()
 
 		case 3:
 
-			while(!tm.Check(2)) ;
+			//while(!tm.Check(2)) ;
 
 			wb.data = &rsp.func;
 			wb.len = rsp.len;
