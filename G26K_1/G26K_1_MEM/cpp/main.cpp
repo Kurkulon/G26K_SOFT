@@ -54,6 +54,10 @@ static MainVars mv;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+u32 req40_count1 = 0;
+u32 req40_count2 = 0;
+u32 req40_count3 = 0;
+
 u32 fps;
 i16 tempClock = 0;
 i16 cpu_temp = 0;
@@ -716,7 +720,7 @@ REQ* CreateBootMotoReq02(u16 stAdr, u16 count, const u32* data, u16 tryCount)
 	static REQ q;
 
 	q.CallBack = CallBackBootMotoReq02;
-	q.preTimeOut = MS2RT(10);
+	q.preTimeOut = MS2RT(300);
 	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
 	q.wb = &wb;
@@ -995,7 +999,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 	R01 *r01 = curManVec40;
 	
-	u16 sz = 18 + r01->rsp.CM.sl;
+	//u16 sz = 18 + r01->rsp.CM.sl;
 
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
@@ -1011,6 +1015,9 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 		if (r01 != 0/* && r01->rsp.rw == req.rw*/)
 		{
+
+			u16 sz = 18 + r01->rsp.CM.sl;
+
 			curManVec40 = r01;
 
 			vec = 0;
@@ -1026,6 +1033,8 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 			}
 			else 
 			{
+				req40_count1++;
+
 				if (reqlen == 3) maxLen = data[2];
 
 				u16 len = maxLen;
@@ -1042,6 +1051,8 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	}
 	else 
 	{
+		req40_count2++;
+
 		u16 off = prevOff + prevLen;
 		u16 len = prevLen;
 
@@ -1051,8 +1062,12 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 			len = data[2];
 		};
 
+		u16 sz = 18 + r01->rsp.CM.sl;
+
 		if (sz >= off && r01 != 0)
 		{
+			req40_count3++;
+
 			u16 ml = sz - off;
 
 			if (len > ml) len = ml;
@@ -2129,6 +2144,7 @@ static void UpdateDSP()
 	static R01 *r01 = 0;
 
 	static byte i = 0;
+	static TM32 tm;
 
 	switch (i)
 	{
@@ -2151,7 +2167,14 @@ static void UpdateDSP()
 			{
 				if (r01->q.crcOK)
 				{
-					readyR01.Add(r01);
+					if (tm.Check(2000))
+					{
+						readyR01.Add(r01);
+					}
+					else
+					{
+						freeR01.Add(r01);
+					};
 				};
 				
 				i = 0;
@@ -2269,9 +2292,9 @@ static void FlashMoto()
 
 	tm.Reset();
 
-	bool hs = false;
+	bool hs = true;
 
-	while (!tm.Check(100))
+	while (!tm.Check(200))
 	{
 		reqHS.guid = masterGUID;
 		reqHS.crc = GetCRC16(&reqHS, sizeof(reqHS) - sizeof(reqHS.crc));
@@ -2315,13 +2338,20 @@ static void FlashMoto()
 				{
 					u16 len = (count > 16) ? 16 : count;
 
-					req = CreateBootMotoReq02(adr, len, p, 3);
+					for(u32 i = 3; i > 0; i--)
+					{
+						req = CreateBootMotoReq02(adr, len, p, 3);
 
-					qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+						qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+
+						RspBootMoto *rsp = (RspBootMoto*)req->rb->data;
+
+						if (req->crcOK && rsp->F02.status) { break;	}
+					};
 
 					tm.Reset();
 
-					while (!tm.Check(50));
+					while (!tm.Check(1));
 
 					count -= len;
 					p += len;
