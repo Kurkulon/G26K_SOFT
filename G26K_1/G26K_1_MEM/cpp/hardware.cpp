@@ -255,9 +255,9 @@ volatile u16 curShaftCounter = 0;
 	// 63	- P2.13	- main loop
 	// 64	- P2.12 - SPI_Handler
 	// 76	- P2.6	- ManTrmIRQ
-	// 77	- P5.7	- MEM USART RTS	
-	// 78	- P5.6	- MEM USART RTS	
-	// 79	- P5.5	- MEM USART READ	
+	// 77	- P5.7	- UpdateMan	
+	// 78	- P5.6	- 	
+	// 79	- P5.5	- 	
 	// 80	- P5.4	- CRC_CCITT_DMA
 	// 81	- P5.3	- I2C_Handler 
 	// 83	- P5.1	- ManRcvIRQ 
@@ -1878,6 +1878,7 @@ void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 inline void ManDisable()	{ PIO_MANCH->CLR(L1|L2);	PIO_MANCH->SET(H1|H2);							} 
 inline void ManZero()		{ PIO_MANCH->CLR(L2);		PIO_MANCH->SET(L1|H1);		PIO_MANCH->CLR(H2);	} 
 inline void ManOne()		{ PIO_MANCH->CLR(L1);		PIO_MANCH->SET(L2|H2);		PIO_MANCH->CLR(H1);	} 
+inline void ManDischarge()	{ PIO_MANCH->CLR(L1|L2);	PIO_MANCH->CLR(H1|H2);							} 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1983,14 +1984,14 @@ static __irq void ManTrmIRQ()
 
 		case 3: // Wait 2-nd sync imp
 
-			i--;
+			i--; 
 
 			if (i == 0)
 			{
 				stateManTrans++;
 				count = 17;
 
-				if (tw & 0x10000) ManZero(); else ManOne();
+				if (tw & 0x10000) { ManZero(); } else { ManOne(); };
 			};
 
 			break;
@@ -1999,7 +2000,7 @@ static __irq void ManTrmIRQ()
 
 //			HW::PIOE->SODR = 1;
 
-			if (tw & 0x10000) ManOne(); else ManZero();
+			if (tw & 0x10000) { ManOne(); } else { ManZero(); };
 
 			count--;
 
@@ -2035,11 +2036,13 @@ static __irq void ManTrmIRQ()
 
 			tw <<= 1;
 			stateManTrans = 4;
-			if (tw & 0x10000) ManZero(); else ManOne();
+			if (tw & 0x10000) { ManZero(); } else { ManOne(); };
 
 			break;
 
 		case 6:
+
+			if (tw & 0x10000) { ManZero(); } else { ManOne(); };
 
 			stateManTrans++;
 
@@ -2206,154 +2209,6 @@ static void ManRcvEnd(bool ok)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/*
-class Receiver
-{
-	private:
-		u32 _number;
-		u32 _length;
-		u32 _data_temp;
-		u32 _data;
-		bool _command_temp;
-		bool _command;
-		bool _parity_temp;
-		bool _parity;
-		bool _sync;
-		bool _state;
-
-    public:
-
-		enum status_type
-		{
-			STATUS_WAIT = 0,
-			STATUS_SYNC,
-			STATUS_HANDLE,
-			STATUS_CHECK,
-			STATUS_READY,
-			STATUS_ERROR_LENGTH,
-			STATUS_ERROR_STRUCT,
-		};
-
-		Receiver(bool parity);
-		status_type Parse(u16 len);	
-		u16 GetData() { return _data; }
-		bool GetType() { return _command; }
-};
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-Receiver::Receiver(bool parity)
-{
-	_state = false;
-	_number = 0;
-	_length = 0;
-	_data_temp = 0;
-	_data = 0;
-	_command_temp = false;
-	_command = false;
-	_parity = parity;
-	_parity_temp = false;
-	_sync = false;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-Receiver::status_type Receiver::Parse(u16 len)
-{	
-	_state = !_state;
-
-	if((len <= 12) || (len > 108))
-	{
-//		HW::PIOB->SODR = 1<<10;
-
-		_number = 0;
-		_length = 0;
-		_sync = false;
-
-//		HW::PIOB->CODR = 1<<10;
-
-		return STATUS_ERROR_LENGTH;
-	}
-	else if(len <= 36)                
-	{	
-		_length++;
-	}
-	else if(len <= 60)
-	{	
-		_length += 2;
-	}
-	else
-	{
-		HW::PIOA->BSET(3);
-
-		_sync = true;
-		_data_temp = 0;
-		_parity_temp = _parity;
-		_number = 0;
-		_length = (len <= 84) ? 1 : 2;
-		_command_temp = !_state; 
-	};
-
-	if(_length >= 3)
-	{
-		_number = 0;
-		_length = 0;
-		_sync = false;
-
-
-		return STATUS_ERROR_STRUCT;
-	};
-
-	if(_sync)
-	{
-		if(_length == 2)
-		{
-			if(_number < 16)
-			{
-				_data_temp <<= 1;
-				_data_temp |= _state;
-				_parity_temp ^= _state;
-				_number ++;
-				_length = 0;
-			}
-		 	else
-			{
-				_data = _data_temp;
-				_data_temp = 0;
-				_command = _command_temp;
-				_command_temp = false;
-				_number = 0;
-				_length = 0;
-				_sync = false;
-
-				if(_state != _parity_temp)
-				{
-					_state = !_state;
-					_data = (~_data);
-					_command = !_command;
-				};
-
-				return STATUS_READY;
-			};
-		};
-
-		return (_number < 16) ? STATUS_HANDLE : STATUS_CHECK;
-	};
-
-	return STATUS_WAIT;
-}
-*/
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static Receiver manRcv(true);
-
-//u32 lastCaptureValue = 0;
-//byte manRcvState = 0;
-//
-//u32 manRcvTime1 = 0;
-//u32 manRcvTime2 = 0;
-//u32 manRcvTime3 = 0;
-//u32 manRcvTime4 = 0;
 
 static RTM manRcvTime;
 
@@ -2638,6 +2493,8 @@ bool RcvManData(MRB *mrb)
 
 	rcvManPtr = manRB->data;
 	rcvManCount = manRB->maxLen;
+
+	//ManDischarge();
 
 	#ifdef CPU_SAME53	
 
@@ -3263,7 +3120,7 @@ u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init)
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	HW::P1->BSET(9);
+	HW::P5->BSET(4);
 
 	byte *s = (byte*)data;
 
@@ -3284,7 +3141,7 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 	//if (len & 1) { CRC_FCE->IR = s[len-1]; };
 
-	HW::P1->BCLR(9);
+	HW::P5->BCLR(4);
 
 	return (byte)CRC_FCE->RES;
 }

@@ -1577,6 +1577,8 @@ static void UpdateMan()
 	{
 		case 0:
 
+			HW::P5->BSET(7);
+
 			mrb.data = manRcvData;
 			mrb.maxLen = ArraySize(manRcvData);
 			RcvManData(&mrb);
@@ -1596,6 +1598,8 @@ static void UpdateMan()
 				if (mrb.OK && mrb.len > 0 &&	(((manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb)) 
 										||		((manRcvData[0] & memReqMask) == memReqWord && RequestMem(manRcvData, mrb.len, &mtb))))
 				{
+					HW::P5->BCLR(7);
+
 					i++;
 				}
 				else
@@ -2167,14 +2171,14 @@ static void UpdateDSP()
 			{
 				if (r01->q.crcOK)
 				{
-					if (tm.Check(2000))
+//					if (tm.Check(2000))
 					{
 						readyR01.Add(r01);
 					}
-					else
-					{
-						freeR01.Add(r01);
-					};
+					//else
+					//{
+					//	freeR01.Add(r01);
+					//};
 				};
 				
 				i = 0;

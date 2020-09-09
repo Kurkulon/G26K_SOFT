@@ -801,7 +801,7 @@ static void RecieveFrame()
 			++rxCount;
 			RxBufIndex = (RxBufIndex >= 7) ? 0 : (RxBufIndex+1);
 
-			HW::P5->BTGL(9);
+			//HW::P5->BTGL(9);
 
 			//Clear RU flag to resume processing
 			HW::ETH0->STATUS = ETH_STATUS_RU_Msk;
