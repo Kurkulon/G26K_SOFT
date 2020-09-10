@@ -287,9 +287,9 @@ void CallBackDspReq01(REQ *q)
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
 
-		rsp.CM.ax = -ax;
-		rsp.CM.ay = az;
-		rsp.CM.az = -ay;
+		rsp.CM.ax = ax;
+		rsp.CM.ay = ay;
+		rsp.CM.az = az;
 		rsp.CM.at = at;
 		rsp.CM.pakType = 0;
 	}
@@ -303,9 +303,9 @@ void CallBackDspReq01(REQ *q)
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
 
-		rsp.IM.ax = -ax;
-		rsp.IM.ay = az;
-		rsp.IM.az = -ay;
+		rsp.IM.ax = ax;
+		rsp.IM.ay = ay;
+		rsp.IM.az = az;
 		rsp.IM.at = at;
 	}
 	else
@@ -1865,7 +1865,7 @@ static void UpdateAccel()
 
 			if (dscAccel.ready)
 			{
-				txAccel[0] = 4;
+				txAccel[0] = 0;
 				AccelWriteReg(0x28, 1); // FILTER SETTINGS REGISTER
 
 				i++;
@@ -1908,6 +1908,9 @@ static void UpdateAccel()
 				}
 				else
 				{
+					txAccel[0] = 0;
+					AccelWriteReg(0x2E, 1); // Self Test
+
 					tm.Reset();
 					i++;
 				};
@@ -1916,6 +1919,15 @@ static void UpdateAccel()
 			break;
 
 		case 7:
+
+			if (dscAccel.ready)
+			{
+				i++;
+			};
+
+			break;
+
+		case 8:
 
 			if (tm.Check(10))
 			{
@@ -1926,7 +1938,7 @@ static void UpdateAccel()
 
 			break;
 
-		case 8:
+		case 9:
 
 			if (dscAccel.ready)
 			{
@@ -1939,13 +1951,13 @@ static void UpdateAccel()
 				//y /= 4096;
 				//z /= 4096;
 
-				fx += (x - fx) / 8;
-				fy += (y - fy) / 8;
-				fz += (z - fz) / 8;
+				fx += (x - fx) * 0.05f;
+				fy += (y - fy) * 0.05f;
+				fz += (z - fz) * 0.05f;
 
-				ax = -(fz / 32768); 
-				ay = (fy / 32768); 
-				az = -(fx / 32768);
+				ax = -(fz / 65536); 
+				ay = (fy / 65536); 
+				az = -(fx / 65536);
 
 				at = 250 + ((1852 - t) * 1000 + 452) / 905;
 				//at = 250 + (1852 - t) * 1.1049723756906077348066298342541f;
