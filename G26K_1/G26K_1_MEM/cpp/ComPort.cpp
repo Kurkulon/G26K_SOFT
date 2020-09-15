@@ -312,11 +312,21 @@ void ComPort::EnableTransmit(void* src, word count)
 
 	#ifdef CPU_SAME53	
 
+		//if (_chdma->CTRLA & DMCH_ENABLE)
+		//{
+		//	__breakpoint(0);
+		//};
+
+		_chdma->CTRLA = 0;
+
 		_dmadsc->SRCADDR = (byte*)src+count;
 		_dmadsc->DSTADDR = &_SU->DATA;
 		_dmadsc->DESCADDR = 0;
 		_dmadsc->BTCNT = count;
 		_dmadsc->BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
+
+		_chdma->INTENCLR = ~0;
+		_chdma->INTFLAG = ~0;
 
 		_chdma->CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|_dma_trgsrc_tx;
 
@@ -411,7 +421,15 @@ void ComPort::DisableTransmit()
 {
 	#ifdef CPU_SAME53	
 
+		_chdma->CTRLA = 0;
 		_SU->CTRLB = _CTRLB;	// Disable transmit and receive
+
+		//while (_chdma->CTRLA & DMCH_ENABLE)
+		//{
+		//	_chdma->CTRLA = 0;
+		//};
+
+		_chdma->CTRLA = DMCH_SWRST;
 
 	#elif defined(CPU_XMC48)
 
@@ -431,6 +449,13 @@ void ComPort::EnableReceive(void* dst, word count)
 	_pm->CLR(_pinRTS);
 
 	#ifdef CPU_SAME53	
+
+		if (_chdma->CTRLA & DMCH_ENABLE)
+		{
+			__breakpoint(0);
+		};
+
+		_chdma->CTRLA = 0;
 
 		_dmadsc->SRCADDR = &_SU->DATA;
 		_dmadsc->DSTADDR = (byte*)dst+count;
@@ -539,6 +564,13 @@ void ComPort::DisableReceive()
 
 		_chdma->CTRLA = 0;
 		_SU->CTRLB = _CTRLB;
+
+		//while (_chdma->CTRLA & DMCH_ENABLE)
+		//{
+		//	_chdma->CTRLA = 0;
+		//};
+
+		_chdma->CTRLA = DMCH_SWRST;
 
 	#elif defined(CPU_XMC48)
 

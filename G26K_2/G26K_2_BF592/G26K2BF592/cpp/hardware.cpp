@@ -194,7 +194,7 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 
 	ppi.sd = sens.sd;
 
-	i32 d = (i32)ppi.sd - (i32)ppi.st*4;
+	i32 d = (i32)ppi.sd - (i32)ppi.st*2;
 
 	if (d < 0) d = 0;
 
@@ -320,7 +320,7 @@ static void ReadPPI(PPI &ppi)
 		*pTIMER1_WIDTH = curDscPPI->ppiclkdiv>>1;
 
 		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
-		*pDMA0_X_COUNT = curDscPPI->len = ppi.len;
+		*pDMA0_X_COUNT = ppi.len + 10; curDscPPI->len = ppi.len;
 		*pDMA0_X_MODIFY = 2;
 
 		*pDMA0_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;

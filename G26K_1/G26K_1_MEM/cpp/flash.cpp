@@ -2445,18 +2445,18 @@ static void LoadVars()
 	spi.rdata = buf;
 	spi.rlen = sizeof(buf);
 
-	//if (SPI_AddRequest(&spi))
-	//{
-	//	while (!(spi.ready || tm.Check(10)));
-	//};
+	if (SPI_AddRequest(&spi))
+	{
+		while (!(spi.ready || tm.Check(10)));
+	};
 
-	//for (byte i = 0; i < 2; i++)
-	//{
-	//	p.CRC.w = 0xFFFF;
-	//	p.ReadArrayB(&nvv, sizeof(nvv)+2);
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&nvv, sizeof(nvv)+2);
 
-	//	if (p.CRC.w == 0) { loadVarsOk = true; break; };
-	//};
+		if (p.CRC.w == 0) { loadVarsOk = true; break; };
+	};
 
 	if (!loadVarsOk)
 	{
@@ -2538,7 +2538,7 @@ static void SaveVars()
 			else if (savesSessionsCount > 0)
 			{
 				savesSessionsCount--;
-				i = 4;
+				i = 5;
 			}
 			else if (eraseSessionsCount > 0)
 			{
@@ -2558,7 +2558,7 @@ static void SaveVars()
 
 				savesCount = 1;
 
-				i = 5;
+				i = 6;
 			};
 
 			break;
@@ -2610,8 +2610,7 @@ static void SaveVars()
 			{
 				tm.Reset();
 
-				//SPI_AddRequest(&spi2);
-				//SPI_AddRequest(&spi);
+				SPI_AddRequest(&spi2);
 
 				i++;
 			};
@@ -2620,14 +2619,25 @@ static void SaveVars()
 
 		case 3:
 
-//			if ((spi.ready && spi2.ready ) || tm.Check(10))
+			if (spi2.ready || tm.Check(10))
+			{
+				SPI_AddRequest(&spi);
+
+				i++;
+			};
+
+			break;
+
+		case 4:
+
+			if (spi.ready || tm.Check(10))
 			{
 				i = 0;
 			};
 
 			break;
 
-		case 4:
+		case 5:
 
 			{
 				NVSI &si = nvsi[nvv.index];
@@ -2671,7 +2681,7 @@ static void SaveVars()
 
 			break;
 
-		case 5:
+		case 6:
 
 			romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa);
 
@@ -2734,11 +2744,11 @@ static void LoadSessions()
 
 		tm.Reset();
 
-		//SPI_AddRequest(&spi);
+		SPI_AddRequest(&spi);
 
-		//while (!(spi.ready || tm.Check(10)));
+		while (!(spi.ready || tm.Check(10)));
 
-		//if (GetCRC16(&si, sizeof(si)) != 0)
+		if (GetCRC16(&si, sizeof(si)) != 0)
 		{
 			romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa+sizeof(si)*i);
 
@@ -2796,12 +2806,12 @@ static void LoadSessions()
 				spi2.rdata = 0;
 				spi2.rlen = 0;
 
-				//tm.Reset();
+				tm.Reset();
 
-				//SPI_AddRequest(&spi2);
-				//SPI_AddRequest(&spi);
+				SPI_AddRequest(&spi2);
+				SPI_AddRequest(&spi);
 
-				//while (!((spi.ready && spi2.ready) || tm.Check(10)));
+				while (!((spi.ready && spi2.ready) || tm.Check(10)));
 
 				tm.Reset();
 

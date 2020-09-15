@@ -118,7 +118,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>€оЁ</Name>
+          <Name>d</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -171,7 +171,7 @@
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>nvsi,0x0A</ItemText>
+          <ItemText>nvsi,0x10</ItemText>
         </Ww>
         <Ww>
           <count>5</count>

@@ -441,7 +441,7 @@ REQ* CreateDspReq05(u16 tryCount)
 	static REQ q;
 
 	q.CallBack = CallBackDspReq05;
-	q.preTimeOut = US2RT(500);
+	q.preTimeOut = MS2RT(10);
 	q.postTimeOut = US2RT(100);
 	q.rb = &rb;
 	q.wb = &wb;
@@ -1577,7 +1577,7 @@ static void UpdateMan()
 	{
 		case 0:
 
-			HW::P5->BSET(7);
+//			HW::P5->BSET(7);
 
 			mrb.data = manRcvData;
 			mrb.maxLen = ArraySize(manRcvData);
@@ -1598,7 +1598,7 @@ static void UpdateMan()
 				if (mrb.OK && mrb.len > 0 &&	(((manRcvData[0] & manReqMask) == manReqWord && RequestMan(manRcvData, mrb.len, &mtb)) 
 										||		((manRcvData[0] & memReqMask) == memReqWord && RequestMem(manRcvData, mrb.len, &mtb))))
 				{
-					HW::P5->BCLR(7);
+					//HW::P5->BCLR(7);
 
 					i++;
 				}
@@ -1951,9 +1951,9 @@ static void UpdateAccel()
 				//y /= 4096;
 				//z /= 4096;
 
-				fx += (x - fx) * 0.05f;
-				fy += (y - fy) * 0.05f;
-				fz += (z - fz) * 0.05f;
+				fx += (x - fx) / 8;
+				fy += (y - fy) / 8;
+				fz += (z - fz) / 8;
 
 				ax = -(fz / 65536); 
 				ay = (fy / 65536); 
@@ -2256,9 +2256,9 @@ static void FlashDSP()
 				adr += len;
 			};
 
-			req = CreateDspReq07();
+			//req = CreateDspReq07();
 
-			qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
+			//qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
 
 			DisableDSP();
 			
