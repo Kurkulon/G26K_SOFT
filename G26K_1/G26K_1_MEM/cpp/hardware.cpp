@@ -686,7 +686,7 @@ volatile u16 curShaftCounter = 0;
 
 	#define SPI__PCR (MSLSEN | SELINV |  TIWEN | MCLK | CTQSEL1(0) | PCTQ1(0) | DCTQ1(0))
 
-	#define SPI__BAUD (8000000)
+	#define SPI__BAUD (4000000)
 
 	#define SPI__FDR ((1024 - ((MCK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
 
@@ -3602,6 +3602,7 @@ static u32 spi_adr = 0;
 static DSCSPI* spi_dsc = 0;
 static DSCSPI* spi_lastDsc = 0;
 static u32 SPI_CS_MASK[2] = { CS0, CS1 };
+static u32 spi_timestamp = 0;
 
 //static bool SPI_Write(DSCSPI *d);
 //static bool SPI_Read(DSCSPI *d);
@@ -3924,8 +3925,8 @@ static bool SPI_WriteRead(DSCSPI *d)
 			SPI->PCR_SSCMode = SPI__PCR|SELO(1<<spi_dsc->csnum);
 
 			VectorTableExt[SPI_IRQ] = SPI_Handler_Write;
-			CM4::NVIC->CLR_PR(SPI_IRQ);
-			CM4::NVIC->SET_ER(SPI_IRQ);
+			//CM4::NVIC->CLR_PR(SPI_IRQ);
+			//CM4::NVIC->SET_ER(SPI_IRQ);
 			
 			SPI->PSCR = ~0;
 
@@ -3976,8 +3977,8 @@ static bool SPI_WriteRead(DSCSPI *d)
 	//		SPI->PSCR = ~0;
 
 			VectorTableExt[SPI_IRQ] = SPI_Handler_Read;
-			CM4::NVIC->CLR_PR(SPI_IRQ);
-			CM4::NVIC->SET_ER(SPI_IRQ);
+			//CM4::NVIC->CLR_PR(SPI_IRQ);
+			//CM4::NVIC->SET_ER(SPI_IRQ);
 
 			HW::DLR->LNEN |= SPI_DLR_LNEN;
 
@@ -4006,8 +4007,8 @@ static bool SPI_WriteRead(DSCSPI *d)
 			SPI->PCR_SSCMode = SPI__PCR|SELO(1<<spi_dsc->csnum);
 
 			VectorTableExt[SPI_IRQ] = SPI_Handler_Write;
-			CM4::NVIC->CLR_PR(SPI_IRQ);
-			CM4::NVIC->SET_ER(SPI_IRQ);
+			//CM4::NVIC->CLR_PR(SPI_IRQ);
+			//CM4::NVIC->SET_ER(SPI_IRQ);
 			
 			SPI->PSCR = ~0;
 
@@ -4160,6 +4161,11 @@ bool SPI_Init()
 	PIO_CS->ModePin(PIN_CS0, G_PP);
 	PIO_CS->ModePin(PIN_CS1, G_PP);
 	PIO_CS->SET(CS0|CS1);
+
+	VectorTableExt[SPI_IRQ] = SPI_Handler_Read;
+	CM4::NVIC->CLR_PR(SPI_IRQ);
+	CM4::NVIC->SET_ER(SPI_IRQ);
+
 
 	//SPI->PCR_SSCMode = SPI__PCR|SELO(1);
 	

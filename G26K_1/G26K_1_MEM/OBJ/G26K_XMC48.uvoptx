@@ -138,7 +138,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=2724,158,3174,711,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=2879,284,3137,868,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=2901,173,3351,726,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=2879,284,3137,868,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -226,7 +226,7 @@
         <Ww>
           <count>15</count>
           <WinNumber>1</WinNumber>
-          <ItemText>at,0x0A</ItemText>
+          <ItemText>at,0x10</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -400,6 +400,16 @@
       <pszMrule></pszMrule>
       <pSingCmds></pSingCmds>
       <pMultCmds></pMultCmds>
+      <SystemViewers>
+        <Entry>
+          <Name>System Viewer\GPDMA0_CH5</Name>
+          <WinId>35904</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\USIC1_CH0</Name>
+          <WinId>35905</WinId>
+        </Entry>
+      </SystemViewers>
     </TargetOption>
   </Target>
 
