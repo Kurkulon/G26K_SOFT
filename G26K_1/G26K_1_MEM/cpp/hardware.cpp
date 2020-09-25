@@ -705,10 +705,10 @@ volatile u16 curShaftCounter = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline 	void EnableVCORE()	{ PIO_ENVCORE->CLR(ENVCORE); 	}
-inline 	void DisableVCORE()	{ PIO_ENVCORE->SET(ENVCORE); 	}
-		void EnableDSP()	{ PIO_RESET->CLR(RESET); 		}
-		void DisableDSP()	{ PIO_RESET->SET(RESET); 		}
+__forceinline 	void EnableVCORE()	{ PIO_ENVCORE->CLR(ENVCORE); 	}
+__forceinline 	void DisableVCORE()	{ PIO_ENVCORE->SET(ENVCORE); 	}
+				void EnableDSP()	{ PIO_RESET->CLR(RESET); 		}
+				void DisableDSP()	{ PIO_RESET->SET(RESET); 		}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
