@@ -91,10 +91,10 @@ struct FLADR
 	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
 	void	SetRawAdr(u64 a) { raw  = a & NAND_RAWADR_MASK; };
 
-	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; chip = NAND_GetMemSize()->chipValidNext[chip]; }
-	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS); chip = NAND_GetMemSize()->chipValidNext[chip];}
-	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS; col = 0; chip = NAND_GetMemSize()->chipValidPrev[chip]; }
-	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0; chip = NAND_GetMemSize()->chipValidPrev[chip];}
+	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; raw += NAND_GetMemSize()->chipOffsetNext[chip]; }
+	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS); raw += NAND_GetMemSize()->chipOffsetNext[chip];}
+	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS; col = 0; raw -= NAND_GetMemSize()->chipOffsetPrev[chip]; }
+	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0; raw -= NAND_GetMemSize()->chipOffsetPrev[chip];}
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

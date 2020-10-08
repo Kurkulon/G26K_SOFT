@@ -1520,9 +1520,11 @@ static void NAND_Init()
 
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip ++)
 	{
+
 		NAND_Chip_Select(chip);
 		ResetNand();
-		NandID k9k8g08u_id;
+		NandID k9k8g08u_id = {0};
+	
 		NAND_Read_ID(&k9k8g08u_id);
 
 		if((k9k8g08u_id.marker == 0xEC) && (k9k8g08u_id.device == 0xD3))
@@ -1546,10 +1548,14 @@ static void NAND_Init()
 		};
 	};
 
+	u32 blocksize = 1UL << (NAND_COL_BITS + NAND_PAGE_BITS);
+
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip++)
 	{
 		nandSize.chipValidNext[chip] = 0;
 		nandSize.chipValidPrev[chip] = 0;
+
+		u32 offset = 0;
 
 		for (byte i = 0; i < NAND_MAX_CHIP; i++)
 		{
@@ -1558,9 +1564,14 @@ static void NAND_Init()
 			if (nandSize.mask & (1<<cn))
 			{
 				nandSize.chipValidNext[chip] = cn;
+				nandSize.chipOffsetNext[chip] = offset;
 				break;
 			};
+
+			offset += blocksize;
 		};
+
+		offset = 0;
 
 		for (byte i = 0; i < NAND_MAX_CHIP; i++)
 		{
@@ -1569,8 +1580,11 @@ static void NAND_Init()
 			if (nandSize.mask & (1<<cp))
 			{
 				nandSize.chipValidPrev[chip] = cp;
+				nandSize.chipOffsetPrev[chip] = offset;
 				break;
 			};
+			
+			offset += blocksize;
 		};
 	};
 
@@ -1783,9 +1797,9 @@ void NAND_ReadDataDMA(volatile void *dst, u16 len)
 
 		nandTCC->WAVE = TCC_WAVEGEN_NPWM|TCC_POL0;
 		nandTCC->DRVCTRL = TCC_NRE0|TCC_NRE1|TCC_NRV0|TCC_NRV1;
-		nandTCC->PER = NS2CLK(60)-1;
-		nandTCC->CC[0] = NS2CLK(35); 
-		nandTCC->CC[1] = NS2CLK(30); 
+		nandTCC->PER = NS2CLK(70)-1;
+		nandTCC->CC[0] = NS2CLK(40); 
+		nandTCC->CC[1] = NS2CLK(35); 
 
 		nandTCC->EVCTRL = TCC_OVFEO|TCC_MCEO0|TCC_TCEI1|TCC_EVACT1_STOP;
 
