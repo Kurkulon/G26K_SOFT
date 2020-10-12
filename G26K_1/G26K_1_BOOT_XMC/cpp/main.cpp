@@ -853,9 +853,9 @@ static void WDT_Init()
 		HW::SCU_CLK->WDTCLKCR = 0|SCU_CLK_WDTCLKCR_WDTSEL_OFI;
 
 		#ifndef _DEBUG
-//		HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
+		HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
 		#else
-//		HW::WDT->CTR = WDT_CTR_ENB_Msk;
+		HW::WDT->CTR = WDT_CTR_ENB_Msk;
 		#endif
 
 	#endif
@@ -901,6 +901,8 @@ int main()
 				runEmac = false;
 			};
 		};
+
+		HW::WDT->Update();
 
 		HW::P5->BCLR(7);
 	};

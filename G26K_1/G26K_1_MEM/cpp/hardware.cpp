@@ -3256,9 +3256,9 @@ static void WDT_Init()
 		HW::SCU_CLK->WDTCLKCR = 0|SCU_CLK_WDTCLKCR_WDTSEL_OFI;
 
 		#ifndef _DEBUG
-//		HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
+		HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
 		#else
-//		HW::WDT->CTR = WDT_CTR_ENB_Msk;
+		HW::WDT->CTR = WDT_CTR_ENB_Msk;
 		#endif
 
 	#endif
@@ -4261,19 +4261,21 @@ void InitHardware()
 
 void UpdateHardware()
 {
-	static byte i = 0;
+	//static byte i = 0;
 
-	static Deb db(false, 20);
+	//static Deb db(false, 20);
 
-	#define CALL(p) case (__LINE__-S): p; break;
+	//#define CALL(p) case (__LINE__-S): p; break;
 
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( UpdateShaft();		);
-	};
+	//enum C { S = (__LINE__+3) };
+	//switch(i++)
+	//{
+	//	CALL( UpdateShaft();		);
+	//};
 
-	i = (i > (__LINE__-S-3)) ? 0 : i;
+	//i = (i > (__LINE__-S-3)) ? 0 : i;
+
+	UpdateShaft();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

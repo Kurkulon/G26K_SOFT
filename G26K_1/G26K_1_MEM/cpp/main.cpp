@@ -1989,6 +1989,8 @@ static void UpdateTemp()
 
 			if (tm.Check(100))
 			{
+				HW::WDT->Update();
+
 				buf[0] = 0x11;
 
 				dsc.adr = 0x68;
