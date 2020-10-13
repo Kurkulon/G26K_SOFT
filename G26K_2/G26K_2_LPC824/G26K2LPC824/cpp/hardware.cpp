@@ -287,6 +287,8 @@ void SetTargetRPM(u32 v)
 		else
 		{
 			HW::MRT->Channel[3].CTRL = 0;
+			tachoPLL = 0;
+			tachoCount = 0;
 		};
 
 		__enable_irq();
@@ -1355,6 +1357,13 @@ static void TahoSync()
 		//	curPLL--;
 		//};
 
+		if (targetRPM == 0)
+		{
+			HW::MRT->Channel[3].CTRL = 0;
+			tachoPLL = 0;
+			tachoCount = 0;
+		};
+
 		if (tachoCount >= tachoLim)
 		{
 			tachoCount = tachoLim;
@@ -1424,7 +1433,7 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (avrCurADC > 1500)
+		if (avrCurADC > 2000)
 		{
 			if (limDuty > 0) limDuty -= 1;
 		}
@@ -1484,7 +1493,7 @@ __irq void MRT_Handler()
 	{
 		HW::GPIO->BTGL(15);
 
-		if (avrCurADC > 1500)
+		if (avrCurADC > 2000)
 		{
 			if (limDuty > 0) limDuty -= 1;
 		}
