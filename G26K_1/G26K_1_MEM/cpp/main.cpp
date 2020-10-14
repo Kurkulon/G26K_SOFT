@@ -2025,11 +2025,11 @@ static void UpdateTemp()
 					};
 
 					tempClock = t;
-				}
-				else
-				{
-					tempClock = -2730;
 				};
+				//else
+				//{
+				//	tempClock = -2730;
+				//};
 
 				i++;
 			};
@@ -2088,11 +2088,11 @@ static void UpdateTemp()
 					i32 t = (i16)ReverseWord(rbuf);
 
 					temp = (t * 10 + 64) / 128;
-				}
-				else
-				{
-					temp = -2730;
 				};
+				//else
+				//{
+				//	temp = -2730;
+				//};
 
 #ifdef CPU_SAME53	
 
