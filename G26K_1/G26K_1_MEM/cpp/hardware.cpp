@@ -18,12 +18,16 @@
 
 const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
 
+const u16 testNandChipMask = 0xFFFF;
+
 static volatile u32 shaftCounter = 0;
 static volatile u32 shaftPrevTime = 0;
 static volatile u32 shaftCount = 0;
 static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
 volatile u16 curShaftCounter = 0;
+
+static void I2C_Init();
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1550,6 +1554,8 @@ static void NAND_Init()
 
 	u32 blocksize = 1UL << (NAND_COL_BITS + NAND_PAGE_BITS);
 
+	nandSize.mask &= testNandChipMask;
+
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip++)
 	{
 		nandSize.chipValidNext[chip] = 0;
@@ -2779,7 +2785,7 @@ bool I2C_Write(DSCI2C *d)
 	if (twi_dsc != 0 || d == 0) { return false; };
 	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
 
-	twi_lastDsc = twi_dsc = d;
+	twi_dsc = d;
 
 	twi_dsc->ready = false;
 	twi_dsc->ack = false;
@@ -2883,36 +2889,9 @@ bool I2C_Update()
 		{
 			result = true;
 
-			HW::Peripheral_Disable(PID_USIC2);
+			HW::Peripheral_Disable(I2C_PID);
 
- 			P5->ModePin0(A1OD);
-			P5->ModePin2(A1PP);
-
-			HW::Peripheral_Enable(I2C_PID);
-
-			I2C->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
-
-			I2C->SCTR = I2C__SCTR;
-
-			I2C->FDR = I2C__FDR;
-			I2C->BRG = I2C__BRG;
-		    
-			I2C->TCSR = I2C__TCSR;
-
-			I2C->PSCR = ~0;
-
-			I2C->CCR = 0;
-
-			I2C->DX0CR = I2C__DX0CR;
-			I2C->DX1CR = I2C__DX1CR;
-
-			I2C->CCR = I2C__CCR;
-
-			I2C->PCR_IICMode = I2C__PCR;
-
-			VectorTableExt[I2C_IRQ] = I2C_Handler;
-			CM4::NVIC->CLR_PR(I2C_IRQ);
-			CM4::NVIC->SET_ER(I2C_IRQ);
+			I2C_Init();
 
 			twi_dsc->ready = true;
 			twi_dsc->readedLen = twi_dsc->rlen - twi_rdCount;
@@ -2968,7 +2947,7 @@ bool I2C_Update()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool I2C_Init()
+static void I2C_Init()
 {
 	using namespace HW;
 
@@ -3041,7 +3020,6 @@ bool I2C_Init()
 
 #endif
 
-	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3249,16 +3227,20 @@ static void WDT_Init()
 
 	#elif defined(CPU_XMC48)
 
+		#ifndef _DEBUG
+	
 		HW::WDT_Enable();
 
 		HW::WDT->WLB = OFI_FREQUENCY/2;
 		HW::WDT->WUB = (3 * OFI_FREQUENCY)/2;
 		HW::SCU_CLK->WDTCLKCR = 0|SCU_CLK_WDTCLKCR_WDTSEL_OFI;
 
-		#ifndef _DEBUG
 		HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
+
 		#else
-		HW::WDT->CTR = WDT_CTR_ENB_Msk;
+
+		HW::WDT_Disable();
+
 		#endif
 
 	#endif
@@ -3858,7 +3840,7 @@ static bool SPI_WriteRead(DSCSPI *d)
 	if (spi_dsc != 0 || d == 0) { return false; };
 	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
 
-	spi_lastDsc = spi_dsc = d;
+	spi_dsc = d;
 
 	spi_dsc->ready = false;
 
@@ -3872,6 +3854,8 @@ static bool SPI_WriteRead(DSCSPI *d)
 
 	spi_rdPtr = (byte*)spi_dsc->rdata;	
 	spi_rdCount = spi_dsc->rlen;
+
+	spi_timestamp = GetMilliseconds();
 
 	u32 adr = spi_dsc->adr;
 
@@ -4083,18 +4067,50 @@ bool SPI_AddRequest(DSCSPI *d)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SPI_Update()
+static void SPI_Init();
+
+bool SPI_Update()
 {
+	bool result = false;
+
 #ifdef CPU_SAME53
 
 #elif defined(CPU_XMC48)
 
+	using namespace HW;
+
+	static TM32 tm;
+
+	__disable_irq();
+
+	if (spi_dsc != 0)
+	{
+		if (!spi_dsc->ready && (GetMilliseconds() - spi_timestamp) > 100)
+		{
+			result = true;
+
+			HW::Peripheral_Disable(SPI_PID);
+
+			DSCSPI *dsc = spi_dsc;
+
+			spi_dsc = 0;
+
+			SPI_Init();
+
+			SPI_WriteRead(dsc);
+		};
+	};
+	
+	__enable_irq();
+
 #endif
+
+	return result;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool SPI_Init()
+static void SPI_Init()
 {
 	using namespace HW;
 
@@ -4143,7 +4159,6 @@ bool SPI_Init()
 #elif defined(CPU_XMC48)
 
 	HW::Peripheral_Enable(SPI_PID);
-
 
 	SPI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
@@ -4197,8 +4212,6 @@ bool SPI_Init()
 
 
 #endif
-
-	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -4261,21 +4274,20 @@ void InitHardware()
 
 void UpdateHardware()
 {
-	//static byte i = 0;
+	static byte i = 0;
 
-	//static Deb db(false, 20);
+	static Deb db(false, 20);
 
-	//#define CALL(p) case (__LINE__-S): p; break;
+	#define CALL(p) case (__LINE__-S): p; break;
 
-	//enum C { S = (__LINE__+3) };
-	//switch(i++)
-	//{
-	//	CALL( UpdateShaft();		);
-	//};
+	enum C { S = (__LINE__+3) };
+	switch(i++)
+	{
+		CALL( UpdateShaft();	);
+		CALL( SPI_Update();		);
+	};
 
-	//i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	UpdateShaft();
+	i = (i > (__LINE__-S-3)) ? 0 : i;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

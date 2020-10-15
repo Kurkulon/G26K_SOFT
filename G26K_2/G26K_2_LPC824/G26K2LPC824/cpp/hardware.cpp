@@ -214,8 +214,8 @@ static i32 limOut = 0;
 
 //const u16 _minDuty = 100;//400;
 //const u16 _maxDuty = 350;//400;
-const u16 maxDuty = 1000;
-static u16 limDuty = 1000;
+const u16 maxDuty = 700;
+static u16 limDuty = maxDuty;
 //u16 duty = 0, curd = 0;
 
 static i32 Kp = 1000000/*2000000*/, Ki = 2000/*4000*/, Kd = 500000;
@@ -1381,6 +1381,10 @@ static void TahoSync()
 			rpm = rpmCount * 16667 / rpmTime;
 			
 			rpmCount = 0;
+		}
+		else if ((GetMilliseconds() - rpmPrevTime) > 2000)
+		{
+			rpm = 0;
 		};
 	};
 }

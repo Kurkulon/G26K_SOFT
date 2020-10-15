@@ -103,7 +103,7 @@ u16 deviceID = 0;
 
 __packed struct NVV // NonVolatileVars  
 {
-	//u16 numDevice;
+	u32 timeStamp;
 
 	FileDsc f;
 
@@ -115,11 +115,12 @@ __packed struct NVV // NonVolatileVars
 	u32 pageError[8];
 };
 
-
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct NVSI // NonVolatileSessionInfo  
 {
+	u32 timeStamp;
+
 	FileDsc f;
 
 	u16 crc;
@@ -2437,6 +2438,10 @@ static void LoadVars()
 	static u16 romAdr = 0;
 	static TM32 tm;
 
+	NVV nv1, nv2;
+	bool c1 = false;
+	bool c2 = false;
+
 	spi.adr = ((u32)ReverseWord(FRAM_SPI_SESSIONS_ADR)<<8)|3;
 	spi.alen = 4;
 	spi.csnum = 1;
@@ -2447,52 +2452,67 @@ static void LoadVars()
 
 	if (SPI_AddRequest(&spi))
 	{
-		while (!(spi.ready || tm.Check(10)));
+		while (!(spi.ready || tm.Check(200))) { SPI_Update(); };
 	};
 
 	for (byte i = 0; i < 2; i++)
 	{
 		p.CRC.w = 0xFFFF;
-		p.ReadArrayB(&nvv, sizeof(nvv)+2);
+		p.ReadArrayB(&nv1, sizeof(nv1));
+		p.ReadW();
 
-		if (p.CRC.w == 0) { loadVarsOk = true; break; };
+		if (p.CRC.w == 0) { c1 = true; break; };
 	};
+
+	romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR);
+
+	dsc.wdata = &romAdr;
+	dsc.wlen = sizeof(romAdr);
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+	dsc.rdata = buf;
+	dsc.rlen = sizeof(buf);
+	dsc.adr = 0x50;
+
+	if (I2C_AddRequest(&dsc))
+	{
+		while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
+	};
+
+	loadVarsOk = false;
+
+	p.b = buf;
+
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&nv2, sizeof(nv2));
+		p.ReadW();
+
+		if (p.CRC.w == 0) { c2 = true; break; };
+	};
+
+	if (c1 && c2)
+	{
+		if (nv1.timeStamp > nv2.timeStamp)
+		{
+			c2 = false;
+		}
+		else
+		{
+			c1 = false;
+		};
+	};
+
+	if (c1)	{ nvv = nv1; } else if (c2) { nvv = nv2; };
+
+	loadVarsOk = c1 || c2;
 
 	if (!loadVarsOk)
 	{
-		romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR);
-
-		dsc.wdata = &romAdr;
-		dsc.wlen = sizeof(romAdr);
-		dsc.wdata2 = 0;
-		dsc.wlen2 = 0;
-		dsc.rdata = buf;
-		dsc.rlen = sizeof(buf);
-		dsc.adr = 0x50;
-
-		if (I2C_AddRequest(&dsc))
-		{
-			while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
-		};
-
-		loadVarsOk = false;
-
-		p.b = buf;
-
-		for (byte i = 0; i < 2; i++)
-		{
-			p.CRC.w = 0xFFFF;
-			p.ReadArrayB(&nvv, sizeof(nvv)+2);
-
-			if (p.CRC.w == 0) { loadVarsOk = true; break; };
-		};
-	};
-
-	if (!loadVarsOk)
-	{
-		//nvv.numDevice = 0;
+		nvv.timeStamp = 0;
 		nvv.index = 0;
-		nvv.prevFilePage = -1;
+		nvv.prevFilePage = ~0;
 
 		nvv.f.session = 0;
 		nvv.f.size = 0;
@@ -2505,6 +2525,7 @@ static void LoadVars()
 		for (u32 i = 0; i < ArraySize(nvv.badBlocks); i++)
 		{
 			nvv.badBlocks[i] = 0;
+			nvv.pageError[i] = 0;
 		};
 
 		savesCount = 2;
@@ -2530,40 +2551,47 @@ static void SaveVars()
 	{
 		case 0:
 
-			if (savesCount > 0)
+			if (tm.Check(200))
 			{
-				savesCount--;
-				i++;
-			}
-			else if (savesSessionsCount > 0)
-			{
-				savesSessionsCount--;
-				i = 5;
-			}
-			else if (eraseSessionsCount > 0)
-			{
-				eraseSessionsCount--;
-
-				for (u16 n = 0; n < ArraySize(nvsi); n++)
+				if (savesCount > 0)
 				{
-					nvsi[n].f.size = 0;
-					nvsi[n].crc = 0;
+					savesCount--;
+					i++;
+				}
+				else if (savesSessionsCount > 0)
+				{
+					savesSessionsCount--;
+					i = 5;
+				}
+				else if (eraseSessionsCount > 0)
+				{
+					eraseSessionsCount--;
+
+					for (u16 n = 0; n < ArraySize(nvsi); n++)
+					{
+						nvsi[n].timeStamp = 0;
+						nvsi[n].f.size = 0;
+						nvsi[n].crc = 0;
+					};
+
+					nvv.f.session += 1;
+					nvv.f.size = 0;
+					//nvv.f.startPage = 0;
+					//nvv.f.lastPage = 0;
+					nvv.index = 0;
+					nvv.timeStamp = 0;
+
+					savesCount = 1;
+
+					i = 6;
 				};
-
-				nvv.f.session += 1;
-				nvv.f.size = 0;
-				//nvv.f.startPage = 0;
-				//nvv.f.lastPage = 0;
-				nvv.index = 0;
-
-				savesCount = 1;
-
-				i = 6;
 			};
 
 			break;
 
 		case 1:
+
+			nvv.timeStamp = GetMilliseconds();
 
 			for (byte j = 0; j < 2; j++)
 			{
@@ -2619,7 +2647,7 @@ static void SaveVars()
 
 		case 3:
 
-			if (spi2.ready || tm.Check(10))
+			if (spi2.ready || tm.Check(200))
 			{
 				SPI_AddRequest(&spi);
 
@@ -2630,7 +2658,7 @@ static void SaveVars()
 
 		case 4:
 
-			if (spi.ready || tm.Check(10))
+			if (spi.ready || tm.Check(200))
 			{
 				i = 0;
 			};
@@ -2641,6 +2669,8 @@ static void SaveVars()
 
 			{
 				NVSI &si = nvsi[nvv.index];
+
+				si.timeStamp = GetMilliseconds();
 
 				//u32 adr = sa+sizeof(si)*nvv.index;
 
@@ -2671,7 +2701,7 @@ static void SaveVars()
 				spi2.rlen = 0;
 
 				p.CRC.w = 0xFFFF;
-				p.WriteArrayB(&si, sizeof(si.f));
+				p.WriteArrayB(&si, sizeof(si)-2);
 				p.WriteW(p.CRC.w);
 
 				tm.Reset();
@@ -2730,95 +2760,112 @@ static void LoadSessions()
 
 	loadSessionsOk = true;
 
+	NVSI nv1, nv2;
+
 	for (u16 i = 0; i < ArraySize(nvsi); i++)
 	{
 		NVSI &si = nvsi[i];
 
-		spi.adr = ((u32)ReverseWord(FRAM_SPI_SESSIONS_ADR+sa+sizeof(si)*i)<<8)|3;
+		spi.adr = ((u32)ReverseWord(FRAM_SPI_SESSIONS_ADR+sa+sizeof(nv1)*i)<<8)|3;
 		spi.alen = 4;
 		spi.csnum = 1;
 		spi.wdata = 0;
 		spi.wlen = 0;
-		spi.rdata = &si;
-		spi.rlen = sizeof(si);
+		spi.rdata = &nv1;
+		spi.rlen = sizeof(nv1);
 
 		tm.Reset();
 
 		SPI_AddRequest(&spi);
 
-		while (!(spi.ready || tm.Check(10)));
+		while (!(spi.ready || tm.Check(200))) { SPI_Update(); };
 
-		if (GetCRC16(&si, sizeof(si)) != 0)
+		romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa+sizeof(nv2)*i);
+
+		dsc.wdata = &romAdr;
+		dsc.wlen = sizeof(romAdr);
+		dsc.wdata2 = 0;
+		dsc.wlen2 = 0;
+		dsc.rdata = &nv2;
+		dsc.rlen = sizeof(nv2);
+		dsc.adr = 0x50;
+
+		tm.Reset();
+
+		if (I2C_AddRequest(&dsc))
 		{
-			romAdr = ReverseWord(FRAM_I2C_SESSIONS_ADR+sa+sizeof(si)*i);
+			while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
+		};
+
+		bool c1 = GetCRC16(&nv1, sizeof(nv1)) == 0;
+		bool c2 = GetCRC16(&nv2, sizeof(nv2)) == 0;
+
+		if (c1 && c2)
+		{
+			if (nv1.timeStamp > nv2.timeStamp)
+			{
+				c2 = false;
+			}
+			else
+			{
+				c1 = false;
+			};
+		};
+
+		if (c1)	{ si = nv1; } else if (c2) { si = nv2; };
+
+		if (!c1 && !c2)
+		{
+			loadSessionsOk = false;
+
+			si.f.session = 0;
+			si.f.size = 0;
+			si.f.startPage = 0;
+			si.f.lastPage = 0;
+			si.f.flags = 0;
+			si.f.start_rtc.date = 0;
+			si.f.start_rtc.time = 0;
+			si.f.stop_rtc.date = 0;
+			si.f.stop_rtc.time = 0;
+			si.timeStamp = 0;
+			si.crc = GetCRC16(&si, sizeof(si)-2);
 
 			dsc.wdata = &romAdr;
 			dsc.wlen = sizeof(romAdr);
-			dsc.wdata2 = 0;
-			dsc.wlen2 = 0;
-			dsc.rdata = &si;
-			dsc.rlen = sizeof(si);
+			dsc.wdata2 = &si;
+			dsc.wlen2 = sizeof(si);
+			dsc.rdata = 0;
+			dsc.rlen = 0;
 			dsc.adr = 0x50;
+
+			spi.adr = ((u32)ReverseWord(FRAM_SPI_SESSIONS_ADR+sa+sizeof(si)*i)<<8)|2;
+			spi.alen = 4;
+			spi.csnum = 1;
+			spi.wdata = &si;
+			spi.wlen = sizeof(si);
+			spi.rdata = 0;
+			spi.rlen = 0;
+
+			spi2.adr = 6;
+			spi2.alen = 1;
+			spi2.csnum = 1;
+			spi2.wdata = 0;
+			spi2.wlen = 0;
+			spi2.rdata = 0;
+			spi2.rlen = 0;
 
 			tm.Reset();
 
-			if (I2C_AddRequest(&dsc))
-			{
-				while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
-			};
+			SPI_AddRequest(&spi2);
+			SPI_AddRequest(&spi);
 
-			if (GetCRC16(&si, sizeof(si)) != 0)
-			{
-				loadSessionsOk = false;
+			while (!((spi.ready && spi2.ready) || tm.Check(200))) { SPI_Update(); };
 
-				si.f.session = 0;
-				si.f.size = 0;
-				si.f.startPage = 0;
-				si.f.lastPage = 0;
-				si.f.flags = 0;
-				si.f.start_rtc.date = 0;
-				si.f.start_rtc.time = 0;
-				si.f.stop_rtc.date = 0;
-				si.f.stop_rtc.time = 0;
-				si.crc = GetCRC16(&si, sizeof(si.f));
+			tm.Reset();
 
-				dsc.wdata = &romAdr;
-				dsc.wlen = sizeof(romAdr);
-				dsc.wdata2 = &si;
-				dsc.wlen2 = sizeof(si);
-				dsc.rdata = 0;
-				dsc.rlen = 0;
-				dsc.adr = 0x50;
+			I2C_AddRequest(&dsc);
 
-				spi.adr = ((u32)ReverseWord(FRAM_SPI_SESSIONS_ADR+sa+sizeof(si)*i)<<8)|2;
-				spi.alen = 4;
-				spi.csnum = 1;
-				spi.wdata = &si;
-				spi.wlen = sizeof(si);
-				spi.rdata = 0;
-				spi.rlen = 0;
-
-				spi2.adr = 6;
-				spi2.alen = 1;
-				spi2.csnum = 1;
-				spi2.wdata = 0;
-				spi2.wlen = 0;
-				spi2.rdata = 0;
-				spi2.rlen = 0;
-
-				tm.Reset();
-
-				SPI_AddRequest(&spi2);
-				SPI_AddRequest(&spi);
-
-				while (!((spi.ready && spi2.ready) || tm.Check(10)));
-
-				tm.Reset();
-
-				I2C_AddRequest(&dsc);
-
-				while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
-			};
+			while (!(dsc.ready || tm.Check(100))) { I2C_Update(); };
 		};
 	};
 }

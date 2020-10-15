@@ -19,10 +19,18 @@
 //#pragma O3
 //#pragma Otime
 
+#ifndef _DEBUG
+	static const bool __debug = false;
+#else
+	static const bool __debug = true;
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct MainVars // NonVolatileVars  
 {
+	u32 timeStamp;
+
 	u16 numDevice;
 	u16 numMemDevice;
 
@@ -1989,7 +1997,7 @@ static void UpdateTemp()
 
 			if (tm.Check(100))
 			{
-				HW::WDT->Update();
+				if (!__debug) { HW::WDT->Update(); };
 
 				buf[0] = 0x11;
 
@@ -2425,6 +2433,10 @@ static void LoadVars()
 	
 	byte buf[sizeof(mv)*2+4];
 
+	MainVars mv1, mv2;
+
+	bool c1 = false, c2 = false;
+
 	//spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|0x9F;
 	//spi.alen = 1;
 	//spi.csnum = 1;
@@ -2450,7 +2462,7 @@ static void LoadVars()
 
 	if (SPI_AddRequest(&spi))
 	{
-		while (!spi.ready);
+		while (!spi.ready) { SPI_Update(); };
 	};
 
 	PointerCRC p(buf);
@@ -2458,41 +2470,56 @@ static void LoadVars()
 	for (byte i = 0; i < 2; i++)
 	{
 		p.CRC.w = 0xFFFF;
-		p.ReadArrayB(&mv, sizeof(mv)+2);
+		p.ReadArrayB(&mv1, sizeof(mv1));
+		p.ReadW();
 
-		if (p.CRC.w == 0) { loadVarsOk = true; break; };
+		if (p.CRC.w == 0) { c1 = true; break; };
 	};
 
-	if (!loadVarsOk)
+	romAdr = ReverseWord(FRAM_I2C_MAINVARS_ADR);
+
+	dsc.wdata = &romAdr;
+	dsc.wlen = sizeof(romAdr);
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+	dsc.rdata = buf;
+	dsc.rlen = sizeof(buf);
+	dsc.adr = 0x50;
+
+
+	if (I2C_AddRequest(&dsc))
 	{
-		romAdr = ReverseWord(FRAM_I2C_MAINVARS_ADR);
+		while (!dsc.ready) { I2C_Update(); };
+	};
 
-		dsc.wdata = &romAdr;
-		dsc.wlen = sizeof(romAdr);
-		dsc.wdata2 = 0;
-		dsc.wlen2 = 0;
-		dsc.rdata = buf;
-		dsc.rlen = sizeof(buf);
-		dsc.adr = 0x50;
+//	bool c = false;
 
+	p.b = buf;
 
-		if (I2C_AddRequest(&dsc))
+	for (byte i = 0; i < 2; i++)
+	{
+		p.CRC.w = 0xFFFF;
+		p.ReadArrayB(&mv2, sizeof(mv2));
+		p.ReadW();
+
+		if (p.CRC.w == 0) { c2 = true; break; };
+	};
+
+	if (c1 && c2)
+	{
+		if (mv1.timeStamp > mv2.timeStamp)
 		{
-			while (!dsc.ready) { I2C_Update(); };
-		};
-
-	//	bool c = false;
-
-		p.b = buf;
-
-		for (byte i = 0; i < 2; i++)
+			c2 = false;
+		}
+		else
 		{
-			p.CRC.w = 0xFFFF;
-			p.ReadArrayB(&mv, sizeof(mv)+2);
-
-			if (p.CRC.w == 0) { loadVarsOk = true; break; };
+			c1 = false;
 		};
 	};
+
+	if (c1)	{ mv = mv1; } else if (c2) { mv = mv2; };
+
+	loadVarsOk = c1 || c2;
 
 	if (!loadVarsOk)
 	{
@@ -2529,6 +2556,8 @@ static void SaveVars()
 			break;
 
 		case 1:
+
+			mv.timeStamp = GetMilliseconds();
 
 			for (byte j = 0; j < 2; j++)
 			{
@@ -2573,7 +2602,7 @@ static void SaveVars()
 
 		case 2:
 
-			if (spi2.ready || tm.Check(10))
+			if (spi2.ready || tm.Check(200))
 			{
 				SPI_AddRequest(&spi);
 
@@ -2584,7 +2613,7 @@ static void SaveVars()
 
 		case 3:
 
-			if (spi.ready || tm.Check(10))
+			if (spi.ready || tm.Check(200))
 			{
 				I2C_AddRequest(&dsc);
 				
