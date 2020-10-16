@@ -179,7 +179,9 @@ enum NandState
 	NAND_STATE_FULL_ERASE_START,
 	NAND_STATE_FULL_ERASE_0,
 	NAND_STATE_CREATE_FILE,
-	NAND_STATE_SEND_SESSION
+	NAND_STATE_SEND_SESSION,
+	NAND_STATE_SEND_BAD_BLOCKS,
+	NAND_STATE_SEND_PAGE_ERRORS
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1175,6 +1177,7 @@ namespace Read
 	static FLADR rd(0, 0, 0, 0);
 	static byte*	rd_data = 0;
 	static u16		rd_count = 0;
+	static u16		findTryCount = 0;
 
 	static u32 		sparePage = -1;
 
@@ -1280,7 +1283,7 @@ static bool Read::Update()
 				NAND_ReadDataDMA(rd_data, c);
 
 				rd_count -= c;
-				rd.raw += c;
+				rd.AddRaw(c);
 				rd_data += c;
 				curRdBuf->len += c;
 
@@ -1321,6 +1324,8 @@ static bool Read::Update()
 						{
 							// Искать вектор
 
+							findTryCount = 1024;
+
 							state = FIND_START;
 						};
 					}
@@ -1343,13 +1348,15 @@ static bool Read::Update()
 
 			if (spare.start == -1 || spare.fpn == -1)
 			{
-				if (rd.page == 0)
+				if (findTryCount == 0)
 				{
 					// Вектора кончились
 					state = FIND_3;
 				}
 				else
 				{
+					findTryCount -= 1;
+
 					rd.NextPage();
 
 					readSpare.Start(&spare, &rd);
@@ -1855,9 +1862,25 @@ void NAND_Idle()
 
 			if (!UpdateSendSession())
 			{
-				TRAP_TRACE_PrintString("NAND Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]);
-				TRAP_TRACE_PrintString("NAND Page Error: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", nvv.pageError[0], nvv.pageError[1], nvv.pageError[2], nvv.pageError[3], nvv.pageError[4], nvv.pageError[5], nvv.pageError[6], nvv.pageError[7]);
+				nandState = NAND_STATE_SEND_BAD_BLOCKS;
+			};
 
+			break;
+
+		case NAND_STATE_SEND_BAD_BLOCKS:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (TRAP_TRACE_PrintString("NAND chip mask: 0x%02hX; Bad Blocks: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
+				NAND_GetMemSize()->mask, nvv.badBlocks[0], nvv.badBlocks[1], nvv.badBlocks[2], nvv.badBlocks[3], nvv.badBlocks[4], nvv.badBlocks[5], nvv.badBlocks[6], nvv.badBlocks[7]))
+			{
+				nandState = NAND_STATE_SEND_PAGE_ERRORS;
+			};
+
+			break;
+		case NAND_STATE_SEND_PAGE_ERRORS:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			if (TRAP_TRACE_PrintString("NAND Page Error: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
+				nvv.pageError[0], nvv.pageError[1], nvv.pageError[2], nvv.pageError[3], nvv.pageError[4], nvv.pageError[5], nvv.pageError[6], nvv.pageError[7]))
+			{
 				nandState = NAND_STATE_WAIT;
 			};
 

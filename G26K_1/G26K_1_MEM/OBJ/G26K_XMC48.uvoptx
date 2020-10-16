@@ -118,6 +118,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
+          <Name>d</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -149,34 +150,18 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>2735</LineNumber>
+          <LineNumber>1344</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134315496</Address>
+          <Address>134292298</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\main.cpp</Filename>
+          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\flash.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26K_XMC48\cpp/main.cpp\2735</Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>2710</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134315444</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\main.cpp</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\G26K_XMC48\cpp/main.cpp\2710</Expression>
+          <Expression>\\G26K_XMC48\cpp/flash.cpp\1344</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -259,6 +244,11 @@
           <count>15</count>
           <WinNumber>1</WinNumber>
           <ItemText>at,0x10</ItemText>
+        </Ww>
+        <Ww>
+          <count>16</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>read</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

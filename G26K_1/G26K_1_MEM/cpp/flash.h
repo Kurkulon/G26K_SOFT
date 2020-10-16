@@ -95,6 +95,9 @@ struct FLADR
 	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS); raw += NAND_GetMemSize()->chipOffsetNext[chip];}
 	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS; col = 0; raw -= NAND_GetMemSize()->chipOffsetPrev[chip]; }
 	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0; raw -= NAND_GetMemSize()->chipOffsetPrev[chip];}
+
+	void	AddRaw(u32 v) { raw += v; raw += NAND_GetMemSize()->chipOffsetNext[chip]; }
+	void	SubRaw(u32 v) { raw -= v; raw -= NAND_GetMemSize()->chipOffsetPrev[chip]; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
