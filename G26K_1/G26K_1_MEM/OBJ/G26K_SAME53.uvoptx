@@ -118,7 +118,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>Pхo</Name>
+          <Name>d</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -138,7 +138,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=2328,205,2778,758,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=3124,266,3372,840,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=2328,205,2778,758,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=3124,266,3382,850,0)(1012=2055,165,2522,466,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -171,7 +171,7 @@
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>nvsi,0x10</ItemText>
+          <ItemText>nvsi,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>

@@ -9,23 +9,26 @@
 //#define OPEN_VALVE_CUR 600
 //#define CLOSE_VALVE_CUR 600
 
-#define GEAR_RATIO 12.25
+#define GEAR_RATIO	12.25
+#define CUR_LIM		4000
+
+
 const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
 
-#define LOCK_CLOSE_POSITION 0
-#define INIT_CLOSE_POSITION 55
-#define OPEN_POSITION		60
-#define CUR_CAL_MAXON		600
-#define CUR_CAL_FAULHABER	300
-
-#define CUR_LIM_MAXON		600
-#define CUR_LIM_FAULHABER	600
-#define MAXCNT 50				// Компенсация датчиков Холла
-#define CLOSECURRENT 200		// Номинальный ток в closeShaftPos
-#define CLOSEDELTA 2			// 
-#define CFK 256					// 
-static u16 CSD = 5;					// 
-static u16 DCL = CSD+3;				// удержание в закрытом положении
+//#define LOCK_CLOSE_POSITION 0
+//#define INIT_CLOSE_POSITION 55
+//#define OPEN_POSITION		60
+//#define CUR_CAL_MAXON		600
+//#define CUR_CAL_FAULHABER	300
+//
+//#define CUR_LIM_MAXON		600
+//#define CUR_LIM_FAULHABER	600
+//#define MAXCNT 50				// Компенсация датчиков Холла
+//#define CLOSECURRENT 200		// Номинальный ток в closeShaftPos
+//#define CLOSEDELTA 2			// 
+//#define CFK 256					// 
+//static u16 CSD = 5;					// 
+//static u16 DCL = CSD+3;				// удержание в закрытом положении
 
 //u16 curHV = 0;
 //u16 reqHV = 800;
@@ -206,15 +209,15 @@ static i32 fltDestShaftPos = 0;
 static i32 curDutyOut = 0;
 static i32 pidOut = 0;
 static i32 curPidOut = 0;
-static u16 curLim = CUR_LIM_MAXON;
-static u16 curCal = CUR_CAL_MAXON;
+//static u16 curLim = CUR_LIM_MAXON;
+//static u16 curCal = CUR_CAL_MAXON;
 
 static i32 maxOut = 0;
 static i32 limOut = 0;
 
 //const u16 _minDuty = 100;//400;
 //const u16 _maxDuty = 350;//400;
-const u16 maxDuty = 700;
+const u16 maxDuty = 1000;
 static u16 limDuty = maxDuty;
 //u16 duty = 0, curd = 0;
 
@@ -1437,7 +1440,7 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (avrCurADC > 2000)
+		if (avrCurADC > CUR_LIM)
 		{
 			if (limDuty > 0) limDuty -= 1;
 		}
@@ -1497,7 +1500,7 @@ __irq void MRT_Handler()
 	{
 		HW::GPIO->BTGL(15);
 
-		if (avrCurADC > 2000)
+		if (avrCurADC > CUR_LIM)
 		{
 			if (limDuty > 0) limDuty -= 1;
 		}
