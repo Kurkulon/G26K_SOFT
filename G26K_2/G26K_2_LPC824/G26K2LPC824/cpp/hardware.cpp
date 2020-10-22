@@ -10,7 +10,8 @@
 //#define CLOSE_VALVE_CUR 600
 
 #define GEAR_RATIO	12.25
-#define CUR_LIM		4000
+#define CUR_LIM		2000
+#define POWER_LIM	30000
 
 
 const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
@@ -217,9 +218,14 @@ static i32 limOut = 0;
 
 //const u16 _minDuty = 100;//400;
 //const u16 _maxDuty = 350;//400;
-const u16 maxDuty = 1000;
+const u16 pwmPeriod = 1250;
+const u16 maxDuty = 1200;
 static u16 limDuty = maxDuty;
-//u16 duty = 0, curd = 0;
+static u16 curDuty = 0;
+const u16 kVoltage = 90 * 65536 / pwmPeriod;
+static u16 voltage = 0; // volts
+static u32 power = 0; // mW
+
 
 static i32 Kp = 1000000/*2000000*/, Ki = 2000/*4000*/, Kd = 500000;
 static i32 iKp = 2000, iKi = 1000, iKd = 0;
@@ -265,41 +271,6 @@ static i8 tachoEncoder[8][8] = {
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetTargetRPM(u32 v)
-{ 
-	if (targetRPM != v)
-	{
-		targetRPM = v;
-
-		__disable_irq();
-
-		tachoStep = 1;
-
-		tachoLim = v * 4 + 100;
-
-		tachoCount = 0;
-
-		v *= pulsesPerHeadRoundFix4;
-		v /= 16;
-
-		if (v > 0)
-		{
-			HW::MRT->Channel[3].INTVAL = (((u32)MCK * 100 + v/2) / v)|(1UL<<31);
-			HW::MRT->Channel[3].CTRL = 1;
-		}
-		else
-		{
-			HW::MRT->Channel[3].CTRL = 0;
-			tachoPLL = 0;
-			tachoCount = 0;
-		};
-
-		__enable_irq();
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static void EnableDriver() 
 { 
 	HW::GPIO->SET((1<<14)|(1<<4)); 
@@ -328,6 +299,43 @@ static bool CheckDriverOn()
 static bool CheckDriverOff() 
 { 
 	return HW::GPIO->B0[14] == 0; 
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetTargetRPM(u32 v)
+{ 
+	if (targetRPM != v)
+	{
+		targetRPM = v;
+
+		__disable_irq();
+
+		tachoStep = 1;
+
+		tachoLim = v + 100;
+
+		tachoCount = 0;
+
+		v *= pulsesPerHeadRoundFix4;
+		v /= 16;
+
+		if (v > 0)
+		{
+			HW::MRT->Channel[3].INTVAL = (((u32)MCK * 100 + v/2) / v)|(1UL<<31);
+			HW::MRT->Channel[3].CTRL = 1;
+			EnableDriver();
+		}
+		else
+		{
+			HW::MRT->Channel[3].CTRL = 0;
+			tachoPLL = 0;
+			tachoCount = 0;
+			DisableDriver();
+		};
+
+		__enable_irq();
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1153,7 +1161,7 @@ static void UpdateADC()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( curADC = ((ADC->DAT0&0xFFF0) * 6000 ) >> 16;  fcurADC += curADC - avrCurADC; avrCurADC = fcurADC >> 6;	);
+		CALL( curADC = ((ADC->DAT0&0xFFF0) * 9091) >> 16;  fcurADC += curADC - avrCurADC; avrCurADC = fcurADC >> 6;	);
 		CALL( fvAP += (((ADC->DAT1&0xFFF0) * 3300) >> 16) - vAP; vAP = fvAP >> 3;	);
 	};
 
@@ -1175,13 +1183,13 @@ static void InitPWM()
 	SCT->REGMODE_L = 0;
 
 	SCT->MATCHREL_L[0] = maxDuty; 
-	SCT->MATCHREL_L[1] = 1050;
-	SCT->MATCHREL_L[2] = 1250; 
+	SCT->MATCHREL_L[1] = pwmPeriod-49;
+	SCT->MATCHREL_L[2] = pwmPeriod; 
 	SCT->MATCH_L[3] = 0; 
 	SCT->MATCH_L[4] = 0;
 
 	SCT->OUT[0].SET = (1<<2);
-	SCT->OUT[0].CLR = (1<<1);
+	SCT->OUT[0].CLR = (1<<1)/*|(1<<0)*/;
 
 	SCT->OUT[1].SET = (1<<0)|(1<<1);
 	SCT->OUT[1].CLR = (1<<2);
@@ -1225,7 +1233,7 @@ void SetDutyPWM(u16 v)
 {
 	if (v > limDuty) v = limDuty;
 
-	HW::SCT->MATCHREL_L[0] = (v < maxDuty) ? v : maxDuty;
+	HW::SCT->MATCHREL_L[0] = curDuty = (v < maxDuty) ? v : maxDuty;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1349,22 +1357,20 @@ static void TahoSync()
 	{
 		pt = GetMillisecondsLow();
 
-		//u32 pll = tachoPLL << 6;
+		HW::ResetWDT();
 
-		//if (pll > curPLL)
-		//{
-		//	curPLL++;
-		//}
-		//else if (pll < curPLL)
-		//{
-		//	curPLL--;
-		//};
+		curADC = ((HW::ADC->DAT0&0xFFF0) * 9400) >> 16;  
+
+		if (curADC > 110) curADC -= 110; else curADC = 0;
+		
+		fcurADC += curADC - avrCurADC; avrCurADC = fcurADC >> 8;
 
 		if (targetRPM == 0)
 		{
 			HW::MRT->Channel[3].CTRL = 0;
 			tachoPLL = 0;
 			tachoCount = 0;
+			DisableDriver();
 		};
 
 		if (tachoCount >= tachoLim)
@@ -1377,6 +1383,19 @@ static void TahoSync()
 		else
 		{
 			SetDutyPWM(tachoPLL);
+		};
+
+		voltage = ((u32)kVoltage * curDuty + 32768) / 65536;
+
+		power = avrCurADC * voltage;
+
+		if (avrCurADC > CUR_LIM)
+		{
+			if (limDuty > 0) limDuty -= 1;
+		}
+		else 
+		{
+			if (limDuty < maxDuty) limDuty += 1;
 		};
 
 		if (rpmCount != 0)
@@ -1440,14 +1459,8 @@ __irq void ROT_Handler()
 {
 	if (HW::PIN_INT->IST & 8)
 	{
-		if (avrCurADC > CUR_LIM)
+		if (curDuty <= limDuty)
 		{
-			if (limDuty > 0) limDuty -= 1;
-		}
-		else 
-		{
-			if (limDuty < maxDuty) limDuty += 1;
-
 			if (tachoPLL < (u32)maxDuty)
 			{ 
 				tachoPLL += tachoStep; 
@@ -1500,14 +1513,8 @@ __irq void MRT_Handler()
 	{
 		HW::GPIO->BTGL(15);
 
-		if (avrCurADC > CUR_LIM)
+		if (curDuty <= limDuty)
 		{
-			if (limDuty > 0) limDuty -= 1;
-		}
-		else 
-		{
-			if (limDuty < maxDuty) limDuty += 1;
-
 			if (tachoPLL < (u32)maxDuty)
 			{ 
 				tachoPLL += tachoStep; 
@@ -1570,7 +1577,7 @@ void InitHardware()
 
 #endif
 
-	EnableDriver();
+	//EnableDriver();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1950,22 +1957,7 @@ bool Check_TWI_ready()
 
 void UpdateHardware()
 {
-	static byte i = 0;
-
-	static Deb db(false, 20);
-
-	#define CALL(p) case (__LINE__-S): p; break;
-
-	enum C { S = (__LINE__+3) };
-	switch(i++)
-	{
-		CALL( TahoSync()	);
-		CALL( UpdateADC()	);
-	};
-
-	i = (i > (__LINE__-S-3)) ? 0 : i;
-
-	HW::ResetWDT();
+	TahoSync();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -1963,8 +1963,8 @@ static void UpdateAccel()
 				fy += (y - fy) / 8;
 				fz += (z - fz) / 8;
 
-				ax = -(fz / 65536); 
-				ay = (fy / 65536); 
+				ay = -(fz / 65536); 
+				ax = (fy / 65536); 
 				az = -(fx / 65536);
 
 				at = 250 + ((1852 - t) * 1000 + 452) / 905;
