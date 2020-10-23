@@ -10,7 +10,7 @@
 //#define CLOSE_VALVE_CUR 600
 
 #define GEAR_RATIO	12.25
-#define CUR_LIM		2000
+#define CUR_LIM		3000
 #define POWER_LIM	30000
 
 
@@ -43,6 +43,7 @@ u32 motoCounter = 0;
 u32 targetRPM = 0;
 u32 tachoLim = 0;
 u32 tachoStep = 1;
+u32 tachoStamp = 0;
 
 u32 rpmCounter = 0;
 u32 rpmPrevTime = 0;
@@ -222,9 +223,9 @@ const u16 pwmPeriod = 1250;
 const u16 maxDuty = 1200;
 static u16 limDuty = maxDuty;
 static u16 curDuty = 0;
-const u16 kVoltage = 90 * 65536 / pwmPeriod;
-static u16 voltage = 0; // volts
-static u32 power = 0; // mW
+//const u16 kVoltage = 90 * 65536 / pwmPeriod;
+//static u16 voltage = 0; // volts
+//static u32 power = 0; // mW
 
 
 static i32 Kp = 1000000/*2000000*/, Ki = 2000/*4000*/, Kd = 500000;
@@ -274,7 +275,7 @@ static i8 tachoEncoder[8][8] = {
 static void EnableDriver() 
 { 
 	HW::GPIO->SET((1<<14)|(1<<4)); 
-	//HW::MRT->Channel[3].CTRL = 1;
+	HW::MRT->Channel[3].CTRL = 1;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -283,8 +284,8 @@ static void DisableDriver()
 { 
 	HW::GPIO->BCLR(14);
 	HW::MRT->Channel[3].CTRL = 0; 
-	pidOut = 0; 
-	//curDutyOut = 0;
+	//pidOut = 0; 
+	SetDutyPWM(0);
 }
 	
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -309,32 +310,7 @@ void SetTargetRPM(u32 v)
 	{
 		targetRPM = v;
 
-		__disable_irq();
-
-		tachoStep = 1;
-
-		tachoLim = v + 100;
-
-		tachoCount = 0;
-
-		v *= pulsesPerHeadRoundFix4;
-		v /= 16;
-
-		if (v > 0)
-		{
-			HW::MRT->Channel[3].INTVAL = (((u32)MCK * 100 + v/2) / v)|(1UL<<31);
-			HW::MRT->Channel[3].CTRL = 1;
-			EnableDriver();
-		}
-		else
-		{
-			HW::MRT->Channel[3].CTRL = 0;
-			tachoPLL = 0;
-			tachoCount = 0;
-			DisableDriver();
-		};
-
-		__enable_irq();
+		motorState = 1;
 	};
 }
 
@@ -1191,8 +1167,8 @@ static void InitPWM()
 	SCT->OUT[0].SET = (1<<2);
 	SCT->OUT[0].CLR = (1<<1)/*|(1<<0)*/;
 
-	SCT->OUT[1].SET = (1<<0)|(1<<1);
-	SCT->OUT[1].CLR = (1<<2);
+	SCT->OUT[1].SET = (1<<1)|(1<<2);
+	SCT->OUT[1].CLR = (1<<0);
 
 	SCT->EVENT[0].STATE = 1;
 	SCT->EVENT[0].CTRL = (1<<5)|(0<<6)|(1<<12)|0;
@@ -1232,8 +1208,8 @@ static void InitPWM()
 void SetDutyPWM(u16 v)
 {
 	if (v > limDuty) v = limDuty;
-
-	HW::SCT->MATCHREL_L[0] = curDuty = (v < maxDuty) ? v : maxDuty;
+	
+	HW::SCT->MATCHREL_L[0] = maxDuty - (curDuty = (v < maxDuty) ? v : maxDuty);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1308,25 +1284,16 @@ static __irq void TahoHandler()
 
 		if (tachoPLL > tachoStep) { tachoPLL -= tachoStep; } else { tachoPLL = 0; };
 
-
 		if (tachoCount >= tachoLim)
 		{
 			tachoCount = tachoLim;
-
-			//u16 t1 = GetMillisecondsLow();
-
-			//u16 dt1 = (t1 - prevT1) / 2;
-
-			//prevT1 = t1;
-
-			//if ((t1 - prevR1) > dt1 && tachoPLL > 0) { tachoPLL -= 1; };
 
 			SetDutyPWM(tachoPLL);
 		};
 
 		rpmCounter++;
 
-		u32 tm = GetMilliseconds();
+		u32 tm = tachoStamp = GetMilliseconds();
 		u32 dt = tm - rpmPrevTime;
 
 		if (dt >= 1000)
@@ -1343,7 +1310,7 @@ static __irq void TahoHandler()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void TahoSync()
+static void UpdateMotor()
 {
 	static u16 pt = 0;
 	//static u16 pt2 = 0;
@@ -1352,6 +1319,8 @@ static void TahoSync()
 	//static i32 pshp = 0;
 
 	//static byte n = 0;
+
+	static TM32 tm;//, tmRPM;
 
 	if ((u16)(GetMillisecondsLow() - pt) >= 1)
 	{
@@ -1367,35 +1336,28 @@ static void TahoSync()
 
 		if (targetRPM == 0)
 		{
-			HW::MRT->Channel[3].CTRL = 0;
-			tachoPLL = 0;
-			tachoCount = 0;
-			DisableDriver();
+			motorState = 0;
 		};
 
-		if (tachoCount >= tachoLim)
-		{
-			tachoCount = tachoLim;
-			tachoStep = 64;
+		//voltage = ((u32)kVoltage * curDuty + 32768) / 65536;
 
-			//SetDutyPWMDir(tachoPLL<<6);
+		//power = avrCurADC * voltage;
+
+		if (avrCurADC > (CUR_LIM+100))
+		{
+			if (limDuty > 2) limDuty -= 2; else limDuty = 0;
+
+			//tachoCount = 0;
+			//tachoStep = 1;
+			//tachoPLL >>= 1;
+
+			//motorState = 3;
 		}
-		else
-		{
-			SetDutyPWM(tachoPLL);
-		};
-
-		voltage = ((u32)kVoltage * curDuty + 32768) / 65536;
-
-		power = avrCurADC * voltage;
-
-		if (avrCurADC > CUR_LIM)
-		{
-			if (limDuty > 0) limDuty -= 1;
-		}
-		else 
+		else if (avrCurADC < CUR_LIM)
 		{
 			if (limDuty < maxDuty) limDuty += 1;
+
+			//tmOvrCrnt.Reset();
 		};
 
 		if (rpmCount != 0)
@@ -1404,10 +1366,168 @@ static void TahoSync()
 			
 			rpmCount = 0;
 		}
-		else if ((GetMilliseconds() - rpmPrevTime) > 2000)
+		else if ((GetMilliseconds() - rpmPrevTime) > 1200)
 		{
 			rpm = 0;
 		};
+
+		switch (motorState)
+		{
+			case 0:		// Idle;
+
+				HW::MRT->Channel[3].CTRL = 0;
+				tachoPLL = 0;
+				tachoCount = 0;
+				DisableDriver();
+
+				dir = false;
+
+				tm.Reset();
+
+				SetDutyPWM(tachoPLL = maxDuty/8);
+
+				break;
+
+			case 1: // Старт
+
+				{
+					__disable_irq();
+
+					u32 v = targetRPM;
+
+					tachoStep = 1;
+
+					tachoLim = v + 100;
+
+					tachoCount = 0;
+
+					v *= pulsesPerHeadRoundFix4;
+					v /= 16;
+
+					if (v > 0)
+					{
+						HW::MRT->Channel[3].INTVAL = (((u32)MCK * 100 + v/2) / v)|(1UL<<31);
+						//HW::MRT->Channel[3].CTRL = 1;
+						EnableDriver();
+
+						motorState = (!dir) ? 2 : 4;
+					}
+					else
+					{
+						motorState = 0;
+					};
+
+					__enable_irq();
+
+					tm.Reset();
+
+					tachoStamp = GetMilliseconds();
+				};
+
+				break;
+
+			case 2: 
+
+				if (tm.Check(500))
+				{
+					dir = true;
+
+					tm.Reset();
+
+					DisableDriver();
+
+					motorState++;
+				};
+
+				break;
+
+			case 3: 
+
+				if (tm.Check(1000))
+				{	
+					tachoCount = 0;
+					tachoStep = 1;
+
+					EnableDriver();
+
+					SetDutyPWM(tachoPLL = maxDuty/8);
+
+					tachoStamp = GetMilliseconds();
+
+					motorState++;
+				};
+
+				break;
+
+			case 4: // Разгон
+
+				if ((GetMilliseconds()-tachoStamp) > 2000)
+				{	
+					motorState = 6;
+				}
+				else if (tachoCount >= tachoLim)
+				{
+					tachoCount = tachoLim;
+					tachoStep = 64;
+
+					tm.Reset();
+					//tmOvrCrnt.Reset();
+
+					motorState++;
+				}
+				else
+				{
+					SetDutyPWM(tachoPLL);
+				};
+
+				break;
+
+			case 5: // Стабилизация оборотов
+
+				if ((GetMilliseconds()-tachoStamp) > 1000)
+				{	
+					motorState++;
+				};
+
+				break;
+
+			case 6:
+
+				tm.Reset();
+
+				HW::MRT->Channel[3].CTRL = 0;
+				tachoPLL = 0;
+				tachoCount = 0;
+				DisableDriver();
+
+				dir = false;
+
+				motorState++;
+
+				break;
+
+			case 7:
+
+				if (tm.Check(2000))
+				{
+					motorState = 1;
+				};
+	 
+				break;
+
+			case 8:
+
+				break;
+
+			case 9:
+
+				break;
+
+			case 10:
+
+				break;
+		};
+
 	};
 }
 
@@ -1957,7 +2077,7 @@ bool Check_TWI_ready()
 
 void UpdateHardware()
 {
-	TahoSync();
+	UpdateMotor();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
