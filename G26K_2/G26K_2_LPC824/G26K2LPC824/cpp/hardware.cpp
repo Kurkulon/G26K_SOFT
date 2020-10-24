@@ -11,6 +11,7 @@
 
 #define GEAR_RATIO	12.25
 #define CUR_LIM		3000
+#define IMP_CUR_LIM	13000
 #define POWER_LIM	30000
 
 
@@ -225,7 +226,7 @@ static u16 limDuty = maxDuty;
 static u16 curDuty = 0;
 //const u16 kVoltage = 90 * 65536 / pwmPeriod;
 //static u16 voltage = 0; // volts
-//static u32 power = 0; // mW
+static u32 impCur = 0; // mA
 
 
 static i32 Kp = 1000000/*2000000*/, Ki = 2000/*4000*/, Kd = 500000;
@@ -1339,11 +1340,11 @@ static void UpdateMotor()
 			motorState = 0;
 		};
 
-		//voltage = ((u32)kVoltage * curDuty + 32768) / 65536;
+		impCur = (u32)avrCurADC * pwmPeriod / (curDuty+1);
 
 		//power = avrCurADC * voltage;
 
-		if (avrCurADC > (CUR_LIM+100))
+		if (avrCurADC > (CUR_LIM+100) || impCur > (IMP_CUR_LIM+1000))
 		{
 			if (limDuty > 2) limDuty -= 2; else limDuty = 0;
 
@@ -1353,7 +1354,7 @@ static void UpdateMotor()
 
 			//motorState = 3;
 		}
-		else if (avrCurADC < CUR_LIM)
+		else if ((avrCurADC < CUR_LIM) && (impCur < IMP_CUR_LIM))
 		{
 			if (limDuty < maxDuty) limDuty += 1;
 
