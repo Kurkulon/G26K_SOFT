@@ -1165,8 +1165,8 @@ static void InitPWM()
 	SCT->MATCH_L[3] = 0; 
 	SCT->MATCH_L[4] = 0;
 
-	SCT->OUT[0].SET = (1<<2);
-	SCT->OUT[0].CLR = (1<<1)/*|(1<<0)*/;
+	SCT->OUT[0].SET = (1<<0);
+	SCT->OUT[0].CLR = (1<<1)|(1<<2);
 
 	SCT->OUT[1].SET = (1<<1)|(1<<2);
 	SCT->OUT[1].CLR = (1<<0);
