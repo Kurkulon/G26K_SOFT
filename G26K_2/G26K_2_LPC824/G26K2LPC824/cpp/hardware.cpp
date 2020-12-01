@@ -10,7 +10,7 @@
 //#define CLOSE_VALVE_CUR 600
 
 #define GEAR_RATIO	12.25
-#define CUR_LIM		3000
+#define CUR_LIM		1600
 #define IMP_CUR_LIM	13000
 #define POWER_LIM	30000
 
