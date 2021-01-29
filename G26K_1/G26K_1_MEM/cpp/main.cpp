@@ -73,14 +73,14 @@ u32 i2cResetCount = 0;
 
 //inline u16 ReverseWord(u16 v) { __asm	{ rev16 v, v };	return v; }
 
-static void* eepromData = 0;
-static u16 eepromWriteLen = 0;
-static u16 eepromReadLen = 0;
-static u16 eepromStartAdr = 0;
+//static void* eepromData = 0;
+//static u16 eepromWriteLen = 0;
+//static u16 eepromReadLen = 0;
+//static u16 eepromStartAdr = 0;
 
-static MTB mtb;
+//static MTB mtb;
 
-static u16 manBuf[16];
+//static u16 manBuf[16];
 
 u16 manRcvData[10];
 u16 manTrmData[50];
@@ -101,7 +101,7 @@ static R01* curManVec40 = 0;
 static R01* manVec50 = 0;
 static R01* curManVec50 = 0;
 
-static RspMan60 rspMan60;
+//static RspMan60 rspMan60;
 
 //static byte curRcv[3] = {0};
 //static byte curVec[3] = {0};
@@ -113,7 +113,7 @@ static List<R01> readyR01;
 //static List<RMEM> lstRmem;
 //static List<RMEM> freeRmem;
 
-static byte fireType = 0;
+//static byte fireType = 0;
 
 //static u16 gain = 0;
 //static u16 sampleTime = 5;
@@ -139,11 +139,11 @@ static u16 mode = 0;
 
 static TM32 imModeTimeout;
 
-static u16 motoEnable = 0;		// двигатель включить или выключить
+//static u16 motoEnable = 0;		// двигатель включить или выключить
 static u16 motoTargetRPS = 0;	// заданные обороты двигателя
 static u16 motoRPS = 0;			// обороты двигателя, об/сек
 static u16 motoCur = 0;			// ток двигателя, мА
-static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
+//static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
 static u16 motoCounter = 0;		// счётчик оборотов двигателя 1/6 оборота
 //static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
 //static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
@@ -153,7 +153,7 @@ static u32 dspMMSEC = 0;
 static u32 shaftMMSEC = 0;
 
 const u16 dspReqWord = 0xAD00;
-const u16 dspReqMask = 0xFF00;
+//const u16 dspReqMask = 0xFF00;
 
 static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
@@ -167,8 +167,8 @@ static u16 verDevice = 0x100;
 //static u16 numMemDevice = 0;
 static u16 verMemDevice = 0x100;
 
-static u32 manCounter = 0;
-static u32 fireCounter = 0;
+//static u32 manCounter = 0;
+//static u32 fireCounter = 0;
 
 static byte mainModeState = 0;
 static byte dspStatus = 0;
@@ -183,12 +183,12 @@ u32 dspRcv50 = 0;
 
 //static u32 chnlCount[4] = {0};
 
-static u32 crcErr02 = 0;
+//static u32 crcErr02 = 0;
 //static u32 crcErr03 = 0;
 static u32 crcErr04 = 0;
 
 static u32 notRcv02 = 0;
-static u32 lenErr02 = 0;
+//static u32 lenErr02 = 0;
 
 static i16 ax = 0, ay = 0, az = 0, at = 0;
 i16 temperature = 0;
@@ -253,30 +253,30 @@ static void SetModeIM()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void Response_0(u16 rw, MTB &mtb)
-{
-	__packed struct Rsp {u16 rw; u16 device; u16 session; u32 rcvVec; u32 rejVec; u32 wrVec; u32 errVec; u16 wrAdr[3]; u16 numDevice; u16 version; u16 temp; byte status; byte flags; RTC rtc; };
-
-	Rsp &rsp = *((Rsp*)&txbuf);
-
-	rsp.rw = rw;
-	rsp.device = GetDeviceID();  
-	rsp.session = FLASH_Session_Get();	  
-	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
-	rsp.rejVec = FLASH_Vectors_Rejected_Get();
-	rsp.wrVec = FLASH_Vectors_Saved_Get();
-	rsp.errVec = FLASH_Vectors_Errors_Get();
-	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
-	rsp.temp = temp*5/2;
-	rsp.status = FLASH_Status();
-
-	GetTime(&rsp.rtc);
-
-	mtb.data1 = txbuf;
-	mtb.len1 = sizeof(rsp)/2;
-	mtb.data2 = 0;
-	mtb.len2 = 0;
-}
+//static void Response_0(u16 rw, MTB &mtb)
+//{
+//	__packed struct Rsp {u16 rw; u16 device; u16 session; u32 rcvVec; u32 rejVec; u32 wrVec; u32 errVec; u16 wrAdr[3]; u16 numDevice; u16 version; u16 temp; byte status; byte flags; RTC rtc; };
+//
+//	Rsp &rsp = *((Rsp*)&txbuf);
+//
+//	rsp.rw = rw;
+//	rsp.device = GetDeviceID();  
+//	rsp.session = FLASH_Session_Get();	  
+//	rsp.rcvVec =  FLASH_Vectors_Recieved_Get();
+//	rsp.rejVec = FLASH_Vectors_Rejected_Get();
+//	rsp.wrVec = FLASH_Vectors_Saved_Get();
+//	rsp.errVec = FLASH_Vectors_Errors_Get();
+//	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
+//	rsp.temp = temp*5/2;
+//	rsp.status = FLASH_Status();
+//
+//	GetTime(&rsp.rtc);
+//
+//	mtb.data1 = txbuf;
+//	mtb.len1 = sizeof(rsp)/2;
+//	mtb.data2 = 0;
+//	mtb.len2 = 0;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -612,7 +612,7 @@ static void CallBackMotoReq(REQ *q)
 		{
 			motoRPS = rsp.rpm;
 			motoCur = rsp.current;
-			motoStat = rsp.mororStatus;
+			//motoStat = rsp.mororStatus;
 			motoCounter = rsp.motoCounter;
 		};
 	};
@@ -1832,7 +1832,7 @@ static void UpdateAccel()
 {
 	static byte i = 0; 
 	static i32 x = 0, y = 0, z = 0, t = 0;
-	static i32 fx = 0, fy = 0, fz = 0, ft = 0;
+	static i32 fx = 0, fy = 0, fz = 0;
 
 	static TM32 tm;
 
@@ -1985,7 +1985,7 @@ static void UpdateTemp()
 
 	static DSCI2C dsc, dsc2;
 
-	static byte reg = 0;
+//	static byte reg = 0;
 	static u16 rbuf = 0;
 	static byte buf[10];
 
@@ -2170,7 +2170,7 @@ static void UpdateDSP()
 	static R01 *r01 = 0;
 
 	static byte i = 0;
-	static TM32 tm;
+//	static TM32 tm;
 
 	switch (i)
 	{
@@ -2234,11 +2234,11 @@ static void FlashDSP()
 
 	tm.Reset();
 
-	while (!tm.Check(100));
+	while (!tm.Check(100)) HW::WDT->Update();
 
 	req = CreateDspReq05(2);
 
-	qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
+	qdsp.Add(req); while(!req->ready) { qdsp.Update(); HW::WDT->Update(); };
 
 	if (req->crcOK)
 	{
@@ -2259,7 +2259,7 @@ static void FlashDSP()
 
 				req = CreateDspReq06(adr, len, p, 0, 0, 2);
 
-				qdsp.Add(req); while(!req->ready) { qdsp.Update(); };
+				qdsp.Add(req); while(!req->ready) { qdsp.Update(); HW::WDT->Update(); };
 
 				count -= len;
 				p += len;
@@ -2274,13 +2274,13 @@ static void FlashDSP()
 			
 			tm.Reset();
 
-			while (!tm.Check(1));
+			while (!tm.Check(1)) HW::WDT->Update();
 
 			EnableDSP();
 			
 			tm.Reset();
 
-			while (!tm.Check(100));
+			while (!tm.Check(100)) HW::WDT->Update();
 		};
 	};
 }
@@ -2318,7 +2318,7 @@ static void FlashMoto()
 
 	tm.Reset();
 
-	bool hs = true;
+	bool hs = false;
 
 	while (!tm.Check(200))
 	{
@@ -2329,13 +2329,13 @@ static void FlashMoto()
 
 		commoto.Write(&wb);
 
-		while (commoto.Update());
+		while (commoto.Update()) HW::WDT->Update(); 
 
 		rb.data = &rspHS;
 		rb.maxLen = sizeof(rspHS);
 		commoto.Read(&rb, MS2RT(5), US2RT(100));
 
-		while (commoto.Update());
+		while (commoto.Update()) HW::WDT->Update();;
 
 		if (rb.recieved && rb.len == sizeof(rspHS) && GetCRC16(&rspHS, sizeof(rspHS)) == 0 && rspHS.guid == slaveGUID)
 		{
@@ -2348,7 +2348,7 @@ static void FlashMoto()
 	{
 		req = CreateBootMotoReq01(motoFlashLen, 2);
 
-		qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+		qmoto.Add(req); while(!req->ready) { qmoto.Update(); HW::WDT->Update(); };
 
 		if (req->crcOK)
 		{
@@ -2368,7 +2368,7 @@ static void FlashMoto()
 					{
 						req = CreateBootMotoReq02(adr, len, p, 3);
 
-						qmoto.Add(req); while(!req->ready) { qmoto.Update(); };
+						qmoto.Add(req); while(!req->ready) { qmoto.Update(); HW::WDT->Update(); };
 
 						RspBootMoto *rsp = (RspBootMoto*)req->rb->data;
 
@@ -2377,7 +2377,7 @@ static void FlashMoto()
 
 					tm.Reset();
 
-					while (!tm.Check(1));
+					while (!tm.Check(1)) HW::WDT->Update();
 
 					count -= len;
 					p += len;
@@ -2388,11 +2388,11 @@ static void FlashMoto()
 
 		req = CreateBootMotoReq03();
 
-		qmoto.Add(req); while(!req->ready) { qmoto.Update();	};
+		qmoto.Add(req); while(!req->ready) { qmoto.Update(); HW::WDT->Update();	};
 
 		tm.Reset();
 
-		while (!tm.Check(1));
+		while (!tm.Check(1)) HW::WDT->Update();
 	};
 }
 
@@ -2708,9 +2708,9 @@ static void Update()
 
 int main()
 {
-	static bool c = true;
+//	static bool c = true;
 
-	static byte buf[100];
+//	static byte buf[100];
 
 	//volatile byte * const FLD = (byte*)0x60000000;	
 	
