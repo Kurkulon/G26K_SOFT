@@ -183,7 +183,8 @@ void SetMux(byte a)
 
 void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 {
-	ppi.st = sens.st+1;
+	ppi.st = (sens.st > 0) ? sens.st : 1;
+
 	ppi.clkDiv = ppi.st * NS2CLK(50);
 
 	//if (ppi.clkDiv == 0) ppi.clkDiv = 1;
@@ -205,7 +206,11 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 	ppi.gain = sens.gain;
 	ppi.sensType = sensType;
 
-	if (sens.freq > 0)
+	if (sens.freq > 900)
+	{
+		ppi.fireDiv = sens.freq - 900;
+	}
+	else if (sens.freq > 0)
 	{
 		ppi.fireDiv = (US2CLK(500) + sens.freq/2) / sens.freq;
 	}
@@ -213,6 +218,8 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 	{
 		ppi.fireDiv = US2CLK(1);
 	};
+
+	if (ppi.fireDiv == 0) { ppi.fireDiv = 1; };
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
