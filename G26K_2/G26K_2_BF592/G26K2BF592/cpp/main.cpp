@@ -367,7 +367,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 
 		for (u32 i = dsc.len; i > 0; i--)
 		{
-			i16 v = d[8] - 2048;
+			i16 v = d[4] - 2048;
 
 			*(d++) = v -= *ab/32;
 
@@ -380,7 +380,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 
 		for (u32 i = dsc.len; i > 0; i--)
 		{
-			i16 v = d[8] - 2048;
+			i16 v = d[4] - 2048;
 
 			av += v - av/2;
 
@@ -394,7 +394,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 
 		for (u32 i = dsc.len; i > 0; i--)
 		{
-			i16 v = d[8] - 2048;
+			i16 v = d[4] - 2048;
 
 			av += v - av/2;
 
@@ -409,7 +409,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	{
 		for (u32 i = dsc.len; i > 0; i--)
 		{
-			*d = d[8] - 2048; d++;
+			*d = d[4] - 2048; d++;
 		};
 	};
 }

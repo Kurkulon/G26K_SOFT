@@ -195,7 +195,7 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 
 	ppi.sd = sens.sd;
 
-	i32 d = (i32)ppi.sd - (i32)ppi.st*2;
+	i32 d = (i32)ppi.sd + (i32)ppi.st/2;
 
 	if (d < 0) d = 0;
 
