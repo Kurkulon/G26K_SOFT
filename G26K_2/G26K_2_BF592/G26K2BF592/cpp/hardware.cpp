@@ -154,7 +154,7 @@ struct PPI
 {
 	u16 clkDiv;
 	u16 len;
-	u16 delay;
+	u32 delay;
 	u16 gain;
 	u16 sensType;
 	u16 st;
@@ -201,7 +201,7 @@ void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
 
 	ppi.delay = d * (NS2CCLK(50));
 	
-	if (ppi.delay > US2CLK(500)) ppi.delay = US2CLK(500);
+	if (ppi.delay > US2CCLK(1000)) ppi.delay = US2CCLK(1000);
 
 	ppi.gain = sens.gain;
 	ppi.sensType = sensType;
