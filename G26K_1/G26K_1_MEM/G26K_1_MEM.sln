@@ -1,11 +1,13 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "G26K_1_MEM", "G26K_1_MEM.vcproj", "{B714AF8F-1374-43D4-8707-4BCD54E9D858}"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28306.52
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "G26K_1_MEM", "G26K_1_MEM.vcxproj", "{B714AF8F-1374-43D4-8707-4BCD54E9D858}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libs", "libs\libs.vcproj", "{99CCCC0B-644E-40EA-A988-F19FF1D9979D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libs", "libs\libs.vcxproj", "{99CCCC0B-644E-40EA-A988-F19FF1D9979D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XMClib", "..\..\..\G26P_SOFT\XMClib\XMClib.vcproj", "{3538DC19-D645-4A65-AA4D-97895C72D23C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XMClib", "..\..\..\G26P_SOFT\XMClib\XMClib.vcxproj", "{3538DC19-D645-4A65-AA4D-97895C72D23C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,5 +44,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4AF0F30A-E3F8-4C58-B84A-4016B368DDFA}
 	EndGlobalSection
 EndGlobal
