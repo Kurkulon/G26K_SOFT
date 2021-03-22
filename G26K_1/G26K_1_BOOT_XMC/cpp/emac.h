@@ -15,6 +15,8 @@
 extern bool	InitEMAC();
 extern void	UpdateEMAC();
 //extern bool EMAC_SendData(void *pData, u16 length);
+extern void ResetPHY();
+extern void EnablePHY();
 
 inline u16 GetIpID() {extern u16 txIpID; return ReverseWord(txIpID++); }
 

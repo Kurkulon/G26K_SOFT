@@ -179,6 +179,8 @@ static void ReqReadPHY(byte PhyReg);
 	inline bool CheckRecievedFrame(Receive_Desc &buf) { return (buf.stat & (RD0_LS|RD0_FS|RD0_CE|RD0_FT)) == (RD0_LS|RD0_FS|RD0_FT); }
 	inline bool CheckBufferOwn(Receive_Desc &buf) { return (buf.stat & RD0_OWN) == 0; }
 	inline void SetBufferOwn(Receive_Desc &buf) { buf.stat |= RD0_OWN; }
+	void ResetPHY() { HW::P2->BCLR(10); };
+	void EnablePHY() { HW::P2->BSET(10); };
 #endif
 
 inline bool IsBusyPHY() { return !IsReadyPHY(); }
@@ -935,9 +937,9 @@ bool InitEMAC()
 
 	WritePHY(PHY_REG_BMCR,		BMCR_ANENABLE|BMCR_FULLDPLX);
 	WritePHY(PHY_REG_ANAR,		ANAR_NPAGE|ANAR_100FULL|ANAR_100HALF|ANAR_10FULL|ANAR_10HALF|ANAR_CSMA);
-	WritePHY(PHY_REG_DRC,		DRC_PLL_OFF);
+	//WritePHY(PHY_REG_DRC,		DRC_PLL_OFF);
 	WritePHY(PHY_REG_OMSO,		OMSO_RMII_OVERRIDE);
-	WritePHY(PHY_REG_EXCON,		EXCON_EDPD_EN);
+	//WritePHY(PHY_REG_EXCON,		EXCON_EDPD_EN);
 	WritePHY(PHY_REG_PHYCON1,	0);
 	WritePHY(PHY_REG_PHYCON2,	PHYCON2_HP_MDIX|PHYCON2_JABBER_EN|PHYCON2_POWER_SAVING);
 

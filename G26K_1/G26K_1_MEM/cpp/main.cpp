@@ -2714,7 +2714,7 @@ int main()
 
 	//volatile byte * const FLD = (byte*)0x60000000;	
 	
-	static ComPort commem;
+	//static ComPort commem;
 
 	DSCSPI dsc, dsc2;
 
@@ -2740,7 +2740,7 @@ int main()
 
 	commoto.Connect(ComPort::ASYNC, 0, 1562500, 0, 1);
 	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 2, 1);
-	commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
+	//commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
 
 	EnableDSP();
 

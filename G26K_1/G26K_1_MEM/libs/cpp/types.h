@@ -13,6 +13,7 @@
 #define __softfp /**/
 #define __irq __declspec(naked)
 #define __align(v)
+#define __attribute__(v)
 
 inline void __disable_irq() {}
 inline void __enable_irq() {}

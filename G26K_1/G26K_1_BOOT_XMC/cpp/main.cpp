@@ -869,6 +869,8 @@ int main()
 {
 	//__breakpoint(0);
 
+	ResetPHY();
+
 	Init_time();
 	RTT_Init();
 	WDT_Init();
@@ -912,6 +914,8 @@ int main()
 	__disable_irq();
 
 	CM4::SysTick->CTRL = 0;
+
+	ResetPHY();
 
 	HW::Peripheral_Disable(PID_DMA0);
 	HW::Peripheral_Disable(PID_DMA1);

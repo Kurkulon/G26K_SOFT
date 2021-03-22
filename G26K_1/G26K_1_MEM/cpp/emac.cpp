@@ -148,6 +148,8 @@ static void ReqReadPHY(byte PhyReg);
 	inline u16 ResultPHY() { return HW::GMAC->MAN; }
 	inline bool CheckStatusUDP(u32 stat) { return (stat & RD_IP_CHECK) == RD_IP_UDP_OK; }
 	inline bool CheckRecievedFrame(Buf_Desc &buf) { return (buf.stat & (RD_EOF|RD_SOF)) == (RD_EOF|RD_SOF); }
+	inline void ResetPHY()	{ HW::PIOC->DIRSET = (1 << 15); HW::PIOC->BCLR(15); };
+	inline void EnablePHY() { HW::PIOC->DIRSET = (1 << 15); HW::PIOC->BSET(15); };
 #elif defined(CPU_XMC48)
 	inline void EnableMDI() { /*HW::GMAC->NCR |= GMAC_MPE;*/ }
 	inline void DisableMDI() { /*HW::GMAC->NCR &= ~GMAC_MPE;*/ }
@@ -155,6 +157,8 @@ static void ReqReadPHY(byte PhyReg);
 	inline u16 ResultPHY() { return HW::ETH0->GMII_DATA; }
 	inline bool CheckStatusUDP(u32 stat) { return (stat & RD_UDP_ERR) == 0; }
 	inline bool CheckRecievedFrame(Receive_Desc &buf) { return (buf.stat & (RD0_LS|RD0_FS|RD0_CE|RD0_FT)) == (RD0_LS|RD0_FS|RD0_FT); }
+	inline void ResetPHY() { HW::P2->BCLR(10); };
+	inline void EnablePHY() { HW::P2->BSET(10); };
 #endif
 
 inline bool IsBusyPHY() { return !IsReadyPHY(); }
@@ -932,12 +936,12 @@ bool InitEMAC()
 	HW::ETH_Enable();
 
     HW::PORT15->PDISC &= ~(PORT15_PDISC_PDIS8_Msk | PORT15_PDISC_PDIS9_Msk);
-	HW::P2->BSET(10);
+	EnablePHY();
 	HW::ETH0_CON->CON = CON_INFSEL|CON_RXD0(0)|CON_RXD1(0)|CON_CLK_RMII(0)|CON_CRS_DV(2)|CON_RXER(0)|CON_MDIO(1);
 
 	HW::ETH0->BUS_MODE |= ETH_BUS_MODE_SWR_Msk;
 
-	while (HW::ETH0->BUS_MODE & ETH_BUS_MODE_SWR_Msk);
+	while (HW::ETH0->BUS_MODE & ETH_BUS_MODE_SWR_Msk) HW::WDT->Update();
 
 #endif
 
@@ -952,7 +956,9 @@ bool InitEMAC()
 		if (!(ReadPHY(PHY_REG_BMCR) & BMCR_RESET))
 		{
 			break; /* Reset complete */
-		}
+		};
+
+		HW::WDT->Update();
 	};
 
 	WritePHY(PHY_REG_BMCR,		BMCR_ANENABLE|BMCR_FULLDPLX);

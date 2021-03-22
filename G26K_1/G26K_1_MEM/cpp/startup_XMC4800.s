@@ -212,12 +212,29 @@ PendSV_Handler		PROC	;14
 
 
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 ; Dummy Exception Handlers (infinite loops which can be modified)
 
+;[SP+0x00] = R[0];
+;[SP+0x04] = R[1];
+;[SP+0x08] = R[2];
+;[SP+0x0C] = R[3];
+;[SP+0x10] = R[12];
+;[SP+0x14] = LR;
+;[SP+0x18] = ReturnAddress();
+;[SP+0x1C] = xPSR;
+
+
 Dummy_Handler   PROC
+
+				LDR		R0,[SP,#0x18]	; R0 = return Address
+				MRS		R1, IPSR		; R1 = Exception number
 				BKPT	#0
 				BX		lr
                 ENDP
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
              
                 ALIGN
 
