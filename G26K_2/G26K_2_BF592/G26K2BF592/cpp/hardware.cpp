@@ -46,6 +46,7 @@
 #define IVG_PORTF_SHAFT		8
 #define IVG_GPTIMER2_RTT	9
 #define IVG_PPI_DMA0		10
+#define IVG_PORTG_ROT		11
 //#define IVG_TWI				12
 //#define IVG_GPTIMER0_FIRE	10
 
@@ -53,8 +54,10 @@
 
 #define PIN_SHAFT		6
 #define PIN_SYNC		4
+#define PIN_ROT			5
 #define BM_SHAFT		(1 << PIN_SHAFT)	
 #define BM_SYNC			(1 << PIN_SYNC)
+#define BM_ROT			(1 << PIN_ROT)
 
 #define PIN_GAIN_EN		1
 #define PIN_GAIN_0		0
@@ -144,6 +147,11 @@ static ReqDsp01 dspVars;
 u32 shaftCount = 0;
 u32 shaftMMSEC = 0;
 u32 shaftPrevMMSEC = 0;
+
+u16 motoCount = 0;
+u32 rotCount = 0;
+u32 rotMMSEC = 0;
+u32 rotDeltaMMSEC = 0;
 
 u32 fireSyncCount = 0;
 u32 firesPerRound = 16;
@@ -346,14 +354,6 @@ static void Fire()
 		if (!curDscPPI->busy)
 		{
 			curDscPPI->busy = true;
-			curDscPPI->fireIndex = fireSyncCount;
-
-			curDscPPI->mmsec = mmsec;
-			curDscPPI->shaftTime = shaftMMSEC;
-			curDscPPI->shaftPrev = shaftPrevMMSEC;
-
-			curDscPPI->motoCount = dspVars.motoCount;
-			curDscPPI->shaftCount = shaftCount;
 
 			if (curDscPPI->ppidelay == 0)
 			{ 
@@ -366,6 +366,18 @@ static void Fire()
 				*pTCOUNT = curDscPPI->ppidelay;
 				*pTCNTL = TINT|TMPWR|TMREN;
 			};
+
+			curDscPPI->fireIndex = fireSyncCount;
+
+			curDscPPI->mmsec = mmsec;
+			curDscPPI->shaftTime = shaftMMSEC;
+			curDscPPI->shaftPrev = shaftPrevMMSEC;
+
+			curDscPPI->rotCount = rotCount;
+			curDscPPI->rotMMSEC = rotMMSEC;
+
+			curDscPPI->motoCount = motoCount; //dspVars.motoCount;
+			curDscPPI->shaftCount = shaftCount;
 		};
 	}
 	else
@@ -527,6 +539,8 @@ EX_INTERRUPT_HANDLER(SHAFT_ISR)
 	shaftMMSEC = mmsec;
 
 	fireSyncCount = 0;
+
+	if ((mmsec - rotMMSEC) <= (rotDeltaMMSEC/4)) rotCount = 0;
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -539,6 +553,41 @@ static void InitShaft()
 	*pPORTFIO_BOTH &= ~(1<<6);
 	*pPORTFIO_CLEAR = 1<<6;
 	*pPORTFIO_MASKB = 1<<6;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EX_INTERRUPT_HANDLER(ROT_ISR)
+{
+	*pPORTGIO_SET = 1<<6;
+
+	*pPORTGIO_CLEAR = BM_ROT;
+
+	motoCount++;
+
+	rotCount++;
+
+	if (rotCount >= 147) rotCount = 0;
+
+	rotDeltaMMSEC = mmsec - rotMMSEC;
+	
+	rotMMSEC = mmsec;
+
+	*pPORTGIO_CLEAR = 1<<6;
+}
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitRot()
+{
+	InitIVG(IVG_PORTF_SHAFT, PID_Port_G_Interrupt_A, ROT_ISR);
+
+	*pPORTG_MUX &= ~BM_ROT;
+	*pPORTGIO_DIR &= ~BM_ROT;
+	*pPORTGIO_INEN |= BM_ROT;
+	*pPORTGIO_EDGE |= BM_ROT;
+	*pPORTGIO_BOTH |= BM_ROT;
+	*pPORTGIO_CLEAR = BM_ROT;
+	*pPORTGIO_MASKA = BM_ROT;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -695,6 +744,8 @@ void InitHardware()
 	InitFire();
 
 	InitShaft();
+
+	InitRot();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

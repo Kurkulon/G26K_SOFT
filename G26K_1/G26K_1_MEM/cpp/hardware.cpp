@@ -321,7 +321,7 @@ static void I2C_Init();
 	#define I2C_IRQ			USIC2_0_IRQn
 	#define I2C_PID			PID_USIC2
 
-	#define ManRT			HW::CCU41_CC42
+	#define ManRT			HW::CCU41_CC43		//HW::CCU41_CC42
 	#define ManTT			HW::CCU41_CC40
 	#define ManCCU			HW::CCU41
 	#define ManCCU_PID		PID_CCU41
@@ -331,6 +331,11 @@ static void I2C_Init();
 
 	#define MANT_IRQ		CCU41_0_IRQn
 	#define MANR_IRQ		CCU41_2_IRQn
+
+	#define ManCCU_GIDLC	(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	#define ManCCU_GCSS		(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
+	#define ManRT_INS		(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
+	#define ManRT_SRS		CC4_POSR(2)
 
 	#define PIO_MANCH		HW::P0
 	#define PIN_L1			0 
@@ -2468,10 +2473,11 @@ static void InitManRecieve()
 	HW::CCU_Enable(ManCCU_PID);
 
 	P1->ModePin10(I2DPU);
+	P1->ModePin11(I2DPU);
 
 	ManCCU->GCTRL = 0;
 
-	ManCCU->GIDLC = CCU4_CS1I|CCU4_CS2I|CCU4_SPRB;
+	ManCCU->GIDLC = ManCCU_GIDLC;//CCU4_CS1I|CCU4_CS2I|CCU4_SPRB;
 
 	ManRT->PRS = MT(12)-1;
 	ManRT->PSC = 7; //1.28us
@@ -2479,14 +2485,14 @@ static void InitManRecieve()
 	ManTmr->PRS = MT(250);
 	ManTmr->PSC = 7; //1.28us
 
-	ManCCU->GCSS = CCU4_S1SE|CCU4_S2SE;  
+	ManCCU->GCSS = ManCCU_GCSS;//CCU4_S1SE|CCU4_S2SE;  
 
-	ManRT->INS = CC4_EV0IS(2)|CC4_EV0EM_BOTH_EDGES|CC4_LPF0M_7CLK;
+	ManRT->INS = ManRT_INS;//CC4_EV0IS(2)|CC4_EV0EM_BOTH_EDGES|CC4_LPF0M_7CLK;
 	ManRT->CMC = CC4_STRTS_EVENT0;
 	ManRT->TC = CC4_STRM|CC4_TSSM;
 
 	ManRT->INTE = 0;//CC4_PME;
-	ManRT->SRS = CC4_POSR(2);
+	ManRT->SRS = ManRT_SRS;//CC4_POSR(2);
 
 	ManTmr->INS = 0;
 	ManTmr->CMC = 0;

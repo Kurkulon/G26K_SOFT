@@ -17,6 +17,8 @@ struct DSCPPI
 {
 	DSCPPI	*next;
 	u32		mmsec;
+	u32		rotCount;
+	u32		rotMMSEC;
 	u32		shaftTime;
 	u32		shaftPrev;
 	u32		fireIndex;

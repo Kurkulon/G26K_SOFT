@@ -552,10 +552,14 @@ static void ProcessDataCM(DSCPPI &dsc)
 	rsp->packType	= 1;						//18. Упаковка
 	rsp->packLen	= 0;						//19. Размер упакованных данных
 	
-	u32 t = dsc.shaftTime - dsc.shaftPrev;
+	//u32 t = dsc.shaftTime - dsc.shaftPrev;
 
-	if (t != 0) { t = (36000 * (dsc.mmsec - dsc.shaftTime) + t/2) / t; };
-	
+	//if (t != 0) { t = (36000 * (dsc.mmsec - dsc.shaftTime) + t/2) / t; };
+
+	u32 t = (72000 * dsc.rotCount + 74) / 147;
+
+	if (t >= 36000) t -= 36000;
+
 	rsp->angle = t;
 
 	processedPPI.Add(&dsc);
@@ -790,7 +794,7 @@ static void UpdateMode()
 
 	if (dsc != 0)
 	{
-		*pPORTGIO_SET = 1<<5;
+		//*pPORTGIO_SET = 1<<5;
 
 		if (dsc->sensType == 0)
 		{
@@ -808,7 +812,7 @@ static void UpdateMode()
 		};
 
 		//idle();
-		*pPORTGIO_CLEAR = 1<<5;
+		//*pPORTGIO_CLEAR = 1<<5;
 	}
 	else
 	{

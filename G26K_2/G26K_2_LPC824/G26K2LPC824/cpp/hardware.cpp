@@ -1632,7 +1632,7 @@ __irq void MRT_Handler()
 {
 	if (HW::MRT->IRQ_FLAG & 8)
 	{
-		HW::GPIO->BTGL(15);
+		//HW::GPIO->BTGL(15);
 
 		if (curDuty <= limDuty)
 		{
