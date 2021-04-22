@@ -579,7 +579,7 @@ EX_INTERRUPT_HANDLER(ROT_ISR)
 
 static void InitRot()
 {
-	InitIVG(IVG_PORTF_SHAFT, PID_Port_G_Interrupt_A, ROT_ISR);
+	InitIVG(IVG_PORTG_ROT, PID_Port_G_Interrupt_A, ROT_ISR);
 
 	*pPORTG_MUX &= ~BM_ROT;
 	*pPORTGIO_DIR &= ~BM_ROT;

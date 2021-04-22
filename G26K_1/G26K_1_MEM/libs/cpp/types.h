@@ -19,6 +19,9 @@ inline void __disable_irq() {}
 inline void __enable_irq() {}
 inline void __nop() {}
 
+#define __CC_ARM
+#define __TARGET_FPU_VFP
+
 #endif 
 
 typedef unsigned char byte, u8;

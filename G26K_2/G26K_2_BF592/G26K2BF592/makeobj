@@ -7,7 +7,7 @@ version = Release
 
 ####################################################################################################################################################################################################
 
-ADI_DSP = "C:\Program Files (x86)\Analog Devices\VisualDSP 5.1"
+ADI_DSP = "C:\Program Files (x86)\Analog Devices\VisualDSP 5.1.2"
 #ADI_DSP = "c:\Analog Devices\CrossCore Embedded Studio 2.9.1"
 
 curdir = $+ $(%cdrive):$(%cwd) $-
