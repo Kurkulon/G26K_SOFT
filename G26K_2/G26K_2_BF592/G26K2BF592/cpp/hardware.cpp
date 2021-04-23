@@ -505,11 +505,11 @@ static void InitFire()
 
 	InitIVG(IVG_PORTF_SYNC, PID_Port_F_Interrupt_A, SYNC_ISR);
 
-	*pPORTFIO_INEN |= 1<<4;
-	*pPORTFIO_EDGE |= 1<<4;
-	*pPORTFIO_BOTH &= ~(1<<4);
-	*pPORTFIO_CLEAR = 1<<4;
-	*pPORTFIO_MASKA = 1<<4;
+	*pPORTFIO_INEN |= BM_SYNC;
+	*pPORTFIO_EDGE |= BM_SYNC;
+	*pPORTFIO_BOTH &= ~BM_SYNC;
+	*pPORTFIO_CLEAR = BM_SYNC;
+	*pPORTFIO_MASKA = BM_SYNC;
 
 	SetPPI(mainPPI, dspVars.mainSens, 0);
 	SetPPI(refPPI, dspVars.refSens, 1);
@@ -548,11 +548,12 @@ static void InitShaft()
 {
 	InitIVG(IVG_PORTF_SHAFT, PID_Port_F_Interrupt_B, SHAFT_ISR);
 
-	*pPORTFIO_INEN |= 1<<6;
-	*pPORTFIO_EDGE |= 1<<6;
-	*pPORTFIO_BOTH &= ~(1<<6);
-	*pPORTFIO_CLEAR = 1<<6;
-	*pPORTFIO_MASKB = 1<<6;
+	*pPORTFIO_INEN |= BM_SHAFT;
+	*pPORTFIO_EDGE |= BM_SHAFT;
+	*pPORTFIO_POLAR |= BM_SHAFT;	// falling edge
+	*pPORTFIO_BOTH &= ~BM_SHAFT;
+	*pPORTFIO_CLEAR = BM_SHAFT;
+	*pPORTFIO_MASKB = BM_SHAFT;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -705,11 +706,13 @@ static void LowLevelInit()
 	*pPORTGIO = 0;
 	*pPORTFIO = 0;
 
+	*pPORTFIO_POLAR = 0;
 	*pPORTFIO_EDGE = 0;
 	*pPORTFIO_BOTH = 0;
 	*pPORTFIO_MASKA = 0;
 	*pPORTFIO_MASKB = 0;
 
+	*pPORTGIO_POLAR = 0;
 	*pPORTGIO_EDGE = 0;
 	*pPORTGIO_BOTH = 0;
 	*pPORTGIO_MASKA = 0;

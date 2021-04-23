@@ -84,6 +84,8 @@ u32 i2cResetCount = 0;
 
 u16 manRcvData[10];
 u16 manTrmData[50];
+static u16 manTrmBaud = 0;
+static u16 memTrmBaud = 0;
 
 u16 txbuf[128 + 512 + 16];
 
@@ -1228,7 +1230,7 @@ static bool RequestMan_80(u16 *data, u16 len, MTB* mtb)
 
 		case 2:
 
-			SetTrmBoudRate(data[2]-1);
+			manTrmBaud = data[2] - 1;	//SetTrmBoudRate(data[2]-1);
 
 			break;
 	};
@@ -1328,6 +1330,8 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 		case 9:		r = RequestMan_90(buf, len, mtb); break;
 		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
 	};
+
+	if (r) { mtb->baud = manTrmBaud; };
 
 	return r;
 }
@@ -1490,7 +1494,7 @@ static bool RequestMem_80(u16 *data, u16 len, MTB* mtb)
 
 		case 2:
 
-			SetTrmBoudRate(data[2]-1);
+			memTrmBaud = data[2] - 1;	//SetTrmBoudRate(data[2]-1);
 
 			break;
 	};
@@ -1563,6 +1567,8 @@ static bool RequestMem(u16 *buf, u16 len, MTB* mtb)
 		case 0x90: 	r = RequestMem_90(buf, len, mtb); break;
 		case 0xF0: 	r = RequestMem_F0(buf, len, mtb); break;
 	};
+
+	if (r) { mtb->baud = memTrmBaud; };
 
 	return r;
 }

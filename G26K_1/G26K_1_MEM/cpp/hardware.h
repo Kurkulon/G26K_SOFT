@@ -151,6 +151,7 @@ struct MRB
 struct MTB
 {
 	bool		ready;
+	u16			baud;
 	u16			len1;
 	const u16	*data1;
 	u16			len2;
@@ -161,7 +162,7 @@ struct MTB
 
 extern bool RcvManData(MRB *mrb);
 extern bool SendManData(MTB *mtb);
-extern void SetTrmBoudRate(byte i);
+//extern void SetTrmBoudRate(byte i);
 extern void ManRcvUpdate();
 //extern void ManRcvStop();
 

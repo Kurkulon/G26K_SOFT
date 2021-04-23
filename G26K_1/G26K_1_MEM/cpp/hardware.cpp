@@ -327,7 +327,7 @@ static void I2C_Init();
 	#define ManCCU_PID		PID_CCU41
 	#define ManTmr			HW::CCU41_CC41
 	#define MT(v)			((u16)((MCK_MHz*(v)+64)/128))
-	#define BOUD2CLK(x)		((u32)((MCK/8.0)/x+0.5))
+	#define BAUD2CLK(x)		((u32)((MCK/8.0)/x+0.5))
 
 	#define MANT_IRQ		CCU41_0_IRQn
 	#define MANR_IRQ		CCU41_2_IRQn
@@ -1913,20 +1913,20 @@ inline void ManDischarge()	{ PIO_MANCH->CLR(L1|L2);	PIO_MANCH->CLR(H1|H2);						
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static const u16 manboud[5] = { BOUD2CLK(20833), BOUD2CLK(41666), BOUD2CLK(62500), BOUD2CLK(83333), BOUD2CLK(104166) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
+static const u16 manbaud[5] = { BAUD2CLK(20833), BAUD2CLK(41666), BAUD2CLK(62500), BAUD2CLK(83333), BAUD2CLK(104166) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
 
-u16 trmHalfPeriod = BOUD2CLK(20833)/2;
+//u16 trmHalfPeriod = BOUD2CLK(20833)/2;
 byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetTrmBoudRate(byte i)
+static u16 GetTrmBaudRate(byte i)
 {
-	if (i >= ArraySize(manboud)) { i = ArraySize(manboud) - 1; };
+	if (i >= ArraySize(manbaud)) { i = ArraySize(manbaud) - 1; };
 
-	trmHalfPeriod = manboud[i]/2;
+	return manbaud[i]/2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1935,7 +1935,7 @@ void SetTrmBoudRate(byte i)
 static bool rcvBusy = false;
 byte stateManRcvr = 0;
 
-const u16 rcvPeriod = BOUD2CLK(20833);
+const u16 rcvPeriod = BAUD2CLK(20833);
 
 static u16* rcvManPtr = 0;
 static u16 rcvManCount = 0;
@@ -2150,7 +2150,7 @@ bool SendManData(MTB *mtb)
 
 	#elif defined(CPU_XMC48)
 
-		ManTT->PRS = trmHalfPeriod-1;
+		ManTT->PRS = GetTrmBaudRate(mtb->baud)-1; //trmHalfPeriod - 1;
 		ManTT->PSC = 3; //0.08us
 
 		ManCCU->GCSS = CCU4_S0SE;  
@@ -2206,7 +2206,7 @@ static void InitManTransmit()
 
 	ManCCU->GIDLC = CCU4_S0I|CCU4_PRB;
 
-	ManTT->PRS = trmHalfPeriod-1;
+	ManTT->PRS = GetTrmBaudRate(0)-1;
 	ManTT->PSC = 3; //0.08us
 
 	ManCCU->GCSS = CCU4_S0SE;  
