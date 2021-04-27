@@ -1393,7 +1393,7 @@ static bool RequestMem_20(u16 *data, u16 len, MTB* mtb)
 	rsp.wrVec = FLASH_Vectors_Saved_Get();
 	rsp.errVec = FLASH_Vectors_Errors_Get();
 	*((__packed u64*)rsp.wrAdr) = FLASH_Current_Adress_Get();
-	rsp.temp = (temp+2)/4;
+	rsp.temp = (temp+5)/10;
 	rsp.status = FLASH_Status();
 
 	GetTime(&rsp.rtc);
