@@ -119,7 +119,7 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	ReqDsp01 *req = (ReqDsp01*)data;
 
-	if (req->vavesPerRoundCM > 64) { req->vavesPerRoundCM = 64; }
+	if (req->vavesPerRoundCM > 72) { req->vavesPerRoundCM = 72; }
 	if (req->vavesPerRoundIM > 500) { req->vavesPerRoundIM = 500; }
 
 	SetDspVars(req);
@@ -666,8 +666,8 @@ static void SendReadyDataIM(DSCPPI *dsc, u16 len)
 	RspIM *rsp = (RspIM*)dsc->data;
 
 	rsp->rw = manReqWord|0x50;			//1. ответное слово
-	rsp->mmsecTime = 0;					//2. Время (0.1мс). младшие 2 байта
-	rsp->shaftTime = 0;					//4. Время датчика Холла (0.1мс). младшие 2 байта
+	rsp->mmsecTime = dsc->mmsec;		//2. Время (0.1мс). младшие 2 байта
+	rsp->shaftTime = dsc->shaftTime;	//4. Время датчика Холла (0.1мс). младшие 2 байта
 	rsp->gain = dsc->gain;				//10. КУ
 	rsp->refAmp = refAmp;
 	rsp->refTime = refTime;
@@ -715,6 +715,10 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 		if (imdsc != 0)
 		{
+			imdsc->mmsec = dsc.mmsec;
+			imdsc->shaftTime = dsc.shaftTime;
+			imdsc->gain = dsc.gain;
+
 			RspIM *rsp = (RspIM*)imdsc->data;
 
 			u16 *d = rsp->data;
@@ -771,7 +775,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 		if (cmCount == 0)
 		{
-			cmCount = (vavesPerRoundIM + 4) / 8;
+			cmCount = vavesPerRoundIM / 8;
 
 			ProcessDataCM(dsc);
 		}
