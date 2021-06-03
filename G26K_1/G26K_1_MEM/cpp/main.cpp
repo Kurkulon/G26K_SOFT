@@ -14,7 +14,7 @@
 #elif defined(CPU_XMC48)
 #endif
 
-#define VERSION			0x0202
+#define VERSION			0x101
 
 //#pragma O3
 //#pragma Otime
@@ -164,7 +164,7 @@ static u16 memReqWord = 0x3D00;
 static u16 memReqMask = 0xFF00;
 
 //static u16 numDevice = 0;
-static u16 verDevice = 0x100;
+static u16 verDevice = VERSION;
 
 //static u16 numMemDevice = 0;
 static u16 verMemDevice = 0x100;
@@ -198,6 +198,12 @@ i16 cpuTemp = 0;
 i16 temp = 0;
 
 static byte svCount = 0;
+
+
+struct AmpTimeMinMax { u16 ampMax, ampMin, timeMax, timeMin; };
+
+static AmpTimeMinMax sensMinMax[2] = { {0, ~0, 0, ~0}, {0, ~0, 0, ~0} };
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -297,11 +303,11 @@ void CallBackDspReq01(REQ *q)
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
 
-		rsp.CM.ax = ax;
-		rsp.CM.ay = ay;
-		rsp.CM.az = az;
-		rsp.CM.at = at;
-		rsp.CM.pakType = 0;
+		//rsp.CM.ax = ax;
+		//rsp.CM.ay = ay;
+		//rsp.CM.az = az;
+		//rsp.CM.at = at;
+		//rsp.CM.pakType = 0;
 	}
 	else if (rsp.rw == (dspReqWord|0x50))
 	{
@@ -313,10 +319,10 @@ void CallBackDspReq01(REQ *q)
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
 
-		rsp.IM.ax = ax;
-		rsp.IM.ay = ay;
-		rsp.IM.az = az;
-		rsp.IM.at = at;
+		//rsp.IM.ax = ax;
+		//rsp.IM.ay = ay;
+		//rsp.IM.az = az;
+		//rsp.IM.at = at;
 	}
 	else
 	{
@@ -410,8 +416,8 @@ R01* CreateDspReq01(u16 tryCount)
 	req.refst			= mv.sampleTimeRef;
 	req.refsl 			= mv.sampleLenRef;
 	req.refsd 			= mv.sampleDelayRef;
-	req.refthr			= mv.deadTimeRef;
-	req.refdescr		= mv.descriminantRef;
+	req.refthr			= mv.descriminantRef;
+	req.refdescr		= mv.deadTimeRef;
 	req.refFreq			= mv.refFreq;
 	req.vavesPerRoundCM = mv.cmSPR;
 	req.vavesPerRoundIM = mv.imSPR;
@@ -929,22 +935,30 @@ static u32 InitRspMan_20(__packed u16 *data)
 {
 	__packed u16 *start = data;
 
-	*(data++)	= manReqWord|0x20;	//	1. ответное слово
-	*(data++)	= dspMMSEC; 		//	2. Время (0.1мс). младшие 2 байта
-	*(data++)	= dspMMSEC>>16;		//	3. Время. старшие 2 байта
-	*(data++)  	= shaftMMSEC;		//	4. Время датчика Холла (0.1мс). младшие 2 байта
-	*(data++)  	= shaftMMSEC>>16;	//	5. Время датчика Холла. старшие 2 байта
-	*(data++)  	= motoRPS;			//	6. Частота вращения двигателя (0.01 об/сек)
-	*(data++)  	= motoCur;			//	7. Ток двигателя (мА)
-	*(data++)  	= motoCounter;		//	8. Счётчик оборотов двигателя (1/6 об)
-	*(data++)  	= GetShaftRPS();	//	9. Частота вращения головки (0.01 об/сек)
-	*(data++)  	= GetShaftCount();	//	10. Счётчик оборотов головки (об)
-	*(data++)  	= ax;				//	11. AX (уе)
-	*(data++)  	= ay;				//	12. AY (уе)
-	*(data++)  	= az;				//	13. AZ (уе)
-	*(data++)  	= at;				//	14. AT (short 0.01 гр)
-	*(data++)	= temp;				//	15. Температура в приборе (short)(0.1гр)
-	
+	*(data++)	= manReqWord|0x20;			//	1. ответное слово
+	*(data++)	= dspMMSEC; 				//	2. Время (0.1мс). младшие 2 байта
+	*(data++)	= dspMMSEC>>16;				//	3. Время. старшие 2 байта
+	*(data++)  	= shaftMMSEC;				//	4. Время датчика Холла (0.1мс). младшие 2 байта
+	*(data++)  	= shaftMMSEC>>16;			//	5. Время датчика Холла. старшие 2 байта
+	*(data++)  	= motoRPS;					//	6. Частота вращения двигателя (0.01 об/сек)
+	*(data++)  	= motoCur;					//	7. Ток двигателя (мА)
+	*(data++)  	= motoCounter;				//	8. Счётчик оборотов двигателя (1/6 об)
+	*(data++)  	= GetShaftRPS();			//	9. Частота вращения головки (0.01 об/сек)
+	*(data++)  	= GetShaftCount();			//	10. Счётчик оборотов головки (об)
+	*(data++)  	= ax;						//	11. AX (уе)
+	*(data++)  	= ay;						//	12. AY (уе)
+	*(data++)  	= az;						//	13. AZ (уе)
+	*(data++)  	= at;						//	14. AT (short 0.01 гр)
+	*(data++)	= temp;						//	15. Температура в приборе (short)(0.1гр)
+	*(data++)	= sensMinMax[0].ampMax;		//	16. Амплитуда измерительного датчика максимум по всей волне(у.е)
+	*(data++)	= sensMinMax[0].ampMin;		//	17. Амплитуда измерительного датчика минимум по всей волне(у.е)
+	*(data++)	= sensMinMax[0].timeMax;	//	18. Время измерительного датчика максимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[0].timeMax;	//	19. Время измерительного датчика минимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[1].ampMax;		//	20. Амплитуда опорного датчика максимум по всей волне(у.е)
+	*(data++)	= sensMinMax[1].ampMin;		//	21. Амплитуда опорного датчика минимум по всей волне(у.е)
+	*(data++)	= sensMinMax[1].timeMax;	//	22. Время опорного датчика максимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[1].timeMax;	//	23. Время опорного датчика минимум по первому вступлению(0.05 мкс)
+
 	return data - start;
 }
 
@@ -965,10 +979,19 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	InitRspMan_20(manTrmData);
+	len = InitRspMan_20(manTrmData);
+
+	sensMinMax[0].ampMax = 0;
+	sensMinMax[0].ampMin = ~0;
+	sensMinMax[0].timeMax = 0;
+	sensMinMax[0].timeMax = ~0;
+	sensMinMax[1].ampMax = 0;
+	sensMinMax[1].ampMin = ~0;
+	sensMinMax[1].timeMax = 0;
+	sensMinMax[1].timeMax = ~0;
  
 	mtb->data1 = manTrmData;
-	mtb->len1 = 15;
+	mtb->len1 = len;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -1026,7 +1049,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 		if (r01 != 0/* && r01->rsp.rw == req.rw*/)
 		{
 
-			u16 sz = 18 + r01->rsp.CM.sl;
+			u16 sz = 21 + r01->rsp.CM.sl;
 
 			curManVec40 = r01;
 
@@ -1072,7 +1095,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 			len = data[2];
 		};
 
-		u16 sz = 18 + r01->rsp.CM.sl;
+		u16 sz = 21 + r01->rsp.CM.sl;
 
 		if (sz >= off && r01 != 0)
 		{
@@ -1705,7 +1728,9 @@ static void MainMode()
 
 			if ((r01->rsp.rw & 0xFF) == 0x40)
 			{
-				R01* &vec = manVec40[r01->rsp.CM.sensType&1];
+				byte n = r01->rsp.CM.sensType & 1;
+
+				R01* &vec = manVec40[n];
 
 				if (vec != 0)
 				{
@@ -1724,6 +1749,16 @@ static void MainMode()
 
 					r01 = 0;
 				};
+
+				AmpTimeMinMax& mm = sensMinMax[n];
+
+				u16 amp = r01->rsp.CM.maxAmp;
+				u16 time = r01->rsp.CM.fi_time;
+
+				if (amp > mm.ampMax) mm.ampMax = amp;
+				if (amp < mm.ampMin) mm.ampMin = amp;
+				if (time > mm.timeMax) mm.timeMax = time;
+				if (time < mm.timeMin) mm.timeMin = time;
 			}
 			else if ((r01->rsp.rw & 0xFF) == 0x50)
 			{

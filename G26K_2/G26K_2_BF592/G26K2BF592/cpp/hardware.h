@@ -32,6 +32,13 @@ struct DSCPPI
 	u16		ppiclkdiv;
 	u16		sampleTime;
 	u16		sampleDelay;
+	u16		maxAmp;
+	u16		fi_amp;
+	u16		fi_time;
+	u16		ax;
+	u16		ay;
+	u16		az;
+	u16		at;
 	u16		busy;
 	u16		data[PPI_BUF_LEN];
 };
@@ -50,6 +57,58 @@ struct SENS
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma pack(1)
+
+struct RspCM	// 0xAD40
+{
+	u16 	rw;
+	u32 	mmsecTime; 
+	u32		shaftTime; 
+	u16		motoCount; 
+	u16		headCount;
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16		sensType; 
+	u16		angle;
+	u16		maxAmp;
+	u16		fi_amp;
+	u16		fi_time;
+	u16 	gain; 
+	u16 	st;	 
+	u16 	sl; 
+	u16 	sd; 
+	u16		packType;
+	u16		packLen;
+};
+
+#pragma pack()
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma pack(1)
+
+struct RspIM	// 0xAD50
+{
+	u16 	rw;
+	u32 	mmsecTime; 
+	u32		shaftTime; 
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16 	gain; 
+	u16		refAmp;
+	u16		refTime;
+	u16		len;
+	u16		data[16];
+};
+
+#pragma pack()
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //#pragma pack(1)
 
@@ -86,7 +145,7 @@ struct ReqDsp01	// чтение вектора
 
 //#pragma pack(1)
 
-struct RspDsp01	// чтение вектора
+/*struct RspDsp01	// чтение вектора
 {
 	u16 rw; 
 	u32 time; 
@@ -97,7 +156,7 @@ struct RspDsp01	// чтение вектора
 		struct { u16 motoCount; u16 headCount; u16 ax; u16 ay; u16 az; u16 at; u16 sensType; u16 angle; u16 gain; u16 st; u16 sl; u16 sd; u16 pakType; u16 pakLen; u16 data[2048]; } CM;
 		struct { u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 dataLen; u16 data[2048];} IM;
 	};
-};
+};*/
 
 //pragma pack()
 

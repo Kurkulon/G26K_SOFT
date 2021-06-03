@@ -132,7 +132,7 @@ static DSCPPI ppidsc[PPI_BUF_NUM];
 //u16 ppiClkDiv = NS2CLK(400);
 //u16 ppiLen = 16;
 
-u16 ppiOffset = 19;
+u16 ppiOffset = sizeof(RspCM)/2; //19;
 
 //u32 ppiDelay = US2CCLK(10);
 
@@ -378,6 +378,11 @@ static void Fire()
 
 			curDscPPI->motoCount = motoCount; //dspVars.motoCount;
 			curDscPPI->shaftCount = shaftCount;
+
+			curDscPPI->ax = dspVars.ax;
+			curDscPPI->ay = dspVars.ay;
+			curDscPPI->az = dspVars.az;
+			curDscPPI->at = dspVars.at;
 		};
 	}
 	else

@@ -64,55 +64,6 @@ static u16 lastErasedBlock = ~0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#pragma pack(1)
-
-struct RspCM	// 0xAD40
-{
-	u16 	rw;
-	u32 	mmsecTime; 
-	u32		shaftTime; 
-	u16		motoCount; 
-	u16		headCount;
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-	u16		sensType; 
-	u16		angle;
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		packType;
-	u16		packLen;
-};
-
-#pragma pack()
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#pragma pack(1)
-
-struct RspIM	// 0xAD50
-{
-	u16 	rw;
-	u32 	mmsecTime; 
-	u32		shaftTime; 
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-	u16 	gain; 
-	u16		refAmp;
-	u16		refTime;
-	u16		len;
-	u16		data[16];
-};
-
-#pragma pack()
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
 	static u16 rsp[6];
@@ -129,9 +80,9 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	imDescr = req->mainSens.descr;
 	imDelay = req->mainSens.sd;
 
-	refThr = req->mainSens.thr;
-	refDescr = req->mainSens.descr;
-	refDelay = req->mainSens.sd;
+	refThr = req->refSens.thr;
+	refDescr = req->refSens.descr;
+	refDelay = req->refSens.sd;
 
 	vavesPerRoundCM = req->vavesPerRoundCM;	
 	vavesPerRoundIM = req->vavesPerRoundIM;
@@ -420,7 +371,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 
 #pragma optimize_for_speed
 
-static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
+static void GetAmpTimeIM_old(DSCPPI &dsc, u16 &amp, u16 &time)
 {
 	amp = 0;
 	time = 0;
@@ -478,7 +429,7 @@ static void GetAmpTimeIM(DSCPPI &dsc, u16 &amp, u16 &time)
 
 #pragma optimize_for_speed
 
-static void GetAmpTimeIM_2(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr, u16 &amp, u16 &time)
+static void GetAmpTimeIM_2_old(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr, u16 &amp, u16 &time)
 {
 	amp = 0;
 	time = 0;
@@ -529,6 +480,75 @@ static void GetAmpTimeIM_2(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr, u1
 
 #pragma optimize_for_speed
 
+static void GetAmpTimeIM_3(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr, u16 &amp, u16 &time, u16 &max_amp)
+{
+	amp = 0;
+	time = 0;
+
+	u16 *data = dsc.data + dsc.offset;
+	
+	u16 descr = (imDescr > imDelay) ? (imDescr - imDelay) : 0;
+
+	u16 ind = descr * NS2CLK(50) / dsc.ppiclkdiv;
+
+	if (ind >= dsc.len) return;
+
+	data += ind;
+
+	u16 len = dsc.len - ind;
+
+	i32 max = -32768;
+	i32 imax = -1;
+
+	i32 ampmax = 0;
+
+	for (u32 i = len; i > 0; i--)
+	{
+		i32 v = (i16)(*(data++));
+
+		if (v > imThr)
+		{ 
+			if (v > max) { max = v; imax = ind; };
+		}
+		else if (imax >= 0 && v < 0)
+		{ 
+			ind++;
+			break;
+		};
+
+		if (v < 0) v = -v;
+		if (v > ampmax) ampmax = v;
+		
+		ind++;
+	};
+
+	if (imax >= 0)
+	{
+		amp = max;
+		u32 t = dsc.sampleDelay + imax * dsc.sampleTime;
+		time = (t < 0xFFFF) ? t : 0xFFFF;
+	};
+
+	if (dsc.len > ind)
+	{
+		for (u32 i = dsc.len - ind; i > 0; i--)
+		{
+			i32 v = (i16)(*(data++));
+
+			if (v < 0) v = -v;
+			if (v > ampmax) ampmax = v;
+		};
+	};
+
+	max_amp = (ampmax < 0xFFFF) ? ampmax : 0xFFFF;
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
 static void ProcessDataCM(DSCPPI &dsc)
 {
 	//u16 amp, time;
@@ -544,12 +564,19 @@ static void ProcessDataCM(DSCPPI &dsc)
 	rsp->shaftTime	= dsc.shaftTime;
 	rsp->motoCount	= dsc.motoCount;
 	rsp->headCount	= dsc.shaftCount;
+	rsp->ax			= dsc.ax;
+	rsp->ay			= dsc.ay;
+	rsp->az			= dsc.az;
+	rsp->at			= dsc.at;
 	rsp->sensType	= dsc.sensType;
+	rsp->maxAmp		= dsc.maxAmp;
+	rsp->fi_amp		= dsc.fi_amp;
+	rsp->fi_time	= dsc.fi_time;
 	rsp->gain		= dsc.gain;
 	rsp->st 		= dsc.sampleTime;			//15. Шаг оцифровки
 	rsp->sl 		= dsc.len;					//16. Длина оцифровки (макс 2028)
 	rsp->sd 		= dsc.sampleDelay;			//17. Задержка оцифровки  
-	rsp->packType	= 1;						//18. Упаковка
+	rsp->packType	= 0;						//18. Упаковка
 	rsp->packLen	= 0;						//19. Размер упакованных данных
 	
 	//u32 t = dsc.shaftTime - dsc.shaftPrev;
@@ -708,7 +735,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 	if (imdsc == 0)
 	{
 		count = 500; //vavesPerRoundIM;
-		cmCount = (vavesPerRoundIM + 4) / 8;
+		cmCount = vavesPerRoundIM / 8;
 		i = 0;
 
 		imdsc = AllocDscPPI();
@@ -732,8 +759,6 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 	if (dsc.sensType == 1)
 	{
-		GetAmpTimeIM_2(dsc, refDescr, refDelay, refThr, refAmp, refTime);
-
 		ProcessDataCM(dsc);
 	}
 	else 
@@ -756,12 +781,8 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 			if (i < count)
 			{
-				u16 amp, time;
-
-				GetAmpTimeIM_2(dsc, imDescr, imDelay, imThr, amp, time);
-
-				*(data++) = amp;
-				*(data++) = time;
+				*(data++) = dsc.fi_amp;
+				*(data++) = dsc.fi_time;
 				i++;
 			};
 
@@ -798,25 +819,31 @@ static void UpdateMode()
 
 	if (dsc != 0)
 	{
-		//*pPORTGIO_SET = 1<<5;
+		*pPORTFIO_SET = 1<<7;
 
 		if (dsc->sensType == 0)
 		{
 			Filtr_Data(*dsc, filtrType);
+			
+			GetAmpTimeIM_3(*dsc, imDescr, imDelay, imThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+
+			switch (mode)
+			{
+				case 0:  ProcessDataCM(*dsc); break;
+				case 1:  ProcessDataIM(*dsc); break;
+			};
 		}
 		else
 		{
 			Filtr_Data(*dsc, (filtrType == 2 || filtrType == 3) ? 2 : 0);
-		};
-
-		switch (mode)
-		{
-			case 0:  ProcessDataCM(*dsc); break;
-			case 1:  ProcessDataIM(*dsc); break;
+			
+			GetAmpTimeIM_3(*dsc, refDescr, refDelay, refThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+			
+			ProcessDataCM(*dsc);
 		};
 
 		//idle();
-		//*pPORTGIO_CLEAR = 1<<5;
+		*pPORTFIO_CLEAR = 1<<7;
 	}
 	else
 	{
