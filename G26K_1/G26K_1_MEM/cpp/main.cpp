@@ -405,6 +405,10 @@ R01* CreateDspReq01(u16 tryCount)
 	req.rw				= dspReqWord|1;
 	req.mode 			= mode;
 	req.motoCount		= motoCounter;
+	req.ax				= ax;
+	req.ay				= ay;
+	req.az				= az;
+	req.at				= at;
 	req.gain 			= mv.gain;
 	req.st	 			= mv.sampleTime;
 	req.sl 				= mv.sampleLen;
