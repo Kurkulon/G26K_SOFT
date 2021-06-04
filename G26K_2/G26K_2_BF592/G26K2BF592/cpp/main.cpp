@@ -692,13 +692,17 @@ static void SendReadyDataIM(DSCPPI *dsc, u16 len)
 
 	RspIM *rsp = (RspIM*)dsc->data;
 
-	rsp->rw = manReqWord|0x50;			//1. ответное слово
-	rsp->mmsecTime = dsc->mmsec;		//2. Время (0.1мс). младшие 2 байта
-	rsp->shaftTime = dsc->shaftTime;	//4. Время датчика Холла (0.1мс). младшие 2 байта
-	rsp->gain = dsc->gain;				//10. КУ
-	rsp->refAmp = refAmp;
-	rsp->refTime = refTime;
-	rsp->len = len;						//11. Длина (макс 1024)
+	rsp->rw			= manReqWord|0x50;	//1. ответное слово
+	rsp->mmsecTime	= dsc->mmsec;		//2. Время (0.1мс). младшие 2 байта
+	rsp->shaftTime	= dsc->shaftTime;	//4. Время датчика Холла (0.1мс). младшие 2 байта
+	rsp->ax			= dsc->ax;
+	rsp->ay			= dsc->ay;
+	rsp->az			= dsc->az;
+	rsp->at			= dsc->at;
+	rsp->gain		= dsc->gain;		//10. КУ
+	rsp->refAmp		= refAmp;
+	rsp->refTime	= refTime;
+	rsp->len		= len;				//11. Длина (макс 1024)
 
 	dsc->offset = (sizeof(*rsp) - sizeof(rsp->data)) / 2;
 	dsc->len = len*2;
@@ -742,18 +746,19 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 		if (imdsc != 0)
 		{
-			imdsc->mmsec = dsc.mmsec;
-			imdsc->shaftTime = dsc.shaftTime;
-			imdsc->gain = dsc.gain;
+			imdsc->mmsec		= dsc.mmsec;
+			imdsc->shaftTime	= dsc.shaftTime;
+			imdsc->gain			= dsc.gain;
+			imdsc->ax			= dsc.ax;
+			imdsc->ay			= dsc.ay;
+			imdsc->az			= dsc.az;
+			imdsc->at			= dsc.at;
 
 			RspIM *rsp = (RspIM*)imdsc->data;
 
 			u16 *d = rsp->data;
 
-			for (u32 i = 10; i > 0; i--)
-			{
-				*(d++) = 0;
-			};
+			for (u32 i = 10; i > 0; i--) { *(d++) = 0; };
 		};
 	};
 
@@ -838,6 +843,9 @@ static void UpdateMode()
 			Filtr_Data(*dsc, (filtrType == 2 || filtrType == 3) ? 2 : 0);
 			
 			GetAmpTimeIM_3(*dsc, refDescr, refDelay, refThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+
+			refAmp	= dsc->fi_amp;
+			refTime = dsc->fi_time;
 			
 			ProcessDataCM(*dsc);
 		};

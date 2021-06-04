@@ -957,11 +957,11 @@ static u32 InitRspMan_20(__packed u16 *data)
 	*(data++)	= sensMinMax[0].ampMax;		//	16. Амплитуда измерительного датчика максимум по всей волне(у.е)
 	*(data++)	= sensMinMax[0].ampMin;		//	17. Амплитуда измерительного датчика минимум по всей волне(у.е)
 	*(data++)	= sensMinMax[0].timeMax;	//	18. Время измерительного датчика максимум по первому вступлению(0.05 мкс)
-	*(data++)	= sensMinMax[0].timeMax;	//	19. Время измерительного датчика минимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[0].timeMin;	//	19. Время измерительного датчика минимум по первому вступлению(0.05 мкс)
 	*(data++)	= sensMinMax[1].ampMax;		//	20. Амплитуда опорного датчика максимум по всей волне(у.е)
 	*(data++)	= sensMinMax[1].ampMin;		//	21. Амплитуда опорного датчика минимум по всей волне(у.е)
 	*(data++)	= sensMinMax[1].timeMax;	//	22. Время опорного датчика максимум по первому вступлению(0.05 мкс)
-	*(data++)	= sensMinMax[1].timeMax;	//	23. Время опорного датчика минимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[1].timeMin;	//	23. Время опорного датчика минимум по первому вступлению(0.05 мкс)
 
 	return data - start;
 }
@@ -988,11 +988,11 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 	sensMinMax[0].ampMax = 0;
 	sensMinMax[0].ampMin = ~0;
 	sensMinMax[0].timeMax = 0;
-	sensMinMax[0].timeMax = ~0;
+	sensMinMax[0].timeMin = ~0;
 	sensMinMax[1].ampMax = 0;
 	sensMinMax[1].ampMin = ~0;
 	sensMinMax[1].timeMax = 0;
-	sensMinMax[1].timeMax = ~0;
+	sensMinMax[1].timeMin = ~0;
  
 	mtb->data1 = manTrmData;
 	mtb->len1 = len;
