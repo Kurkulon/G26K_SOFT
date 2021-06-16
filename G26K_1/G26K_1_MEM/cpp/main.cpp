@@ -200,9 +200,10 @@ i16 temp = 0;
 static byte svCount = 0;
 
 
-struct AmpTimeMinMax { u16 ampMax, ampMin, timeMax, timeMin; };
+struct AmpTimeMinMax { bool valid; u16 ampMax, ampMin, timeMax, timeMin; };
 
-static AmpTimeMinMax sensMinMax[2] = { {0, ~0, 0, ~0}, {0, ~0, 0, ~0} };
+static AmpTimeMinMax sensMinMax[2] = { {0, 0, ~0, 0, ~0}, {0, 0, ~0, 0, ~0} };
+static AmpTimeMinMax sensMinMaxTemp[2] = { {0, 0, ~0, 0, ~0}, {0, 0, ~0, 0, ~0} };
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -983,17 +984,23 @@ static bool RequestMan_20(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
+	if (sensMinMaxTemp[0].valid) { sensMinMax[0] = sensMinMaxTemp[0]; };
+	if (sensMinMaxTemp[1].valid) { sensMinMax[1] = sensMinMaxTemp[1]; };
+
 	len = InitRspMan_20(manTrmData);
 
-	sensMinMax[0].ampMax = 0;
-	sensMinMax[0].ampMin = ~0;
-	sensMinMax[0].timeMax = 0;
-	sensMinMax[0].timeMin = ~0;
-	sensMinMax[1].ampMax = 0;
-	sensMinMax[1].ampMin = ~0;
-	sensMinMax[1].timeMax = 0;
-	sensMinMax[1].timeMin = ~0;
- 
+	sensMinMaxTemp[0].ampMax = 0;
+	sensMinMaxTemp[0].ampMin = ~0;
+	sensMinMaxTemp[0].timeMax = 0;
+	sensMinMaxTemp[0].timeMin = ~0;
+	sensMinMaxTemp[0].valid = false;
+
+	sensMinMaxTemp[1].ampMax = 0;
+	sensMinMaxTemp[1].ampMin = ~0;
+	sensMinMaxTemp[1].timeMax = 0;
+	sensMinMaxTemp[1].timeMin = ~0;
+	sensMinMaxTemp[1].valid = false;
+
 	mtb->data1 = manTrmData;
 	mtb->len1 = len;
 	mtb->data2 = 0;
@@ -1754,7 +1761,7 @@ static void MainMode()
 					r01 = 0;
 				};
 
-				AmpTimeMinMax& mm = sensMinMax[n];
+				AmpTimeMinMax& mm = sensMinMaxTemp[n];
 
 				u16 amp = r01->rsp.CM.maxAmp;
 				u16 time = r01->rsp.CM.fi_time;
@@ -1763,6 +1770,8 @@ static void MainMode()
 				if (amp < mm.ampMin) mm.ampMin = amp;
 				if (time > mm.timeMax) mm.timeMax = time;
 				if (time < mm.timeMin) mm.timeMin = time;
+
+				mm.valid = true;
 			}
 			else if ((r01->rsp.rw & 0xFF) == 0x50)
 			{

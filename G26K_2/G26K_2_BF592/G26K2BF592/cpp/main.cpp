@@ -483,7 +483,7 @@ static void GetAmpTimeIM_2_old(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr
 static void GetAmpTimeIM_3(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr, u16 &amp, u16 &time, u16 &max_amp)
 {
 	amp = 0;
-	time = 0;
+	time = ~0;
 
 	u16 *data = dsc.data + dsc.offset;
 	
