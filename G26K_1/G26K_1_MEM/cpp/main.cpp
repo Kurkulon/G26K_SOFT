@@ -2740,8 +2740,18 @@ static void Update()
 {
 	NAND_Idle();	
 	UpdateEMAC();
-	UpdateTraps();
-	UpdateMisc();
+
+	if (EmacIsConnected())
+	{
+		UpdateTraps();
+
+		if (!__debug) { HW::WDT->Update(); };
+	};
+	
+	if (!(IsComputerFind() && EmacIsConnected()))
+	{
+		UpdateMisc();
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

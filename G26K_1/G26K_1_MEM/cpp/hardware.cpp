@@ -120,7 +120,7 @@ static void I2C_Init();
 	//#define MltTmr			HW::TCC4
 
 	#define MT(v)			(v)
-	#define BOUD2CLK(x)		((u32)(1000000/x+0.5))
+	#define BAUD2CLK(x)		((u32)(1000000/x+0.5))
 
 	#define MANT_IRQ		TC0_IRQ
 	#define MANR_IRQ		TCC2_1_IRQ
@@ -1175,6 +1175,25 @@ static void NAND_ADR_LATCH(byte cmd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static byte NAND_ADR_READ()
+{
+#ifdef CPU_SAME53	
+	PIO_ALE->SET(ALE);
+	PIO_CLE->CLR(CLE);
+	__nop(); __nop();
+	PIO_WE_RE->CLR(RE);
+	__nop(); __nop();
+	byte v = PIO_NAND_DATA->IN;
+	PIO_WE_RE->SET(RE);
+	PIO_CLE->CLR(CLE | ALE);
+	return v;
+#elif defined(CPU_XMC48)
+	return *FLA;
+#endif
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void NAND_ADR_LATCH_COL(u16 col) 
 { 
 	#ifdef CPU_SAME53	
@@ -1328,6 +1347,7 @@ bool ResetNand()
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_RESET);
 	NAND_CmdReadStatus();
+	u32 count = 1000; while (!NAND_BUSY() && (count-- > 0));
 	while(NAND_BUSY());
 	return true;
 }
@@ -1527,12 +1547,39 @@ static void NAND_Init()
 
 #endif
 
+	byte checkBuf[16];
+	byte readBuf[16];
+
+	for (byte i = 0; i < 8; i++)
+	{
+		checkBuf[i] = 1 << i;
+		checkBuf[i+8] = ~(1 << i);
+	};
+
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip ++)
 	{
 
 		NAND_Chip_Select(chip);
 		ResetNand();
 		NandID k9k8g08u_id = {0};
+
+		for (byte i = 0; i < ArraySize(checkBuf); i++)
+		{
+			NAND_ADR_LATCH(checkBuf[i]);
+			readBuf[i] = NAND_ADR_READ();
+		};
+
+		byte bitMask = 0;
+
+		for (byte i = 0; i < 8; i++)
+		{
+			if (checkBuf[i] != readBuf[i] || checkBuf[i + 8] != readBuf[i + 8])
+			{
+				bitMask |= 1 << i;
+			};
+		};
+
+		nandSize.chipDataBusMask[chip] = ~bitMask;
 	
 		NAND_Read_ID(&k9k8g08u_id);
 
@@ -1552,8 +1599,10 @@ static void NAND_Init()
 			};
 			
 			nandSize.fl += nandSize.ch;
-			
-			nandSize.mask |= (1 << chip);
+		
+			if (bitMask == 0) { nandSize.mask |= (1 << chip); };
+
+			ResetNand();
 		};
 	};
 
@@ -2127,7 +2176,7 @@ bool SendManData(MTB *mtb)
 
 		ManTT->CTRLA = TC_MODE_COUNT8;
 		ManTT->WAVE = TC_WAVEGEN_NPWM;
-		ManTT->PER8 = trmHalfPeriod-1;
+		ManTT->PER8 = GetTrmBaudRate(mtb->baud) - 1; //trmHalfPeriod-1;
 
 		ManTT->INTENCLR = ~TC_OVF;
 		ManTT->INTENSET = TC_OVF;
@@ -2187,11 +2236,11 @@ static void InitManTransmit()
 
 	while(ManTT->SYNCBUSY);
 
-	SetTrmBoudRate(0);
+	//SetTrmBoudRate(0);
 
 	ManTT->CTRLA = TC_MODE_COUNT8;
 	ManTT->WAVE = TC_WAVEGEN_NPWM;
-	ManTT->PER8 = trmHalfPeriod-1;
+	ManTT->PER8 = GetTrmBaudRate(0) - 1;
 
 	ManTT->INTENCLR = ~TC_OVF;
 	ManTT->INTENSET = TC_OVF;
@@ -3152,6 +3201,46 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
+{
+	HW::P5->BSET(4);
+
+	byte* s = (byte*)data;
+
+	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
+
+//	if ((u32)s & 1) { CRC_FCE->IR = *s++; len--; };
+
+	if (len > 0)
+	{
+		CRC_DMACH->CTLH = BLOCK_TS(len);
+
+		CRC_DMACH->SAR = (u32)s;
+
+		CRC_DMA->CHENREG = CRC_DMA_CHEN;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool CRC_CCITT_DMA_CheckComplete(u16* crc)
+{
+	if ((CRC_DMA->CHENREG & (1 << 2)) == 0)
+	{
+		*crc = (byte)CRC_FCE->RES;
+
+		HW::P5->BCLR(4);
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void Init_CRC_CCITT_DMA()
 {
 	HW::Peripheral_Enable(PID_FCE);
@@ -3199,6 +3288,51 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 	//HW::PIOC->BCLR(26);
 
 	return ReverseWord(HW::DMAC->CRCCHKSUM);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
+{
+//	HW::PIOC->BSET(26);
+
+	T_HW::DMADESC& dmadsc = DmaTable[CRC_DMACH];
+	T_HW::S_DMAC::S_DMAC_CH& dmach = HW::DMAC->CH[CRC_DMACH];
+
+	dmadsc.DESCADDR = 0;
+	dmadsc.DSTADDR = (void*)init;
+	dmadsc.SRCADDR = (byte*)data + len;
+	dmadsc.BTCNT = len;
+	dmadsc.BTCTRL = DMDSC_VALID | DMDSC_BEATSIZE_BYTE | DMDSC_SRCINC;
+
+	HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE | DMAC_CRCPOLY_CRC16 | DMAC_CRCMODE_CRCGEN | DMAC_CRCSRC(0x20 + CRC_DMACH);
+
+	dmach.INTENCLR = ~0;
+	dmach.INTFLAG = ~0;
+	dmach.CTRLA = DMCH_ENABLE/*|DMCH_TRIGACT_TRANSACTION*/;
+
+	HW::DMAC->SWTRIGCTRL = 1UL << CRC_DMACH;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool CRC_CCITT_DMA_CheckComplete(u16* crc)
+{
+	//T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
+	T_HW::S_DMAC::S_DMAC_CH& dmach = HW::DMAC->CH[CRC_DMACH];
+
+	if ((dmach.CTRLA & DMCH_ENABLE) == 0 || (dmach.INTFLAG & DMCH_TCMPL))
+	{
+		*crc = ReverseWord(HW::DMAC->CRCCHKSUM);
+
+		//HW::PIOC->BCLR(26);
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

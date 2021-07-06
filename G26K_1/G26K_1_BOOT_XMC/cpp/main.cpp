@@ -923,6 +923,8 @@ int main()
 	HW::Peripheral_Disable(PID_USIC0);
 	HW::Peripheral_Disable(PID_USIC1);
 
+	HW::WDT_Disable();
+
 	_MainAppStart(FLASH_START);
 
 	return FLASH_START;

@@ -32,6 +32,7 @@ extern SmallTx*	GetSmallTxBuffer();
 extern HugeTx*	GetHugeTxBuffer();
 extern void SendTrap(SmallTx *p);
 extern void SendFragTrap(SmallTx *p);
+inline bool IsComputerFind() {	extern bool ComputerFind; return ComputerFind; }
 
 
 #endif // TRAP_H__12_03_20015__11_14

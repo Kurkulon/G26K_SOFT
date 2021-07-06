@@ -53,6 +53,8 @@ struct NandMemSize
 	u32		chipOffsetNext[NAND_MAX_CHIP]; // Если чип битый, то по индексу находится смещение адреса на следующий хороший чип
 	u32		chipOffsetPrev[NAND_MAX_CHIP]; // Если чип битый, то по индексу находится смещение адреса на предыдущий хороший чип
 
+	byte	chipDataBusMask[NAND_MAX_CHIP]; // Если проблема по линии данных, то соответствующи бит равен 0
+
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -87,6 +89,8 @@ extern void UpdateHardware();
 
 extern u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init);
 extern u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init);
+extern void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init);
+extern bool CRC_CCITT_DMA_CheckComplete(u16* crc);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

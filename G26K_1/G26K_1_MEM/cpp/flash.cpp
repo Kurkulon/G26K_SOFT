@@ -181,7 +181,8 @@ enum NandState
 	NAND_STATE_CREATE_FILE,
 	NAND_STATE_SEND_SESSION,
 	NAND_STATE_SEND_BAD_BLOCKS,
-	NAND_STATE_SEND_PAGE_ERRORS
+	NAND_STATE_SEND_PAGE_ERRORS,
+	NAND_STATE_SEND_DATABUS_MASK
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1170,34 +1171,40 @@ bool ReadSpare::Update()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-namespace Read
+struct Read
 {
 	enum {	WAIT = 0,READ_START,READ_1, /*READ_2,*/ READ_PAGE,READ_PAGE_1,FIND_START,FIND_1,/*FIND_2,*/FIND_3/*,FIND_4*/};
 
-	static FLADR rd(0, 0, 0, 0);
-	static byte*	rd_data = 0;
-	static u16		rd_count = 0;
-	static u16		findTryCount = 0;
+	FLADR	rd;
+	byte*	rd_data;
+	u16		rd_count;
+	u16		findTryCount;
 
-	static u32 		sparePage = -1;
+	u32 	sparePage;
 
-	static SpareArea spare;
+	SpareArea spare;
 
-	static ReadSpare readSpare;
+	ReadSpare readSpare;
 
-	static bool vecStart = false;
+	bool vecStart;
 
-	static byte state;
+	byte state;
 
-	static bool Start();
+	Read() : sparePage(~0), rd_data(0), rd_count(0), vecStart(false), state(WAIT) {}
+
+	bool Start();
 //	static bool Start(FLRB *flrb, FLADR *adr);
-	static bool Update();
-	static void End() { curRdBuf->ready = true; curRdBuf = 0; state = WAIT; }
+	bool Update();
+	void End() { curRdBuf->ready = true; curRdBuf = 0; state = WAIT; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Read::Start()
+static Read read;
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool Read::Start()
 {
 	if ((curRdBuf = readFlBuf.Get()) != 0)
 	{
@@ -1228,7 +1235,7 @@ static bool Read::Start()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool Read::Update()
+bool Read::Update()
 {
 	switch(state)
 	{
@@ -1241,13 +1248,13 @@ static bool Read::Update()
 			if (rd.GetRawPage() != sparePage)
 			{
 				readSpare.Start(&spare, &rd);
-//				NAND_CmdReadPage(rd.pg, rd.block, rd.page);
 
 				state = READ_1;
 			}
 			else
 			{
-				NAND_CmdReadPage(rd.col, rd.block, rd.page);
+				//NAND_CmdReadPage(rd.col, rd.block, rd.page);
+				NAND_CmdRandomRead(rd.col);
 
 				state = READ_PAGE;
 			};
@@ -1776,7 +1783,7 @@ void NAND_Idle()
 			{
 				nandState = NAND_STATE_WRITE_START;
 			}
-			else if (Read::Start())
+			else if (read.Start())
 			{
 				nandState = NAND_STATE_READ_START;
 			};
@@ -1796,7 +1803,7 @@ void NAND_Idle()
 
 		case NAND_STATE_READ_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			if (!Read::Update())
+			if (!read.Update())
 			{
 				nandState = NAND_STATE_WAIT;
 			};
@@ -1876,10 +1883,22 @@ void NAND_Idle()
 			};
 
 			break;
+
 		case NAND_STATE_SEND_PAGE_ERRORS:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			if (TRAP_TRACE_PrintString("NAND Page Error: %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu", 
 				nvv.pageError[0], nvv.pageError[1], nvv.pageError[2], nvv.pageError[3], nvv.pageError[4], nvv.pageError[5], nvv.pageError[6], nvv.pageError[7]))
+			{
+				nandState = NAND_STATE_SEND_DATABUS_MASK;
+			};
+
+			break;
+
+		case NAND_STATE_SEND_DATABUS_MASK:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			const byte* p = NAND_GetMemSize()->chipDataBusMask;
+
+			if (TRAP_TRACE_PrintString("NAND DataBus Mask: 0x%02hX, 0x%02hX, 0x%02hX, 0x%02hX, 0x%02hX, 0x%02hX, 0x%02hX, 0x%02hX", p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]))
 			{
 				nandState = NAND_STATE_WAIT;
 			};

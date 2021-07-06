@@ -40,7 +40,7 @@ static u32 ComputerIpAddr	= IP32(192,168,3,254);
 static u16 ComputerUDPPort	= 0;
 static u32 ComputerOldIpAddr	= 0;
 static u16 ComputerOldUDPPort	= 0;
-static bool ComputerFind = false;
+bool ComputerFind = false;
 
 
 
