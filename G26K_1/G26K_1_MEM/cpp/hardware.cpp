@@ -262,12 +262,12 @@ static void I2C_Init();
 	// 77	- P5.7	- UpdateMan	
 	// 78	- P5.6	- 	
 	// 79	- P5.5	- 	
-	// 80	- P5.4	- CRC_CCITT_DMA
-	// 81	- P5.3	- I2C_Handler 
+	// 80	- P5.4
+	// 81	- P5.3
 	// 83	- P5.1	- ManRcvIRQ 
 	// 95	- P6.6	- ShaftIRQ
-	// 96	- P6.5
-	// 99	- P6.2
+	// 96	- P6.5	- CRC_CCITT_DMA
+	// 99	- P6.2	- I2C_Handler 
 	// 100	- P6.1
 	// 101	- P6.0
 	// 104	- P1.12
@@ -289,66 +289,87 @@ static void I2C_Init();
 	// 138	- P0.12
 
 
-	#define	NAND_DMA		HW::GPDMA0
-	#define	NAND_DMACH		HW::GPDMA0_CH7
-	#define	NAND_DMA_CHEN	(0x101<<7)
-	#define	NAND_DMA_CHST	(1<<7)
+	#define	NAND_DMA				HW::GPDMA0
+	#define	NAND_DMACH				HW::GPDMA0_CH7
+	#define	NAND_DMA_CHEN			(0x101<<7)
+	#define	NAND_DMA_CHST			(1<<7)
 
-	#define	DSP_DMA			HW::GPDMA0
-	#define	DSP_DMACH		HW::GPDMA0_CH6
-	#define	DSP_DMA_CHEN	(0x101<<6)
-	#define	DSP_DMA_CHST	(1<<6)
+	#define	DSP_DMA					HW::GPDMA0
+	#define	DSP_DMACH				HW::GPDMA0_CH6
+	#define	DSP_DMA_CHEN			(0x101<<6)
+	#define	DSP_DMA_CHST			(1<<6)
 
-	#define	SPI_DMA			HW::GPDMA0
-	#define	SPI_DMACH		HW::GPDMA0_CH5
-	#define	SPI_DMA_CHEN	(0x101<<5)
-	#define	SPI_DMA_CHDIS	(0x100<<5)
-	#define	SPI_DMA_CHST	(1<<5)
-	#define	SPI_DLR			(1)
-	#define	SPI_DLR_LNEN	(1<<SPI_DLR)
+	#define	SPI_DMA					HW::GPDMA0
+	#define	SPI_DMACH				HW::GPDMA0_CH5
+	#define	SPI_DMA_CHEN			(0x101<<5)
+	#define	SPI_DMA_CHDIS			(0x100<<5)
+	#define	SPI_DMA_CHST			(1<<5)
+	#define	SPI_DLR					(1)
+	#define	SPI_DLR_LNEN			(1<<SPI_DLR)
 
-	#define	CRC_DMA			HW::GPDMA1
-	#define	CRC_DMACH		HW::GPDMA1_CH2
-	#define	CRC_DMA_CHEN	(0x101<<2)
-	#define	CRC_FCE			HW::FCE_KE3
+	#define	CRC_DMA					HW::GPDMA1
+	#define	CRC_DMACH				HW::GPDMA1_CH2
+	#define	CRC_DMA_CHEN			(0x101<<2)
+	#define	CRC_FCE					HW::FCE_KE3
 
-	#define I2C				HW::USIC2_CH0
-	#define PIO_I2C			HW::P5
-	#define PIN_SDA			0 
-	#define PIN_SCL			2 
-	#define SDA				(1<<PIN_SDA) 
-	#define SCL				(1<<PIN_SCL) 
-	#define I2C_IRQ			USIC2_0_IRQn
-	#define I2C_PID			PID_USIC2
+	#define I2C						HW::USIC2_CH0
+	#define PIO_I2C					HW::P5
+	#define PIN_SDA					0 
+	#define PIN_SCL					2 
+	#define SDA						(1<<PIN_SDA) 
+	#define SCL						(1<<PIN_SCL) 
+	#define I2C_IRQ					USIC2_0_IRQn
+	#define I2C_PID					PID_USIC2
 
-	#define ManRT			HW::CCU41_CC43		//HW::CCU41_CC42
-	#define ManTT			HW::CCU41_CC40
-	#define ManCCU			HW::CCU41
-	#define ManCCU_PID		PID_CCU41
-	#define ManTmr			HW::CCU41_CC41
-	#define MT(v)			((u16)((MCK_MHz*(v)+64)/128))
-	#define BAUD2CLK(x)		((u32)((MCK/8.0)/x+0.5))
+	#define ManRT					HW::CCU41_CC43		//HW::CCU41_CC42
+	#define ManTT					HW::CCU41_CC40
+	#define ManCCU					HW::CCU41
+	#define ManCCU_PID				PID_CCU41
+	#define ManTmr					HW::CCU41_CC41
+	#define ManRT_PSC				3
+	#define MT(v)					((u16)((MCK_MHz*(v)+(1<<ManRT_PSC)/2)/(1<<ManRT_PSC)))
+	#define BAUD2CLK(x)				((u32)((MCK/8.0)/x+0.5))
 
-	#define MANT_IRQ		CCU41_0_IRQn
-	#define MANR_IRQ		CCU41_2_IRQn
+	#define MANT_IRQ				CCU41_0_IRQn
+	#define MANR_IRQ				CCU41_2_IRQn
 
-	#define ManCCU_GIDLC	(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	#define ManCCU_GCSS		(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
-	#define ManRT_INS		(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
-	#define ManRT_SRS		CC4_POSR(2)
+	#define ManCCU_GIDLC			(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	#define ManCCU_GCSS				(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
+	#define ManRT_INS				(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
+	#define ManRT_SRS				CC4_POSR(3)
 
-	#define PIO_MANCH		HW::P0
-	#define PIN_L1			0 
-	#define PIN_H1			1 
-	#define PIN_L2			9 
-	#define PIN_H2			10
+	#define ManT					HW::CCU81_CC80
+	#define ManT2					HW::CCU81_CC81
+	
+	#define ManT_L1					HW::CCU81_CC80
+	#define ManT_H1					HW::CCU81_CC81
+	#define ManT_L2					HW::CCU81_CC82
+	#define ManT_H2					HW::CCU81_CC83
 
-	#define L1				(1UL<<PIN_L1)
-	#define H1				(1UL<<PIN_H1)
-	#define L2				(1UL<<PIN_L2)
-	#define H2				(1UL<<PIN_H2)
+	#define ManT_CCU8				HW::CCU81
+	#define ManT_CCU8_PID			PID_CCU81
+	#define MANT_CCU8_IRQ			CCU81_0_IRQn
+	#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE)				// (CCU4_S1SE | CCU4_S2SE)
+	#define ManT_PSC				3					// 0.04us
+	#define US2MT(v)				((u16)((MCK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
+	#define ManT_SET_PR(v)			{ ManT->PRS = (v); ManT2->PRS = (v); }
+	#define ManT_SET_CR(v)			{ ManT->CR1S = (v); ManT->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); }
 
-	//#define ManRxd()		((PIO_MANCH->IN >> PIN_MANCHRX) & 1)
+
+	#define PIO_MANCH				HW::P0
+	#define PIN_L1					0 
+	#define PIN_H1					1 
+	#define PIN_L2					9 
+	#define PIN_H2					10
+
+	#define L1						(1UL<<PIN_L1)
+	#define H1						(1UL<<PIN_H1)
+	#define L2						(1UL<<PIN_L2)
+	#define H2						(1UL<<PIN_H2)
+
+	//#define ManRxd()				((PIO_MANCH->IN >> PIN_MANCHRX) & 1)
 
 	#define Pin_ManRcvIRQ_Set()		HW::P5->BSET(1);
 	#define Pin_ManRcvIRQ_Clr()		HW::P5->BCLR(1);
@@ -359,92 +380,92 @@ static void I2C_Init();
 	#define Pin_ManRcvSync_Set()			
 	#define Pin_ManRcvSync_Clr()			
 
-	#define PIO_WP			HW::P5 
-	#define PIO_FLREADY		HW::P15
-	#define PIO_FCS			HW::P3
+	#define PIO_WP					HW::P5 
+	#define PIO_FLREADY				HW::P15
+	#define PIO_FCS					HW::P3
 
-	#define PIN_WP			10 
-	#define PIN_FLREADY		7 
-	#define PIN_FCS0		13 
-	#define PIN_FCS1		2 
-	#define PIN_FCS2		12 
-	#define PIN_FCS3		11 
-	#define PIN_FCS4		10 
-	#define PIN_FCS5		9 
-	#define PIN_FCS6		8 
-	#define PIN_FCS7		7 
+	#define PIN_WP					10 
+	#define PIN_FLREADY				7 
+	#define PIN_FCS0				13 
+	#define PIN_FCS1				2 
+	#define PIN_FCS2				12 
+	#define PIN_FCS3				11 
+	#define PIN_FCS4				10 
+	#define PIN_FCS5				9 
+	#define PIN_FCS6				8 
+	#define PIN_FCS7				7 
 
-	#define WP				(1<<PIN_WP) 
-	#define FLREADY			(1<<PIN_FLREADY) 
-	#define FCS0			(1<<PIN_FCS0) 
-	#define FCS1			(1<<PIN_FCS1) 
-	#define FCS2			(1<<PIN_FCS2) 
-	#define FCS3			(1<<PIN_FCS3) 
-	#define FCS4			(1<<PIN_FCS4) 
-	#define FCS5			(1<<PIN_FCS5) 
-	#define FCS6			(1<<PIN_FCS6) 
-	#define FCS7			(1<<PIN_FCS7) 
+	#define WP						(1<<PIN_WP) 
+	#define FLREADY					(1<<PIN_FLREADY) 
+	#define FCS0					(1<<PIN_FCS0) 
+	#define FCS1					(1<<PIN_FCS1) 
+	#define FCS2					(1<<PIN_FCS2) 
+	#define FCS3					(1<<PIN_FCS3) 
+	#define FCS4					(1<<PIN_FCS4) 
+	#define FCS5					(1<<PIN_FCS5) 
+	#define FCS6					(1<<PIN_FCS6) 
+	#define FCS7					(1<<PIN_FCS7) 
 
-	#define PIO_ENVCORE		HW::P2
-	#define PIN_ENVCORE		11 
-	#define ENVCORE			(1<<PIN_ENVCORE) 
+	#define PIO_ENVCORE				HW::P2
+	#define PIN_ENVCORE				11 
+	#define ENVCORE					(1<<PIN_ENVCORE) 
 	
-	#define PIN_RESET		11
-	#define PIO_RESET		HW::P0
-	#define RESET			(1<<PIN_RESET)
+	#define PIN_RESET				11
+	#define PIO_RESET				HW::P0
+	#define RESET					(1<<PIN_RESET)
 
-	#define PIN_SYNC		14
-	#define PIN_ROT			15
+	#define PIN_SYNC				14
+	#define PIN_ROT					15
 
-	#define SYNC			(1<<PIN_SYNC)
-	#define ROT				(1<<PIN_ROT)
-	#define PIO_SYNC		HW::P0
-	#define PIO_ROT			HW::P0
+	#define SYNC					(1<<PIN_SYNC)
+	#define ROT						(1<<PIN_ROT)
+	#define PIO_SYNC				HW::P0
+	#define PIO_ROT					HW::P0
 
-	#define SyncTmr			HW::CCU40_CC41
-	#define RotTmr			HW::CCU40_CC40
-	#define SyncRotCCU		HW::CCU40
-	#define SyncRotCCU_PID	PID_CCU40
-	#define Sync_GCSS		CCU4_S1SE	
-	#define Rot_GCSS		CCU4_S0SE
-	#define SyncRot_GIDLC	(CCU4_S0I|CCU4_S1I|CCU4_PRB)
-	#define SyncRot_PSC		8					//1.28us
-	#define SyncRot_DIV		(1<<SyncRot_PSC)	
+	#define SyncTmr					HW::CCU40_CC41
+	#define RotTmr					HW::CCU40_CC40
+	#define SyncRotCCU				HW::CCU40
+	#define SyncRotCCU_PID			PID_CCU40
+	#define Sync_GCSS				CCU4_S1SE	
+	#define Rot_GCSS				CCU4_S0SE
+	#define SyncRot_GIDLC			(CCU4_S0I|CCU4_S1I|CCU4_PRB)
+	#define SyncRot_PSC				8					//1.28us
+	#define SyncRot_DIV				(1<<SyncRot_PSC)	
 
-	#define US2SRT(v)		(((MCK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
+	#define US2SRT(v)				(((MCK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
 
-	#define PIN_SHAFT		6
-	#define SHAFT			(1<<PIN_SHAFT)
-	#define PIO_SHAFT		HW::P0
-	#define IRQ_SHAFT		ERU0_0_IRQn
+	#define PIN_SHAFT				6
+	#define SHAFT					(1<<PIN_SHAFT)
+	#define PIO_SHAFT				HW::P0
+	#define IRQ_SHAFT				ERU0_0_IRQn
 
 	#define Pin_ShaftIRQ_Set()		HW::P6->BSET(6);
 	#define Pin_ShaftIRQ_Clr()		HW::P6->BCLR(6);
 
-	#define SPI				HW::USIC1_CH0
-	#define	SPI_INPR		(0)
-	#define PIO_SPCK		HW::P5
-	#define PIO_MOSI		HW::P2
-	#define PIO_MISO		HW::P2
-	#define PIO_CS			HW::P5
+	#define SPI						HW::USIC1_CH0
+	#define	SPI_INPR				(0)
+	#define PIO_SPCK				HW::P5
+	#define PIO_MOSI				HW::P2
+	#define PIO_MISO				HW::P2
+	#define PIO_CS					HW::P5
 
 	#define Pin_SPI_IRQ_Set()		HW::P2->BSET(12);
 	#define Pin_SPI_IRQ_Clr()		HW::P2->BCLR(12);
 
-	#define PIN_SPCK		8 
-	#define PIN_MOSI		14 
-	#define PIN_MISO		15 
-	#define PIN_CS0			9 
-	#define PIN_CS1			11
+	#define PIN_SPCK				8 
+	#define PIN_MOSI				14 
+	#define PIN_MISO				15 
+	#define PIN_CS0					9 
+	#define PIN_CS1					11
 
-	#define SPCK			(1<<PIN_SPCK) 
-	#define MOSI			(1<<PIN_MOSI) 
-	#define MISO			(1<<PIN_MISO) 
-	#define CS0				(1<<PIN_CS0) 
-	#define CS1				(1<<PIN_CS1) 
+	#define SPCK					(1<<PIN_SPCK) 
+	#define MOSI					(1<<PIN_MOSI) 
+	#define MISO					(1<<PIN_MISO) 
+	#define CS0						(1<<PIN_CS0) 
+	#define CS1						(1<<PIN_CS1) 
 
-	#define SPI_IRQ			USIC1_5_IRQn
-	#define SPI_PID			PID_USIC1
+	#define SPI_IRQ					USIC1_5_IRQn
+	#define SPI_PID					PID_USIC1
 
 
 	/*******************************************************************************
@@ -908,7 +929,7 @@ extern "C" void SystemInit()
 		P2->ModePin3(	I1DPD	);
 		P2->ModePin4(	I1DPD	);
 		P2->ModePin5(	A1PP	);
-		P2->ModePin6(	I2DPU	);
+		P2->ModePin6(	G_PP	);
 		P2->ModePin7(	A1PP	);
 		P2->ModePin8(	A1PP	);
 		P2->ModePin9(	A1PP	);
@@ -1964,10 +1985,17 @@ inline void ManDischarge()	{ PIO_MANCH->CLR(L1|L2);	PIO_MANCH->CLR(H1|H2);						
 
 static const u16 manbaud[5] = { BAUD2CLK(20833), BAUD2CLK(41666), BAUD2CLK(62500), BAUD2CLK(83333), BAUD2CLK(104166) };//0:20833Hz, 1:41666Hz,2:62500Hz,3:83333Hz
 
-//u16 trmHalfPeriod = BOUD2CLK(20833)/2;
-byte stateManTrans = 0;
+static u16 trmHalfPeriod = (manbaud[0]+1)/2;
+static u16 trmHalfPeriod2 = manbaud[0];
+static u16 trmHalfPeriod3 = (manbaud[0]*3+1)/2;
+static u16 trmHalfPeriod4 = manbaud[0] * 2;
+static u16 trmHalfPeriod6 = manbaud[0] * 3;
+static u16 trmHalfPeriod7 = (manbaud[0] * 7 + 1) / 2;
+
+static byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
+static bool trmTurbo = false;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1992,6 +2020,26 @@ static u16 rcvManCount = 0;
 static u16 rcvManLen = 0;
 
 static MRB *manRB = 0;
+
+//static u16 rcvManLen72 = 0;
+//static u16 rcvManLen96 = 0;
+//static u16 rcvManLen24 = 0;
+//static u16 rcvManLen48 = 0;
+//
+//static u32 rcvManSum72 = 0;
+//static u32 rcvManSum96 = 0;
+//static u32 rcvManSum24 = 0;
+//static u32 rcvManSum48 = 0;
+//
+//static u16 rcvManCount72 = 0;
+//static u16 rcvManCount96 = 0;
+//static u16 rcvManCount24 = 0;
+//static u16 rcvManCount48 = 0;
+
+static u16 rcvManLen12 = 0;
+static u32 rcvManSum12 = 0;
+static u16 rcvManCount12 = 0;
+u16 rcvManQuality = 0;
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2272,18 +2320,322 @@ static void InitManTransmit()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static __irq void ManTrmIRQ2()
+{
+	static u32 tw = 0;
+	static u16 count = 0;
+	static byte i = 0;
+	static const u16* data = 0;
+	static u16 len = 0;
+	static bool cmd = false;
+
+	Pin_ManTrmIRQ_Set();
+
+	switch (stateManTrans)
+	{
+		case 0:	// 1-st sync imp 
+
+			data = manTB->data1;
+			len = manTB->len1;
+			stateManTrans++;
+
+		case 1:
+
+			if (len == 0)
+			{
+				data = manTB->data2;
+				len = manTB->len2;
+				manTB->len2 = 0;
+			};
+
+			if (len != 0)
+			{
+				tw = ((u32)(*data) << 1) | (CheckParity(*data) & 1);
+
+				data++;
+				len--;
+
+				count = 17;
+
+				ManT_SET_CR(trmHalfPeriod3);
+
+				if (tw & 0x10000)
+				{
+					ManT_SET_PR(trmHalfPeriod7); //US2MT(96);
+					stateManTrans += 2;
+				}
+				else
+				{
+					ManT_SET_PR(trmHalfPeriod6); //US2MT(72);
+					stateManTrans++;
+				};
+
+				ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+
+				tw <<= 1;
+				count--;
+			}
+			else
+			{
+				stateManTrans = 4;
+			};
+
+			break;
+
+		case 2:	
+
+			ManT_SET_CR(trmHalfPeriod);
+
+			if (count == 0)
+			{
+				ManT_SET_PR(trmHalfPeriod2);
+				stateManTrans = 1;
+			}
+			else
+			{
+				if (tw & 0x10000)
+				{
+					ManT_SET_PR(trmHalfPeriod3);
+
+					if (count == 1)
+					{
+						stateManTrans = 1;
+					}
+					else
+					{
+						stateManTrans++;
+					};
+				}
+				else
+				{
+					ManT_SET_PR(trmHalfPeriod2);
+				};
+
+				tw <<= 1;
+				count--;
+			};
+
+			ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+
+			break;
+
+		case 3: 
+
+			if (tw & 0x10000)
+			{
+				ManT_SET_CR(trmHalfPeriod);
+				ManT_SET_PR(trmHalfPeriod2);
+
+				tw <<= 1;
+				count--;
+
+				if (count == 0)
+				{
+					stateManTrans = 1;
+				};
+			}
+			else
+			{
+				tw <<= 1;
+				count--;
+
+				ManT_SET_CR(trmHalfPeriod2);
+
+				if (tw & 0x10000)
+				{
+					ManT_SET_PR(trmHalfPeriod4);
+					
+					if (count == 1)
+					{
+						stateManTrans = 1;
+					};
+				}
+				else
+				{
+					ManT_SET_PR(trmHalfPeriod3);
+					stateManTrans--;
+				};
+
+				tw <<= 1;
+				count--;
+			};
+
+			ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+
+			break;
+
+		case 4:
+
+			stateManTrans = 0;
+
+			HW::SCU_GENERAL->CCUCON &= ~SCU_GENERAL_CCUCON_GSC81_Msk;
+
+
+			ManT->TCCLR = CC8_TRBC;
+			ManT->INTE = 0;
+			ManT2->TCCLR = CC8_TRBC;
+
+			ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
+
+			manTB->ready = true;
+			trmBusy = false;
+
+			break;
+
+
+	}; // 	switch (stateManTrans)
+
+
+	Pin_ManTrmIRQ_Clr();
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool SendManData2(MTB* mtb)
+{
+	if (trmBusy || rcvBusy || mtb == 0 || mtb->data1 == 0 || mtb->len1 == 0)
+	{
+		return false;
+	};
+
+	mtb->ready = false;
+
+	manTB = mtb;
+
+	trmHalfPeriod = GetTrmBaudRate(mtb->baud);
+	trmHalfPeriod2 = trmHalfPeriod * 2;
+	trmHalfPeriod3 = trmHalfPeriod * 3;
+	trmHalfPeriod4 = trmHalfPeriod * 4;
+	trmHalfPeriod6 = trmHalfPeriod * 6;
+	trmHalfPeriod7 = trmHalfPeriod * 7;
+
+	stateManTrans = 0;
+
+#ifdef CPU_SAME53	
+
+
+	ManTT->CTRLA = TC_MODE_COUNT8;
+	ManTT->WAVE = TC_WAVEGEN_NPWM;
+	ManTT->PER8 = GetTrmBaudRate(mtb->baud) - 1; //trmHalfPeriod-1;
+
+	ManTT->INTENCLR = ~TC_OVF;
+	ManTT->INTENSET = TC_OVF;
+
+	ManTT->INTFLAG = ~0;
+
+	ManTT->CTRLA = TC_MODE_COUNT8 | TC_ENABLE;
+	ManTT->CTRLBSET = TC_CMD_RETRIGGER;
+
+	//ManTT->CTRLA = 0;
+
+	//ManTT->PER = trmHalfPeriod-1;
+
+	//ManTT->INTENCLR = ~TCC_OVF;
+	//ManTT->INTENSET = TCC_OVF;
+
+	//ManTT->INTFLAG = ~0;
+
+	//ManTT->CTRLA = TCC_ENABLE;
+
+#elif defined(CPU_XMC48)
+
+	ManT_SET_PR(US2MT(50)-1); //trmHalfPeriod - 1;
+	ManT_SET_CR(0);
+
+	ManT->PSC = ManT_PSC; //0.08us
+	ManT2->PSC = ManT_PSC; //0.08us
+
+	ManT->PSL = ~0;
+	ManT2->PSL = ~0;
+
+	ManT->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
+	ManT->CMC = CC4_STRTS_EVENT0;
+	ManT2->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
+	ManT2->CMC = CC4_STRTS_EVENT0;
+	ManT->TC = CC8_STRM;
+	ManT2->TC = CC8_STRM;
+
+	ManT->SWR = ~0;
+	ManT->INTE = CC8_PME;
+	ManT2->SWR = ~0;
+	ManT2->INTE = 0;
+
+	ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+	ManT_CCU8->GIDLC = ManT_CCU8_GIDLC;
+
+	HW::SCU_GENERAL->CCUCON |= SCU_GENERAL_CCUCON_GSC81_Msk;
+
+#endif
+
+	return trmBusy = true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void InitManTransmit2()
+{
+	using namespace HW;
+
+	VectorTableExt[MANT_CCU8_IRQ] = ManTrmIRQ2;
+	CM4::NVIC->CLR_PR(MANT_CCU8_IRQ);
+	CM4::NVIC->SET_ER(MANT_CCU8_IRQ);
+
+	HW::CCU_Enable(ManT_CCU8_PID);
+
+	HW::P5->ModePin(3, A3PP);
+	HW::P5->ModePin(4, A3PP);
+	HW::P5->ModePin(5, A3PP);
+	HW::P5->ModePin(6, A3PP);
+	HW::P5->ModePin(7, A3PP);
+
+	ManT_CCU8->GCTRL = 0;
+
+	ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
+
+	ManT->PRS = US2MT(100) - 1;
+	ManT->CR1S = US2MT(50) - 1;
+	ManT->CR2S = US2MT(50) - 1;
+
+	ManT->PSC = ManT_PSC; 
+	ManT2->PSC = ManT_PSC;
+
+	//ManT->CHC = CC8_;
+
+	//ManT->TCSET = CC8_TRBS;
+
+	ManT->PSL = ~0;
+	ManT->INS = CC8_EV0IS(9)|CC4_EV0EM_RISING_EDGE;
+	ManT->CMC = CC4_STRTS_EVENT0;
+	ManT2->INS = CC8_EV0IS(9) | CC4_EV0EM_RISING_EDGE;
+	ManT2->CMC = CC4_STRTS_EVENT0;
+
+	ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+
+	ManT->SRS = 0;
+
+	ManT->SWR = ~0;
+	//ManT_CCU8->GIDLC = ManT_CCU8_GIDLC;
+	//ManT->INTE = CC8_PME;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void ManRcvEnd(bool ok)
 {
 #ifdef CPU_SAME53	
 	ManRT->INTENCLR = ~0;
 #elif defined(CPU_XMC48)
-	ManRT->INTE = 0;
+	ManTmr->INTE = 0;
 #endif
 
 	manRB->OK = ok;
 	manRB->ready = true;
 	manRB->len = rcvManLen;
-	
+
+	rcvManLen12 = (rcvManCount12 != 0) ? (rcvManSum12 / rcvManCount12) : 0;
+
+	rcvManQuality = (rcvManLen12 > MT(12)) ? 0 : (((MT(12) - rcvManLen12) * 100 + MT(6))/MT(12));
+
 	rcvBusy = false;
 }
 
@@ -2318,10 +2670,10 @@ static __irq void ManRcvIRQ2()
 
 	#elif defined(CPU_XMC48)
 
-		u16 len = ManTmr->TIMER-1;
+		u16 len = ManTmr->CV[1];
 
-		ManTmr->TCCLR = CC4_TCC;
-		ManTmr->TCSET = CC4_TRB;
+		//ManTmr->TCCLR = CC4_TCC;
+		//ManTmr->TCSET = CC4_TRB;
 
 	#endif
 
@@ -2329,7 +2681,18 @@ static __irq void ManRcvIRQ2()
 
 	if (len <= MT(60))
 	{
-		_length += (len <= MT(36)) ? 1 : 2;
+		i16 dl;
+
+		if (len <= MT(36))
+		{
+			_length += 1; dl = len - MT(24); 
+		}
+		else
+		{
+			_length += 2; dl = len - MT(48);
+		};
+
+		if (dl < 0) dl = -dl; rcvManSum12 += dl; rcvManCount12++;
 
 		if(_length >= 3)
 		{
@@ -2350,8 +2713,20 @@ static __irq void ManRcvIRQ2()
 			_data = 0;
 			_parity_temp = _parity;
 			_number = 0;
-			_length = (len <= MT(84)) ? 1 : 2;
 			_command = !_state; 
+
+			i16 dl;
+
+			if (len <= MT(84))
+			{
+				_length = 1; dl = len - MT(72); 
+			}
+			else
+			{
+				_length = 2; dl = len - MT(96); 
+			};
+
+			if (dl < 0) dl = -dl; rcvManSum12 += dl; rcvManCount12++;
 		};
 	};
 
@@ -2528,11 +2903,12 @@ static void InitManRecieve()
 
 	ManCCU->GIDLC = ManCCU_GIDLC;//CCU4_CS1I|CCU4_CS2I|CCU4_SPRB;
 
-	ManRT->PRS = MT(12)-1;
-	ManRT->PSC = 7; //1.28us
+	ManRT->PRS = MT(12) - 1;
+	ManRT->CRS = MT(12) - 1;
+	ManRT->PSC = ManRT_PSC; //1.28us
 
 	ManTmr->PRS = MT(250);
-	ManTmr->PSC = 7; //1.28us
+	ManTmr->PSC = ManRT_PSC; //1.28us
 
 	ManCCU->GCSS = ManCCU_GCSS;//CCU4_S1SE|CCU4_S2SE;  
 
@@ -2541,11 +2917,12 @@ static void InitManRecieve()
 	ManRT->TC = CC4_STRM|CC4_TSSM;
 
 	ManRT->INTE = 0;//CC4_PME;
-	ManRT->SRS = ManRT_SRS;//CC4_POSR(2);
+	ManRT->SRS = 0;//ManRT_SRS;//CC4_POSR(2);
 
-	ManTmr->INS = 0;
-	ManTmr->CMC = 0;
-	ManTmr->TC = CC4_TSSM;
+	ManTmr->INS = CC4_EV0IS(15) | CC4_EV0EM_RISING_EDGE;
+	ManTmr->CMC = CC4_CAP0S_EVENT0|CC4_STRTS_EVENT0;
+	ManTmr->SRS = CC4_E0SR(2);
+	ManTmr->TC = CC4_TSSM|CC4_CAPC_ALWAYS;
 	ManTmr->TCSET = CC4_TRB;
 
 	ManTmr->INTE = 0;//CC4_PME;
@@ -2575,7 +2952,7 @@ bool RcvManData(MRB *mrb)
 	rcvManPtr = manRB->data;
 	rcvManCount = manRB->maxLen;
 
-	//ManDischarge();
+	rcvManSum12 = 0; rcvManCount12 = 0;
 
 	#ifdef CPU_SAME53	
 
@@ -2584,8 +2961,8 @@ bool RcvManData(MRB *mrb)
 
 	#elif defined(CPU_XMC48)
 
-		ManRT->SWR = CC4_RPM;
-		ManRT->INTE = CC4_PME;
+		ManTmr->SWR = CC4_RE0A;
+		ManTmr->INTE = CC4_E0AE;
 
 	#endif
 
@@ -2725,7 +3102,7 @@ static __irq void I2C_Handler()
 {
 	using namespace HW;
 
-//	HW::P5->BSET(7);
+//	HW::P6->BSET(2);
 
 	u32 a = I2C->PSR_IICMode;
 
@@ -2826,7 +3203,7 @@ static __irq void I2C_Handler()
 
 	I2C->PSCR = a;
 
-//	HW::P5->BCLR(7);
+//	HW::P6->BCLR(2);
 }
 
 #endif
@@ -3173,7 +3550,7 @@ u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init)
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	HW::P5->BSET(4);
+	HW::P6->BSET(5);
 
 	byte *s = (byte*)data;
 
@@ -3194,7 +3571,7 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 	//if (len & 1) { CRC_FCE->IR = s[len-1]; };
 
-	HW::P5->BCLR(4);
+	HW::P6->BCLR(5);
 
 	return (byte)CRC_FCE->RES;
 }
@@ -3203,7 +3580,7 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
-	HW::P5->BSET(4);
+	HW::P6->BSET(5);
 
 	byte* s = (byte*)data;
 
@@ -3229,7 +3606,7 @@ bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 	{
 		*crc = (byte)CRC_FCE->RES;
 
-		HW::P5->BCLR(4);
+		HW::P6->BCLR(5);
 
 		return true;
 	}
@@ -3628,6 +4005,13 @@ static void UpdateShaft()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+u16 GetShaftState()
+{
+	return PIO_SHAFT->TBCLR(PIN_SHAFT);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void InitShaft()
 {
 	using namespace HW;
@@ -3751,7 +4135,6 @@ static bool SPI_WriteRead(DSCSPI *d);
 static __irq void SPI_Handler()
 {
 	using namespace HW;
-
 
 	byte state = SPI->INTFLAG & SPI->INTENSET;
 
@@ -4397,6 +4780,8 @@ void InitHardware()
 	InitManTransmit();
 	InitManRecieve();
 	Init_CRC_CCITT_DMA();
+
+	//InitManTransmit2();
 
 	Init_Sync_Rot();
 

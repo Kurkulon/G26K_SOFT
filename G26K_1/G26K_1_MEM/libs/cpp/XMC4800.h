@@ -14946,6 +14946,31 @@ namespace T_HW
 #define CCU8_GCTRL_MSDE_Pos                   (14UL)                    /*!< CCU8 GCTRL: MSDE (Bit 14)                                   */
 #define CCU8_GCTRL_MSDE_Msk                   (0xc000UL)                /*!< CCU8 GCTRL: MSDE (Bitfield-Mask: 0x03)                      */
 
+#define CCU8_PRBC_SW							(0x0UL)                   /*!< CCU8 GCTRL: PRBC (Bitfield-Mask: 0x07)                      */
+#define CCU8_PRBC_CC80						(0x1UL)                   /*!< CCU8 GCTRL: PRBC (Bitfield-Mask: 0x07)                      */
+#define CCU8_PRBC_CC81						(0x2UL)                   /*!< CCU8 GCTRL: PRBC (Bitfield-Mask: 0x07)                      */
+#define CCU8_PRBC_CC82						(0x3UL)                   /*!< CCU8 GCTRL: PRBC (Bitfield-Mask: 0x07)                      */
+#define CCU8_PRBC_CC83						(0x4UL)                   /*!< CCU8 GCTRL: PRBC (Bitfield-Mask: 0x07)                      */
+
+#define CCU8_PCIS_MDLCLK						(0x00UL)                  /*!< CCU8 GCTRL: PCIS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PCIS_ECLKA						(0x10UL)                  /*!< CCU8 GCTRL: PCIS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PCIS_ECLKB						(0x20UL)                  /*!< CCU8 GCTRL: PCIS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PCIS_ECLKC						(0x30UL)                  /*!< CCU8 GCTRL: PCIS (Bitfield-Mask: 0x03)                      */
+
+#define CCU8_SUSCFG_0						(0x000UL)                 /*!< CCU8 GCTRL: SUSCFG (Bitfield-Mask: 0x03)                    */
+#define CCU8_SUSCFG_1						(0x100UL)                 /*!< CCU8 GCTRL: SUSCFG (Bitfield-Mask: 0x03)                    */
+#define CCU8_SUSCFG_2						(0x200UL)                 /*!< CCU8 GCTRL: SUSCFG (Bitfield-Mask: 0x03)                    */
+#define CCU8_SUSCFG_3						(0x300UL)                 /*!< CCU8 GCTRL: SUSCFG (Bitfield-Mask: 0x03)                    */
+
+#define CCU8_MSE0							(0x400UL)                 /*!< CCU8 GCTRL: MSE0 (Bitfield-Mask: 0x01)                      */
+#define CCU8_MSE1							(0x800UL)                 /*!< CCU8 GCTRL: MSE1 (Bitfield-Mask: 0x01)                      */
+#define CCU8_MSE2							(0x1000UL)                /*!< CCU8 GCTRL: MSE2 (Bitfield-Mask: 0x01)                      */
+#define CCU8_MSE3							(0x2000UL)                /*!< CCU8 GCTRL: MSE3 (Bitfield-Mask: 0x01)                      */
+#define CCU8_MSDE_0							(0x0000UL)                /*!< CCU8 GCTRL: MSDE (Bitfield-Mask: 0x03)                      */
+#define CCU8_MSDE_1							(0x4000UL)                /*!< CCU8 GCTRL: MSDE (Bitfield-Mask: 0x03)                      */
+#define CCU8_MSDE_2							(0x8000UL)                /*!< CCU8 GCTRL: MSDE (Bitfield-Mask: 0x03)                      */
+#define CCU8_MSDE_3							(0xc000UL)                /*!< CCU8 GCTRL: MSDE (Bitfield-Mask: 0x03)                      */
+
 /* ---------------------------------  CCU8_GSTAT  --------------------------------- */
 #define CCU8_GSTAT_S0I_Pos                    (0UL)                     /*!< CCU8 GSTAT: S0I (Bit 0)                                     */
 #define CCU8_GSTAT_S0I_Msk                    (0x1UL)                   /*!< CCU8 GSTAT: S0I (Bitfield-Mask: 0x01)                       */
@@ -14959,6 +14984,13 @@ namespace T_HW
 #define CCU8_GSTAT_PRB_Msk                    (0x100UL)                 /*!< CCU8 GSTAT: PRB (Bitfield-Mask: 0x01)                       */
 #define CCU8_GSTAT_PCRB_Pos                   (10UL)                    /*!< CCU8 GSTAT: PCRB (Bit 10)                                   */
 #define CCU8_GSTAT_PCRB_Msk                   (0x400UL)                 /*!< CCU8 GSTAT: PCRB (Bitfield-Mask: 0x01)                      */
+
+#define CCU8_S0I                    (0x1UL)                   /*!< CCU8 GSTAT: S0I (Bitfield-Mask: 0x01)                       */
+#define CCU8_S1I                    (0x2UL)                   /*!< CCU8 GSTAT: S1I (Bitfield-Mask: 0x01)                       */
+#define CCU8_S2I                    (0x4UL)                   /*!< CCU8 GSTAT: S2I (Bitfield-Mask: 0x01)                       */
+#define CCU8_S3I                    (0x8UL)                   /*!< CCU8 GSTAT: S3I (Bitfield-Mask: 0x01)                       */
+#define CCU8_PRB                    (0x100UL)                 /*!< CCU8 GSTAT: PRB (Bitfield-Mask: 0x01)                       */
+#define CCU8_PCRB                   (0x400UL)                 /*!< CCU8 GSTAT: PCRB (Bitfield-Mask: 0x01)                      */
 
 /* ---------------------------------  CCU8_GIDLS  --------------------------------- */
 #define CCU8_GIDLS_SS0I_Pos                   (0UL)                     /*!< CCU8 GIDLS: SS0I (Bit 0)                                    */
@@ -14976,6 +15008,14 @@ namespace T_HW
 #define CCU8_GIDLS_CPCH_Pos                   (10UL)                    /*!< CCU8 GIDLS: CPCH (Bit 10)                                   */
 #define CCU8_GIDLS_CPCH_Msk                   (0x400UL)                 /*!< CCU8 GIDLS: CPCH (Bitfield-Mask: 0x01)                      */
 
+#define CCU8_SS0I                   (0x1UL)                   /*!< CCU8 GIDLS: SS0I (Bitfield-Mask: 0x01)                      */
+#define CCU8_SS1I                   (0x2UL)                   /*!< CCU8 GIDLS: SS1I (Bitfield-Mask: 0x01)                      */
+#define CCU8_SS2I                   (0x4UL)                   /*!< CCU8 GIDLS: SS2I (Bitfield-Mask: 0x01)                      */
+#define CCU8_SS3I                   (0x8UL)                   /*!< CCU8 GIDLS: SS3I (Bitfield-Mask: 0x01)                      */
+#define CCU8_CPRB                   (0x100UL)                 /*!< CCU8 GIDLS: CPRB (Bitfield-Mask: 0x01)                      */
+#define CCU8_PSIC                   (0x200UL)                 /*!< CCU8 GIDLS: PSIC (Bitfield-Mask: 0x01)                      */
+#define CCU8_CPCH                   (0x400UL)                 /*!< CCU8 GIDLS: CPCH (Bitfield-Mask: 0x01)                      */
+
 /* ---------------------------------  CCU8_GIDLC  --------------------------------- */
 #define CCU8_GIDLC_CS0I_Pos                   (0UL)                     /*!< CCU8 GIDLC: CS0I (Bit 0)                                    */
 #define CCU8_GIDLC_CS0I_Msk                   (0x1UL)                   /*!< CCU8 GIDLC: CS0I (Bitfield-Mask: 0x01)                      */
@@ -14989,6 +15029,13 @@ namespace T_HW
 #define CCU8_GIDLC_SPRB_Msk                   (0x100UL)                 /*!< CCU8 GIDLC: SPRB (Bitfield-Mask: 0x01)                      */
 #define CCU8_GIDLC_SPCH_Pos                   (10UL)                    /*!< CCU8 GIDLC: SPCH (Bit 10)                                   */
 #define CCU8_GIDLC_SPCH_Msk                   (0x400UL)                 /*!< CCU8 GIDLC: SPCH (Bitfield-Mask: 0x01)                      */
+
+#define CCU8_CS0I                   (0x1UL)                   /*!< CCU8 GIDLC: CS0I (Bitfield-Mask: 0x01)                      */
+#define CCU8_CS1I                   (0x2UL)                   /*!< CCU8 GIDLC: CS1I (Bitfield-Mask: 0x01)                      */
+#define CCU8_CS2I                   (0x4UL)                   /*!< CCU8 GIDLC: CS2I (Bitfield-Mask: 0x01)                      */
+#define CCU8_CS3I                   (0x8UL)                   /*!< CCU8 GIDLC: CS3I (Bitfield-Mask: 0x01)                      */
+#define CCU8_SPRB                   (0x100UL)                 /*!< CCU8 GIDLC: SPRB (Bitfield-Mask: 0x01)                      */
+#define CCU8_SPCH                   (0x400UL)                 /*!< CCU8 GIDLC: SPCH (Bitfield-Mask: 0x01)                      */
 
 /* ----------------------------------  CCU8_GCSS  --------------------------------- */
 #define CCU8_GCSS_S0SE_Pos                    (0UL)                     /*!< CCU8 GCSS: S0SE (Bit 0)                                     */
@@ -15032,6 +15079,27 @@ namespace T_HW
 #define CCU8_GCSS_S3ST2S_Pos                  (23UL)                    /*!< CCU8 GCSS: S3ST2S (Bit 23)                                  */
 #define CCU8_GCSS_S3ST2S_Msk                  (0x800000UL)              /*!< CCU8 GCSS: S3ST2S (Bitfield-Mask: 0x01)                     */
 
+#define CCU8_S0SE                    (0x1UL)                   /*!< CCU8 GCSS: S0SE (Bitfield-Mask: 0x01)                       */
+#define CCU8_S0DSE                   (0x2UL)                   /*!< CCU8 GCSS: S0DSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S0PSE                   (0x4UL)                   /*!< CCU8 GCSS: S0PSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S1SE                    (0x10UL)                  /*!< CCU8 GCSS: S1SE (Bitfield-Mask: 0x01)                       */
+#define CCU8_S1DSE                   (0x20UL)                  /*!< CCU8 GCSS: S1DSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S1PSE                   (0x40UL)                  /*!< CCU8 GCSS: S1PSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S2SE                    (0x100UL)                 /*!< CCU8 GCSS: S2SE (Bitfield-Mask: 0x01)                       */
+#define CCU8_S2DSE                   (0x200UL)                 /*!< CCU8 GCSS: S2DSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S2PSE                   (0x400UL)                 /*!< CCU8 GCSS: S2PSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S3SE                    (0x1000UL)                /*!< CCU8 GCSS: S3SE (Bitfield-Mask: 0x01)                       */
+#define CCU8_S3DSE                   (0x2000UL)                /*!< CCU8 GCSS: S3DSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S3PSE                   (0x4000UL)                /*!< CCU8 GCSS: S3PSE (Bitfield-Mask: 0x01)                      */
+#define CCU8_S0ST1S                  (0x10000UL)               /*!< CCU8 GCSS: S0ST1S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S1ST1S                  (0x20000UL)               /*!< CCU8 GCSS: S1ST1S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S2ST1S                  (0x40000UL)               /*!< CCU8 GCSS: S2ST1S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S3ST1S                  (0x80000UL)               /*!< CCU8 GCSS: S3ST1S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S0ST2S                  (0x100000UL)              /*!< CCU8 GCSS: S0ST2S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S1ST2S                  (0x200000UL)              /*!< CCU8 GCSS: S1ST2S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S2ST2S                  (0x400000UL)              /*!< CCU8 GCSS: S2ST2S (Bitfield-Mask: 0x01)                     */
+#define CCU8_S3ST2S                  (0x800000UL)              /*!< CCU8 GCSS: S3ST2S (Bitfield-Mask: 0x01)                     */
+
 /* ----------------------------------  CCU8_GCSC  --------------------------------- */
 #define CCU8_GCSC_S0SC_Pos                    (0UL)                     /*!< CCU8 GCSC: S0SC (Bit 0)                                     */
 #define CCU8_GCSC_S0SC_Msk                    (0x1UL)                   /*!< CCU8 GCSC: S0SC (Bitfield-Mask: 0x01)                       */
@@ -15073,6 +15141,27 @@ namespace T_HW
 #define CCU8_GCSC_S2ST2C_Msk                  (0x400000UL)              /*!< CCU8 GCSC: S2ST2C (Bitfield-Mask: 0x01)                     */
 #define CCU8_GCSC_S3ST2C_Pos                  (23UL)                    /*!< CCU8 GCSC: S3ST2C (Bit 23)                                  */
 #define CCU8_GCSC_S3ST2C_Msk                  (0x800000UL)              /*!< CCU8 GCSC: S3ST2C (Bitfield-Mask: 0x01)                     */
+
+#define CCU8_S0SC                    (0x1UL)                   /*!< CCU8 GCSC: S0SC (Bitfield-Mask: 0x01)                       */
+#define CCU8_S0DSC                   (0x2UL)                   /*!< CCU8 GCSC: S0DSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S0PSC                   (0x4UL)                   /*!< CCU8 GCSC: S0PSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S1SC                    (0x10UL)                  /*!< CCU8 GCSC: S1SC (Bitfield-Mask: 0x01)                       */
+#define CCU8_S1DSC                   (0x20UL)                  /*!< CCU8 GCSC: S1DSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S1PSC                   (0x40UL)                  /*!< CCU8 GCSC: S1PSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S2SC                    (0x100UL)                 /*!< CCU8 GCSC: S2SC (Bitfield-Mask: 0x01)                       */
+#define CCU8_S2DSC                   (0x200UL)                 /*!< CCU8 GCSC: S2DSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S2PSC                   (0x400UL)                 /*!< CCU8 GCSC: S2PSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S3SC                    (0x1000UL)                /*!< CCU8 GCSC: S3SC (Bitfield-Mask: 0x01)                       */
+#define CCU8_S3DSC                   (0x2000UL)                /*!< CCU8 GCSC: S3DSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S3PSC                   (0x4000UL)                /*!< CCU8 GCSC: S3PSC (Bitfield-Mask: 0x01)                      */
+#define CCU8_S0ST1C                  (0x10000UL)               /*!< CCU8 GCSC: S0ST1C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S1ST1C                  (0x20000UL)               /*!< CCU8 GCSC: S1ST1C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S2ST1C                  (0x40000UL)               /*!< CCU8 GCSC: S2ST1C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S3ST1C                  (0x80000UL)               /*!< CCU8 GCSC: S3ST1C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S0ST2C                  (0x100000UL)              /*!< CCU8 GCSC: S0ST2C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S1ST2C                  (0x200000UL)              /*!< CCU8 GCSC: S1ST2C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S2ST2C                  (0x400000UL)              /*!< CCU8 GCSC: S2ST2C (Bitfield-Mask: 0x01)                     */
+#define CCU8_S3ST2C                  (0x800000UL)              /*!< CCU8 GCSC: S3ST2C (Bitfield-Mask: 0x01)                     */
 
 /* ----------------------------------  CCU8_GCST  --------------------------------- */
 #define CCU8_GCST_S0SS_Pos                    (0UL)                     /*!< CCU8 GCST: S0SS (Bit 0)                                     */
@@ -15116,6 +15205,27 @@ namespace T_HW
 #define CCU8_GCST_CC83ST2_Pos                 (23UL)                    /*!< CCU8 GCST: CC83ST2 (Bit 23)                                 */
 #define CCU8_GCST_CC83ST2_Msk                 (0x800000UL)              /*!< CCU8 GCST: CC83ST2 (Bitfield-Mask: 0x01)                    */
 
+#define CCU8_S0SS                    (0x1UL)                   /*!< CCU8 GCST: S0SS (Bitfield-Mask: 0x01)                       */
+#define CCU8_S0DSS                   (0x2UL)                   /*!< CCU8 GCST: S0DSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S0PSS                   (0x4UL)                   /*!< CCU8 GCST: S0PSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S1SS                    (0x10UL)                  /*!< CCU8 GCST: S1SS (Bitfield-Mask: 0x01)                       */
+#define CCU8_S1DSS                   (0x20UL)                  /*!< CCU8 GCST: S1DSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S1PSS                   (0x40UL)                  /*!< CCU8 GCST: S1PSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S2SS                    (0x100UL)                 /*!< CCU8 GCST: S2SS (Bitfield-Mask: 0x01)                       */
+#define CCU8_S2DSS                   (0x200UL)                 /*!< CCU8 GCST: S2DSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S2PSS                   (0x400UL)                 /*!< CCU8 GCST: S2PSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S3SS                    (0x1000UL)                /*!< CCU8 GCST: S3SS (Bitfield-Mask: 0x01)                       */
+#define CCU8_S3DSS                   (0x2000UL)                /*!< CCU8 GCST: S3DSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_S3PSS                   (0x4000UL)                /*!< CCU8 GCST: S3PSS (Bitfield-Mask: 0x01)                      */
+#define CCU8_CC80ST1                 (0x10000UL)               /*!< CCU8 GCST: CC80ST1 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC81ST1                 (0x20000UL)               /*!< CCU8 GCST: CC81ST1 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC82ST1                 (0x40000UL)               /*!< CCU8 GCST: CC82ST1 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC83ST1                 (0x80000UL)               /*!< CCU8 GCST: CC83ST1 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC80ST2                 (0x100000UL)              /*!< CCU8 GCST: CC80ST2 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC81ST2                 (0x200000UL)              /*!< CCU8 GCST: CC81ST2 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC82ST2                 (0x400000UL)              /*!< CCU8 GCST: CC82ST2 (Bitfield-Mask: 0x01)                    */
+#define CCU8_CC83ST2                 (0x800000UL)              /*!< CCU8 GCST: CC83ST2 (Bitfield-Mask: 0x01)                    */
+
 /* ---------------------------------  CCU8_GPCHK  --------------------------------- */
 #define CCU8_GPCHK_PASE_Pos                   (0UL)                     /*!< CCU8 GPCHK: PASE (Bit 0)                                    */
 #define CCU8_GPCHK_PASE_Msk                   (0x1UL)                   /*!< CCU8 GPCHK: PASE (Bitfield-Mask: 0x01)                      */
@@ -15137,6 +15247,30 @@ namespace T_HW
 #define CCU8_GPCHK_PCSEL2_Msk                 (0xf000000UL)             /*!< CCU8 GPCHK: PCSEL2 (Bitfield-Mask: 0x0f)                    */
 #define CCU8_GPCHK_PCSEL3_Pos                 (28UL)                    /*!< CCU8 GPCHK: PCSEL3 (Bit 28)                                 */
 #define CCU8_GPCHK_PCSEL3_Msk                 (0xf0000000UL)            /*!< CCU8 GPCHK: PCSEL3 (Bitfield-Mask: 0x0f)                    */
+
+#define CCU8_PASE						(0x1UL)                   /*!< CCU8 GPCHK: PASE (Bitfield-Mask: 0x01)                      */
+#define CCU8_PACS_CC80                  (0x0UL)                   /*!< CCU8 GPCHK: PACS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PACS_CC81                  (0x2UL)                   /*!< CCU8 GPCHK: PACS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PACS_CC82                  (0x4UL)                   /*!< CCU8 GPCHK: PACS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PACS_CC83                  (0x6UL)                   /*!< CCU8 GPCHK: PACS (Bitfield-Mask: 0x03)                      */
+
+#define CCU8_PISEL_GP01                 (0x00UL)                  /*!< CCU8 GPCHK: PISEL (Bitfield-Mask: 0x03)                     */
+#define CCU8_PISEL_GP11                 (0x08UL)                  /*!< CCU8 GPCHK: PISEL (Bitfield-Mask: 0x03)                     */
+#define CCU8_PISEL_GP21                 (0x10UL)                  /*!< CCU8 GPCHK: PISEL (Bitfield-Mask: 0x03)                     */
+#define CCU8_PISEL_GP31                 (0x18UL)                  /*!< CCU8 GPCHK: PISEL (Bitfield-Mask: 0x03)                     */
+
+#define CCU8_PCDS_IGBTA                 (0x00UL)                  /*!< CCU8 GPCHK: PCDS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PCDS_IGBTB                 (0x20UL)                  /*!< CCU8 GPCHK: PCDS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PCDS_IGBTC                 (0x40UL)                  /*!< CCU8 GPCHK: PCDS (Bitfield-Mask: 0x03)                      */
+#define CCU8_PCDS_IGBTD                 (0x60UL)                  /*!< CCU8 GPCHK: PCDS (Bitfield-Mask: 0x03)                      */
+
+#define CCU8_PCTS_Msk                   (0x80UL)                  /*!< CCU8 GPCHK: PCTS (Bitfield-Mask: 0x01)                      */
+#define CCU8_PCST_Msk                   (0x8000UL)                /*!< CCU8 GPCHK: PCST (Bitfield-Mask: 0x01)                      */
+
+#define CCU8_PCSEL0(v)					(((v)&0xf)<<16)				/*!< CCU8 GPCHK: PCSEL0 (Bitfield-Mask: 0x0f)                    */
+#define CCU8_PCSEL1(v)					(((v)&0xf)<<20)				/*!< CCU8 GPCHK: PCSEL1 (Bit 20)                                 */
+#define CCU8_PCSEL2(v)					(((v)&0xf)<<24)				/*!< CCU8 GPCHK: PCSEL2 (Bit 24)                                 */
+#define CCU8_PCSEL3(v)					(((v)&0xf)<<28)				/*!< CCU8 GPCHK: PCSEL3 (Bit 28)                                 */
 
 /* ----------------------------------  CCU8_MIDR  --------------------------------- */
 #define CCU8_MIDR_MODR_Pos                    (0UL)                     /*!< CCU8 MIDR: MODR (Bit 0)                                     */
@@ -15178,6 +15312,44 @@ namespace T_HW
 #define CCU8_CC8_INS_LPF2M_Pos                (29UL)                    /*!< CCU8_CC8 INS: LPF2M (Bit 29)                                */
 #define CCU8_CC8_INS_LPF2M_Msk                (0x60000000UL)            /*!< CCU8_CC8 INS: LPF2M (Bitfield-Mask: 0x03)                   */
 
+#define CC8_EV0IS(value)	         (((value)&0xF)<<CCU8_CC8_INS_EV0IS_Pos)
+#define CC8_EV1IS(value)	         (((value)&0xF)<<CCU8_CC8_INS_EV1IS_Pos)
+#define CC8_EV2IS(value)	         (((value)&0xF)<<CCU8_CC8_INS_EV2IS_Pos)
+
+#define CC8_EV0EM_NO_ACT            (0<<CCU8_CC8_INS_EV0EM_Pos)    
+#define CC8_EV0EM_RISING_EDGE		(1<<CCU8_CC8_INS_EV0EM_Pos)    
+#define CC8_EV0EM_FALLING_EDGE      (2<<CCU8_CC8_INS_EV0EM_Pos)    
+#define CC8_EV0EM_BOTH_EDGES        (3<<CCU8_CC8_INS_EV0EM_Pos) 
+
+#define CC8_EV1EM_NO_ACT            (0<<CCU8_CC8_INS_EV1EM_Pos)    
+#define CC8_EV1EM_RISING_EDGE		(1<<CCU8_CC8_INS_EV1EM_Pos)    
+#define CC8_EV1EM_FALLING_EDGE      (2<<CCU8_CC8_INS_EV1EM_Pos)    
+#define CC8_EV1EM_BOTH_EDGES        (3<<CCU8_CC8_INS_EV1EM_Pos) 
+
+#define CC8_EV2EM_NO_ACT            (0<<CCU8_CC8_INS_EV2EM_Pos)    
+#define CC8_EV2EM_RISING_EDGE		(1<<CCU8_CC8_INS_EV2EM_Pos)    
+#define CC8_EV2EM_FALLING_EDGE      (2<<CCU8_CC8_INS_EV2EM_Pos)    
+#define CC8_EV2EM_BOTH_EDGES        (3<<CCU8_CC8_INS_EV2EM_Pos) 
+
+#define CC8_EV0LM                 (0x400000UL)              /*!< CCU8_CC4 INS: EV0LM (Bitfield-Mask: 0x01)                   */
+#define CC8_EV1LM                 (0x800000UL)              /*!< CCU8_CC4 INS: EV1LM (Bitfield-Mask: 0x01)                   */
+#define CC8_EV2LM                 (0x1000000UL)             /*!< CCU8_CC4 INS: EV2LM (Bitfield-Mask: 0x01)                   */
+
+#define CC8_LPF0M_DISABLE			(0 << CCU8_CC8_INS_LPF0M_Pos) 
+#define CC8_LPF0M_3CLK				(1 << CCU8_CC8_INS_LPF0M_Pos) 
+#define CC8_LPF0M_5CLK				(2 << CCU8_CC8_INS_LPF0M_Pos) 
+#define CC8_LPF0M_7CLK				(3 << CCU8_CC8_INS_LPF0M_Pos) 
+
+#define CC8_LPF1M_DISABLE			(0 << CCU8_CC8_INS_LPF1M_Pos) 
+#define CC8_LPF1M_3CLK				(1 << CCU8_CC8_INS_LPF1M_Pos) 
+#define CC8_LPF1M_5CLK				(2 << CCU8_CC8_INS_LPF1M_Pos) 
+#define CC8_LPF1M_7CLK				(3 << CCU8_CC8_INS_LPF1M_Pos) 
+
+#define CC8_LPF2M_DISABLE			(0 << CCU8_CC8_INS_LPF2M_Pos) 
+#define CC8_LPF2M_3CLK				(1 << CCU8_CC8_INS_LPF2M_Pos) 
+#define CC8_LPF2M_5CLK				(2 << CCU8_CC8_INS_LPF2M_Pos) 
+#define CC8_LPF2M_7CLK				(3 << CCU8_CC8_INS_LPF2M_Pos) 
+
 /* --------------------------------  CCU8_CC8_CMC  -------------------------------- */
 #define CCU8_CC8_CMC_STRTS_Pos                (0UL)                     /*!< CCU8_CC8 CMC: STRTS (Bit 0)                                 */
 #define CCU8_CC8_CMC_STRTS_Msk                (0x3UL)                   /*!< CCU8_CC8 CMC: STRTS (Bitfield-Mask: 0x03)                   */
@@ -15204,6 +15376,56 @@ namespace T_HW
 #define CCU8_CC8_CMC_TCE_Pos                  (20UL)                    /*!< CCU8_CC8 CMC: TCE (Bit 20)                                  */
 #define CCU8_CC8_CMC_TCE_Msk                  (0x100000UL)              /*!< CCU8_CC8 CMC: TCE (Bitfield-Mask: 0x01)                     */
 
+#define CC8_STRTS_DEACTIVATED       (0<<CCU8_CC8_CMC_STRTS_Pos)
+#define CC8_STRTS_EVENT0        	(1<<CCU8_CC8_CMC_STRTS_Pos)
+#define CC8_STRTS_EVENT1        	(2<<CCU8_CC8_CMC_STRTS_Pos)
+#define CC8_STRTS_EVENT2        	(3<<CCU8_CC8_CMC_STRTS_Pos)
+
+#define CC8_ENDS_DEACTIVATED		(0<<CCU8_CC8_CMC_ENDS_Pos)
+#define CC8_ENDS_EVENT0     		(1<<CCU8_CC8_CMC_ENDS_Pos)
+#define CC8_ENDS_EVENT1     		(2<<CCU8_CC8_CMC_ENDS_Pos)
+#define CC8_ENDS_EVENT2     		(3<<CCU8_CC8_CMC_ENDS_Pos)
+
+#define CC8_CAP0S_DEACTIVATED		(0<<CCU8_CC8_CMC_CAP0S_Pos)
+#define CC8_CAP0S_EVENT0     		(1<<CCU8_CC8_CMC_CAP0S_Pos)
+#define CC8_CAP0S_EVENT1     		(2<<CCU8_CC8_CMC_CAP0S_Pos)
+#define CC8_CAP0S_EVENT2     		(3<<CCU8_CC8_CMC_CAP0S_Pos)
+
+#define CC8_CAP1S_DEACTIVATED		(0<<CCU8_CC8_CMC_CAP1S_Pos)
+#define CC8_CAP1S_EVENT0     		(1<<CCU8_CC8_CMC_CAP1S_Pos)
+#define CC8_CAP1S_EVENT1     		(2<<CCU8_CC8_CMC_CAP1S_Pos)
+#define CC8_CAP1S_EVENT2     		(3<<CCU8_CC8_CMC_CAP1S_Pos)
+
+#define CC8_GATES_DEACTIVATED		(0<<CCU8_CC8_CMC_GATES_Pos)
+#define CC8_GATES_EVENT0     		(1<<CCU8_CC8_CMC_GATES_Pos)
+#define CC8_GATES_EVENT1     		(2<<CCU8_CC8_CMC_GATES_Pos)
+#define CC8_GATES_EVENT2     		(3<<CCU8_CC8_CMC_GATES_Pos)
+
+#define CC8_UDS_DEACTIVATED			(0<<CCU8_CC8_CMC_UDS_Pos)
+#define CC8_UDS_EVENT0     			(1<<CCU8_CC8_CMC_UDS_Pos)
+#define CC8_UDS_EVENT1     			(2<<CCU8_CC8_CMC_UDS_Pos)
+#define CC8_UDS_EVENT2     			(3<<CCU8_CC8_CMC_UDS_Pos)
+
+#define CC8_LDS_DEACTIVATED			(0<<CCU8_CC8_CMC_LDS_Pos)
+#define CC8_LDS_EVENT0     			(1<<CCU8_CC8_CMC_LDS_Pos)
+#define CC8_LDS_EVENT1     			(2<<CCU8_CC8_CMC_LDS_Pos)
+#define CC8_LDS_EVENT2     			(3<<CCU8_CC8_CMC_LDS_Pos)
+
+#define CC8_CNTS_DEACTIVATED		(0<<CCU8_CC8_CMC_CNTS_Pos)
+#define CC8_CNTS_EVENT0     		(1<<CCU8_CC8_CMC_CNTS_Pos)
+#define CC8_CNTS_EVENT1     		(2<<CCU8_CC8_CMC_CNTS_Pos)
+#define CC8_CNTS_EVENT2     		(3<<CCU8_CC8_CMC_CNTS_Pos)
+
+#define CC8_OFS                   	(0x10000UL)               
+#define CC8_TS                    	(0x20000UL)               
+
+#define CC8_MOS_DEACTIVATED			(0<<CCU8_CC8_CMC_MOS_Pos)
+#define CC8_MOS_EVENT0     			(1<<CCU8_CC8_CMC_MOS_Pos)
+#define CC8_MOS_EVENT1     			(2<<CCU8_CC8_CMC_MOS_Pos)
+#define CC8_MOS_EVENT2     			(3<<CCU8_CC8_CMC_MOS_Pos)
+
+#define CC8_TCE						(0x100000UL)              
+
 /* --------------------------------  CCU8_CC8_TCST  ------------------------------- */
 #define CCU8_CC8_TCST_TRB_Pos                 (0UL)                     /*!< CCU8_CC8 TCST: TRB (Bit 0)                                  */
 #define CCU8_CC8_TCST_TRB_Msk                 (0x1UL)                   /*!< CCU8_CC8 TCST: TRB (Bitfield-Mask: 0x01)                    */
@@ -15214,9 +15436,16 @@ namespace T_HW
 #define CCU8_CC8_TCST_DTR2_Pos                (4UL)                     /*!< CCU8_CC8 TCST: DTR2 (Bit 4)                                 */
 #define CCU8_CC8_TCST_DTR2_Msk                (0x10UL)                  /*!< CCU8_CC8 TCST: DTR2 (Bitfield-Mask: 0x01)                   */
 
+#define CC8_TRB                 (0x1UL)                   /*!< CCU8_CC8 TCST: TRB (Bitfield-Mask: 0x01)                    */
+#define CC8_CDIR                (0x2UL)                   /*!< CCU8_CC8 TCST: CDIR (Bitfield-Mask: 0x01)                   */
+#define CC8_DTR1                (0x8UL)                   /*!< CCU8_CC8 TCST: DTR1 (Bitfield-Mask: 0x01)                   */
+#define CC8_DTR2                (0x10UL)                  /*!< CCU8_CC8 TCST: DTR2 (Bitfield-Mask: 0x01)                   */
+
 /* -------------------------------  CCU8_CC8_TCSET  ------------------------------- */
 #define CCU8_CC8_TCSET_TRBS_Pos               (0UL)                     /*!< CCU8_CC8 TCSET: TRBS (Bit 0)                                */
 #define CCU8_CC8_TCSET_TRBS_Msk               (0x1UL)                   /*!< CCU8_CC8 TCSET: TRBS (Bitfield-Mask: 0x01)                  */
+
+#define CC8_TRBS               (0x1UL)                   /*!< CCU8_CC8 TCSET: TRBS (Bitfield-Mask: 0x01)                  */
 
 /* -------------------------------  CCU8_CC8_TCCLR  ------------------------------- */
 #define CCU8_CC8_TCCLR_TRBC_Pos               (0UL)                     /*!< CCU8_CC8 TCCLR: TRBC (Bit 0)                                */
@@ -15229,6 +15458,12 @@ namespace T_HW
 #define CCU8_CC8_TCCLR_DTC1C_Msk              (0x8UL)                   /*!< CCU8_CC8 TCCLR: DTC1C (Bitfield-Mask: 0x01)                 */
 #define CCU8_CC8_TCCLR_DTC2C_Pos              (4UL)                     /*!< CCU8_CC8 TCCLR: DTC2C (Bit 4)                               */
 #define CCU8_CC8_TCCLR_DTC2C_Msk              (0x10UL)                  /*!< CCU8_CC8 TCCLR: DTC2C (Bitfield-Mask: 0x01)                 */
+
+#define CC8_TRBC               (0x1UL)                   /*!< CCU8_CC8 TCCLR: TRBC (Bitfield-Mask: 0x01)                  */
+#define CC8_TCC                (0x2UL)                   /*!< CCU8_CC8 TCCLR: TCC (Bitfield-Mask: 0x01)                   */
+#define CC8_DITC               (0x4UL)                   /*!< CCU8_CC8 TCCLR: DITC (Bitfield-Mask: 0x01)                  */
+#define CC8_DTC1C              (0x8UL)                   /*!< CCU8_CC8 TCCLR: DTC1C (Bitfield-Mask: 0x01)                 */
+#define CC8_DTC2C              (0x10UL)                  /*!< CCU8_CC8 TCCLR: DTC2C (Bitfield-Mask: 0x01)                 */
 
 /* ---------------------------------  CCU8_CC8_TC  -------------------------------- */
 #define CCU8_CC8_TC_TCM_Pos                   (0UL)                     /*!< CCU8_CC8 TC: TCM (Bit 0)                                    */
@@ -15283,6 +15518,31 @@ namespace T_HW
 #define CCU8_CC8_TC_EME_Msk                   (0x18000000UL)            /*!< CCU8_CC8 TC: EME (Bitfield-Mask: 0x03)                      */
 #define CCU8_CC8_TC_STOS_Pos                  (29UL)                    /*!< CCU8_CC8 TC: STOS (Bit 29)                                  */
 #define CCU8_CC8_TC_STOS_Msk                  (0x60000000UL)            /*!< CCU8_CC8 TC: STOS (Bitfield-Mask: 0x03)                     */
+
+#define CC8_TCM                   (0x1UL)                   /*!< CCU8_CC8 TC: TCM (Bitfield-Mask: 0x01)                      */
+#define CC8_TSSM                  (0x2UL)                   /*!< CCU8_CC8 TC: TSSM (Bitfield-Mask: 0x01)                     */
+#define CC8_CLST                  (0x4UL)                   /*!< CCU8_CC8 TC: CLST (Bitfield-Mask: 0x01)                     */
+#define CC8_CMOD                  (0x8UL)                   /*!< CCU8_CC8 TC: CMOD (Bitfield-Mask: 0x01)                     */
+#define CC8_ECM                   (0x10UL)                  /*!< CCU8_CC8 TC: ECM (Bitfield-Mask: 0x01)                      */
+#define CC8_CAPC                  (0x60UL)                  /*!< CCU8_CC8 TC: CAPC (Bitfield-Mask: 0x03)                     */
+#define CC8_TLS                   (0x80UL)                  /*!< CCU8_CC8 TC: TLS (Bitfield-Mask: 0x01)                      */
+#define CC8_ENDM                  (0x300UL)                 /*!< CCU8_CC8 TC: ENDM (Bitfield-Mask: 0x03)                     */
+#define CC8_STRM                  (0x400UL)                 /*!< CCU8_CC8 TC: STRM (Bitfield-Mask: 0x01)                     */
+#define CC8_SCE                   (0x800UL)                 /*!< CCU8_CC8 TC: SCE (Bitfield-Mask: 0x01)                      */
+#define CC8_CCS                   (0x1000UL)                /*!< CCU8_CC8 TC: CCS (Bitfield-Mask: 0x01)                      */
+#define CC8_DITHE                 (0x6000UL)                /*!< CCU8_CC8 TC: DITHE (Bitfield-Mask: 0x03)                    */
+#define CC8_DIM                   (0x8000UL)                /*!< CCU8_CC8 TC: DIM (Bitfield-Mask: 0x01)                      */
+#define CC8_FPE                   (0x10000UL)               /*!< CCU8_CC8 TC: FPE (Bitfield-Mask: 0x01)                      */
+#define CC8_TRAPE0                (0x20000UL)               /*!< CCU8_CC8 TC: TRAPE0 (Bitfield-Mask: 0x01)                   */
+#define CC8_TRAPE1                (0x40000UL)               /*!< CCU8_CC8 TC: TRAPE1 (Bitfield-Mask: 0x01)                   */
+#define CC8_TRAPE2                (0x80000UL)               /*!< CCU8_CC8 TC: TRAPE2 (Bitfield-Mask: 0x01)                   */
+#define CC8_TRAPE3                (0x100000UL)              /*!< CCU8_CC8 TC: TRAPE3 (Bitfield-Mask: 0x01)                   */
+#define CC8_TRPSE                 (0x200000UL)              /*!< CCU8_CC8 TC: TRPSE (Bitfield-Mask: 0x01)                    */
+#define CC8_TRPSW                 (0x400000UL)              /*!< CCU8_CC8 TC: TRPSW (Bitfield-Mask: 0x01)                    */
+#define CC8_EMS                   (0x800000UL)              /*!< CCU8_CC8 TC: EMS (Bitfield-Mask: 0x01)                      */
+#define CC8_EMT                   (0x1000000UL)             /*!< CCU8_CC8 TC: EMT (Bitfield-Mask: 0x01)                      */
+#define CC8_MCME1                 (0x2000000UL)             /*!< CCU8_CC8 TC: MCME1 (Bitfield-Mask: 0x01)                    */
+#define CC8_MCME2                 (0x4000000UL)             /*!< CCU8_CC8 TC: MCME2 (Bitfield-Mask: 0x01)                    */
 
 /* --------------------------------  CCU8_CC8_PSL  -------------------------------- */
 #define CCU8_CC8_PSL_PSL11_Pos                (0UL)                     /*!< CCU8_CC8 PSL: PSL11 (Bit 0)                                 */
@@ -15354,6 +15614,12 @@ namespace T_HW
 #define CCU8_CC8_CHC_OCS4_Pos                 (4UL)                     /*!< CCU8_CC8 CHC: OCS4 (Bit 4)                                  */
 #define CCU8_CC8_CHC_OCS4_Msk                 (0x10UL)                  /*!< CCU8_CC8 CHC: OCS4 (Bitfield-Mask: 0x01)                    */
 
+#define CC8_ASE                  (0x1UL)                   /*!< CCU8_CC8 CHC: ASE (Bitfield-Mask: 0x01)                     */
+#define CC8_OCS1                 (0x2UL)                   /*!< CCU8_CC8 CHC: OCS1 (Bitfield-Mask: 0x01)                    */
+#define CC8_OCS2                 (0x4UL)                   /*!< CCU8_CC8 CHC: OCS2 (Bitfield-Mask: 0x01)                    */
+#define CC8_OCS3                 (0x8UL)                   /*!< CCU8_CC8 CHC: OCS3 (Bitfield-Mask: 0x01)                    */
+#define CC8_OCS4                 (0x10UL)                  /*!< CCU8_CC8 CHC: OCS4 (Bitfield-Mask: 0x01)                    */
+
 /* --------------------------------  CCU8_CC8_DTC  -------------------------------- */
 #define CCU8_CC8_DTC_DTE1_Pos                 (0UL)                     /*!< CCU8_CC8 DTC: DTE1 (Bit 0)                                  */
 #define CCU8_CC8_DTC_DTE1_Msk                 (0x1UL)                   /*!< CCU8_CC8 DTC: DTE1 (Bitfield-Mask: 0x01)                    */
@@ -15416,6 +15682,17 @@ namespace T_HW
 #define CCU8_CC8_INTS_TRPF_Pos                (11UL)                    /*!< CCU8_CC8 INTS: TRPF (Bit 11)                                */
 #define CCU8_CC8_INTS_TRPF_Msk                (0x800UL)                 /*!< CCU8_CC8 INTS: TRPF (Bitfield-Mask: 0x01)                   */
 
+#define CC8_PMUS                (0x1UL)                   /*!< CCU8_CC8 INTS: PMUS (Bitfield-Mask: 0x01)                   */
+#define CC8_OMDS                (0x2UL)                   /*!< CCU8_CC8 INTS: OMDS (Bitfield-Mask: 0x01)                   */
+#define CC8_CMU1S               (0x4UL)                   /*!< CCU8_CC8 INTS: CMU1S (Bitfield-Mask: 0x01)                  */
+#define CC8_CMD1S               (0x8UL)                   /*!< CCU8_CC8 INTS: CMD1S (Bitfield-Mask: 0x01)                  */
+#define CC8_CMU2S               (0x10UL)                  /*!< CCU8_CC8 INTS: CMU2S (Bitfield-Mask: 0x01)                  */
+#define CC8_CMD2S               (0x20UL)                  /*!< CCU8_CC8 INTS: CMD2S (Bitfield-Mask: 0x01)                  */
+#define CC8_E0AS                (0x100UL)                 /*!< CCU8_CC8 INTS: E0AS (Bitfield-Mask: 0x01)                   */
+#define CC8_E1AS                (0x200UL)                 /*!< CCU8_CC8 INTS: E1AS (Bitfield-Mask: 0x01)                   */
+#define CC8_E2AS                (0x400UL)                 /*!< CCU8_CC8 INTS: E2AS (Bitfield-Mask: 0x01)                   */
+#define CC8_TRPF                (0x800UL)                 /*!< CCU8_CC8 INTS: TRPF (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU8_CC8_INTE  ------------------------------- */
 #define CCU8_CC8_INTE_PME_Pos                 (0UL)                     /*!< CCU8_CC8 INTE: PME (Bit 0)                                  */
 #define CCU8_CC8_INTE_PME_Msk                 (0x1UL)                   /*!< CCU8_CC8 INTE: PME (Bitfield-Mask: 0x01)                    */
@@ -15436,6 +15713,16 @@ namespace T_HW
 #define CCU8_CC8_INTE_E2AE_Pos                (10UL)                    /*!< CCU8_CC8 INTE: E2AE (Bit 10)                                */
 #define CCU8_CC8_INTE_E2AE_Msk                (0x400UL)                 /*!< CCU8_CC8 INTE: E2AE (Bitfield-Mask: 0x01)                   */
 
+#define CC8_PME                 (0x1UL)                   /*!< CCU8_CC8 INTE: PME (Bitfield-Mask: 0x01)                    */
+#define CC8_OME                 (0x2UL)                   /*!< CCU8_CC8 INTE: OME (Bitfield-Mask: 0x01)                    */
+#define CC8_CMU1E               (0x4UL)                   /*!< CCU8_CC8 INTE: CMU1E (Bitfield-Mask: 0x01)                  */
+#define CC8_CMD1E               (0x8UL)                   /*!< CCU8_CC8 INTE: CMD1E (Bitfield-Mask: 0x01)                  */
+#define CC8_CMU2E               (0x10UL)                  /*!< CCU8_CC8 INTE: CMU2E (Bitfield-Mask: 0x01)                  */
+#define CC8_CMD2E               (0x20UL)                  /*!< CCU8_CC8 INTE: CMD2E (Bitfield-Mask: 0x01)                  */
+#define CC8_E0AE                (0x100UL)                 /*!< CCU8_CC8 INTE: E0AE (Bitfield-Mask: 0x01)                   */
+#define CC8_E1AE                (0x200UL)                 /*!< CCU8_CC8 INTE: E1AE (Bitfield-Mask: 0x01)                   */
+#define CC8_E2AE                (0x400UL)                 /*!< CCU8_CC8 INTE: E2AE (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU8_CC8_SRS  -------------------------------- */
 #define CCU8_CC8_SRS_POSR_Pos                 (0UL)                     /*!< CCU8_CC8 SRS: POSR (Bit 0)                                  */
 #define CCU8_CC8_SRS_POSR_Msk                 (0x3UL)                   /*!< CCU8_CC8 SRS: POSR (Bitfield-Mask: 0x03)                    */
@@ -15449,6 +15736,13 @@ namespace T_HW
 #define CCU8_CC8_SRS_E1SR_Msk                 (0xc00UL)                 /*!< CCU8_CC8 SRS: E1SR (Bitfield-Mask: 0x03)                    */
 #define CCU8_CC8_SRS_E2SR_Pos                 (12UL)                    /*!< CCU8_CC8 SRS: E2SR (Bit 12)                                 */
 #define CCU8_CC8_SRS_E2SR_Msk                 (0x3000UL)                /*!< CCU8_CC8 SRS: E2SR (Bitfield-Mask: 0x03)                    */
+
+#define CC8_POSR                 (0x3UL)                   /*!< CCU8_CC8 SRS: POSR (Bitfield-Mask: 0x03)                    */
+#define CC8_CM1SR                (0xcUL)                   /*!< CCU8_CC8 SRS: CM1SR (Bitfield-Mask: 0x03)                   */
+#define CC8_CM2SR                (0x30UL)                  /*!< CCU8_CC8 SRS: CM2SR (Bitfield-Mask: 0x03)                   */
+#define CC8_E0SR                 (0x300UL)                 /*!< CCU8_CC8 SRS: E0SR (Bitfield-Mask: 0x03)                    */
+#define CC8_E1SR                 (0xc00UL)                 /*!< CCU8_CC8 SRS: E1SR (Bitfield-Mask: 0x03)                    */
+#define CC8_E2SR                 (0x3000UL)                /*!< CCU8_CC8 SRS: E2SR (Bitfield-Mask: 0x03)                    */
 
 /* --------------------------------  CCU8_CC8_SWS  -------------------------------- */
 #define CCU8_CC8_SWS_SPM_Pos                  (0UL)                     /*!< CCU8_CC8 SWS: SPM (Bit 0)                                   */
@@ -15472,6 +15766,17 @@ namespace T_HW
 #define CCU8_CC8_SWS_STRPF_Pos                (11UL)                    /*!< CCU8_CC8 SWS: STRPF (Bit 11)                                */
 #define CCU8_CC8_SWS_STRPF_Msk                (0x800UL)                 /*!< CCU8_CC8 SWS: STRPF (Bitfield-Mask: 0x01)                   */
 
+#define CC8_SPM                  (0x1UL)                   /*!< CCU8_CC8 SWS: SPM (Bitfield-Mask: 0x01)                     */
+#define CC8_SOM                  (0x2UL)                   /*!< CCU8_CC8 SWS: SOM (Bitfield-Mask: 0x01)                     */
+#define CC8_SCM1U                (0x4UL)                   /*!< CCU8_CC8 SWS: SCM1U (Bitfield-Mask: 0x01)                   */
+#define CC8_SCM1D                (0x8UL)                   /*!< CCU8_CC8 SWS: SCM1D (Bitfield-Mask: 0x01)                   */
+#define CC8_SCM2U                (0x10UL)                  /*!< CCU8_CC8 SWS: SCM2U (Bitfield-Mask: 0x01)                   */
+#define CC8_SCM2D                (0x20UL)                  /*!< CCU8_CC8 SWS: SCM2D (Bitfield-Mask: 0x01)                   */
+#define CC8_SE0A                 (0x100UL)                 /*!< CCU8_CC8 SWS: SE0A (Bitfield-Mask: 0x01)                    */
+#define CC8_SE1A                 (0x200UL)                 /*!< CCU8_CC8 SWS: SE1A (Bitfield-Mask: 0x01)                    */
+#define CC8_SE2A                 (0x400UL)                 /*!< CCU8_CC8 SWS: SE2A (Bitfield-Mask: 0x01)                    */
+#define CC8_STRPF                (0x800UL)                 /*!< CCU8_CC8 SWS: STRPF (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU8_CC8_SWR  -------------------------------- */
 #define CCU8_CC8_SWR_RPM_Pos                  (0UL)                     /*!< CCU8_CC8 SWR: RPM (Bit 0)                                   */
 #define CCU8_CC8_SWR_RPM_Msk                  (0x1UL)                   /*!< CCU8_CC8 SWR: RPM (Bitfield-Mask: 0x01)                     */
@@ -15494,11 +15799,25 @@ namespace T_HW
 #define CCU8_CC8_SWR_RTRPF_Pos                (11UL)                    /*!< CCU8_CC8 SWR: RTRPF (Bit 11)                                */
 #define CCU8_CC8_SWR_RTRPF_Msk                (0x800UL)                 /*!< CCU8_CC8 SWR: RTRPF (Bitfield-Mask: 0x01)                   */
 
+#define CC8_RPM                  (0x1UL)                   /*!< CCU8_CC8 SWR: RPM (Bitfield-Mask: 0x01)                     */
+#define CC8_ROM                  (0x2UL)                   /*!< CCU8_CC8 SWR: ROM (Bitfield-Mask: 0x01)                     */
+#define CC8_RCM1U                (0x4UL)                   /*!< CCU8_CC8 SWR: RCM1U (Bitfield-Mask: 0x01)                   */
+#define CC8_RCM1D                (0x8UL)                   /*!< CCU8_CC8 SWR: RCM1D (Bitfield-Mask: 0x01)                   */
+#define CC8_RCM2U                (0x10UL)                  /*!< CCU8_CC8 SWR: RCM2U (Bitfield-Mask: 0x01)                   */
+#define CC8_RCM2D                (0x20UL)                  /*!< CCU8_CC8 SWR: RCM2D (Bitfield-Mask: 0x01)                   */
+#define CC8_RE0A                 (0x100UL)                 /*!< CCU8_CC8 SWR: RE0A (Bitfield-Mask: 0x01)                    */
+#define CC8_RE1A                 (0x200UL)                 /*!< CCU8_CC8 SWR: RE1A (Bitfield-Mask: 0x01)                    */
+#define CC8_RE2A                 (0x400UL)                 /*!< CCU8_CC8 SWR: RE2A (Bitfield-Mask: 0x01)                    */
+#define CC8_RTRPF                (0x800UL)                 /*!< CCU8_CC8 SWR: RTRPF (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU8_CC8_STC  -------------------------------- */
 #define CCU8_CC8_STC_CSE_Pos                  (0UL)                     /*!< CCU8_CC8 STC: CSE (Bit 0)                                   */
 #define CCU8_CC8_STC_CSE_Msk                  (0x1UL)                   /*!< CCU8_CC8 STC: CSE (Bitfield-Mask: 0x01)                     */
 #define CCU8_CC8_STC_STM_Pos                  (1UL)                     /*!< CCU8_CC8 STC: STM (Bit 1)                                   */
 #define CCU8_CC8_STC_STM_Msk                  (0x6UL)                   /*!< CCU8_CC8 STC: STM (Bitfield-Mask: 0x03)                     */
+
+#define CC8_CSE                  (0x1UL)                   /*!< CCU8_CC8 STC: CSE (Bitfield-Mask: 0x01)                     */
+#define CC8_STM                  (0x6UL)                   /*!< CCU8_CC8 STC: STM (Bitfield-Mask: 0x03)                     */
 
 /* -------------------------------  CCU8_CC8_ECRD0  ------------------------------- */
 #define CCU8_CC8_ECRD0_CAPV_Pos               (0UL)                     /*!< CCU8_CC8 ECRD0: CAPV (Bit 0)                                */

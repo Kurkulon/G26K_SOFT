@@ -166,11 +166,14 @@ struct MTB
 
 extern bool RcvManData(MRB *mrb);
 extern bool SendManData(MTB *mtb);
+extern bool SendManData2(MTB* mtb);
 //extern void SetTrmBoudRate(byte i);
 extern void ManRcvUpdate();
 //extern void ManRcvStop();
 
 extern bool SendMLT3(MTB *mtb);
+
+inline u16 GetRcvManQuality() { extern u16 rcvManQuality; return rcvManQuality; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -180,9 +183,13 @@ extern void SetClock(const RTC &t);
 
 extern void EnableDSP();	
 extern void DisableDSP();	
+
 inline u16 GetShaftRPS() { extern u16 shaftRPS; return shaftRPS; }
 inline u16 GetShaftCount() { extern volatile u16 curShaftCounter; return curShaftCounter; }
+extern u16 GetShaftState();
+
 extern void Set_Sync_Rot(u16 RPS, u16 samplePerRound);
+
 extern void EnableDSP();	
 extern void DisableDSP();	
 extern void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len);

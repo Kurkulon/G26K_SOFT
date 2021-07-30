@@ -14,7 +14,7 @@
 #elif defined(CPU_XMC48)
 #endif
 
-#define VERSION			0x101
+#define VERSION			0x102
 
 //#pragma O3
 //#pragma Otime
@@ -53,6 +53,7 @@ __packed struct MainVars // NonVolatileVars
 	u16 packType;
 	u16 cmSPR;
 	u16 imSPR;
+	u16 fireVoltage;
 };
 
 
@@ -150,6 +151,10 @@ static u16 motoCounter = 0;		// счётчик оборотов двигателя 1/6 оборота
 //static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
 //static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
 //static u16 *curSPR = &cmSPR;	// Количество импульсов излучателя на оборот в текущем режиме
+static u16 motoVoltage = 90;
+static u16 motoRcvCount = 0;
+
+static u16 curFireVoltage = 500;
 
 static u32 dspMMSEC = 0;
 static u32 shaftMMSEC = 0;
@@ -179,8 +184,11 @@ static bool cmdWriteStart_00 = false;
 static bool cmdWriteStart_10 = false;
 static bool cmdWriteStart_20 = false;
 
-u32 dspRcv40 = 0;
-u32 dspRcv50 = 0;
+static u32 dspRcv40 = 0;
+static u32 dspRcv50 = 0;
+static u16 dspRcvCount = 0;
+
+
 //static u32 rcvCRCER = 0;
 
 //static u32 chnlCount[4] = {0};
@@ -300,6 +308,7 @@ void CallBackDspReq01(REQ *q)
 
 		dspStatus |= 1;
 		dspRcv40++;
+		dspRcvCount++;
 		
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
@@ -316,6 +325,7 @@ void CallBackDspReq01(REQ *q)
 
 		dspStatus |= 1;
 		dspRcv50++;
+		dspRcvCount++;
 
 		dspMMSEC = rsp.time;
 		shaftMMSEC = rsp.hallTime;
@@ -627,6 +637,7 @@ static void CallBackMotoReq(REQ *q)
 			motoCur = rsp.current;
 			//motoStat = rsp.mororStatus;
 			motoCounter = rsp.motoCounter;
+			motoRcvCount++;
 		};
 	};
 }
@@ -884,26 +895,27 @@ static u32 InitRspMan_10(__packed u16 *data)
 {
 	__packed u16 *start = data;
 
-	*(data++)	= (manReqWord & manReqMask) | 0x10;		//1. Ответное слово
-	*(data++)	= mv.gain;									//2. КУ (измерительный датчик)
-	*(data++)	= mv.sampleTime;							//3. Шаг оцифровки
-	*(data++)	= mv.sampleLen;							//4. Длина оцифровки
-	*(data++)	= mv.sampleDelay; 							//5. Задержка оцифровки
-	*(data++)	= mv.deadTime;								//6. Мертвая зона датчика
-	*(data++)	= mv.descriminant;							//7. Уровень дискриминации датчика
-	*(data++)	= mv.freq;
-	*(data++)	= mv.gainRef;								//8. КУ (опорный датчик)
-	*(data++)	= mv.sampleTimeRef;						//9. Шаг оцифровки
-	*(data++)	= mv.sampleLenRef;							//10. Длина оцифровки
-	*(data++)	= mv.sampleDelayRef; 						//11. Задержка оцифровки
-	*(data++)	= mv.deadTimeRef;							//12. Мертвая зона датчика
-	*(data++)	= mv.descriminantRef;						//13. Уровень дискриминации датчика
-	*(data++)	= mv.refFreq;
-	*(data++)	= mv.filtrType;							//14. Фильтр
-	*(data++)	= mv.packType;								//15. Упаковка
-	*(data++)	= mv.cmSPR;								//16. Количество волновых картин на оборот головки в режиме цементомера
-	*(data++)	= mv.imSPR;								//17. Количество точек на оборот головки в режиме имиджера
-	
+	*(data++)	= (manReqWord & manReqMask) | 0x10;		//	1. Ответное слово	
+	*(data++)	= mv.gain;								//	2. КУ(измерительный датчик)
+	*(data++)	= mv.sampleTime;						//	3. Шаг оцифровки
+	*(data++)	= mv.sampleLen;							//	4. Длина оцифровки
+	*(data++)	= mv.sampleDelay; 						//	5. Задержка оцифровки
+	*(data++)	= mv.deadTime;							//	6. Мертвая зона датчика
+	*(data++)	= mv.descriminant;						//	7. Уровень дискриминации датчика
+	*(data++)	= mv.freq;								//	8. Частота излучателя(кГц)
+	*(data++)	= mv.gainRef;							//	9. КУ(опорный датчик)
+	*(data++)	= mv.sampleTimeRef;						//	10. Шаг оцифровки
+	*(data++)	= mv.sampleLenRef;						//	11. Длина оцифровки
+	*(data++)	= mv.sampleDelayRef; 					//	12. Задержка оцифровки
+	*(data++)	= mv.deadTimeRef;						//	13. Мертвая зона датчика
+	*(data++)	= mv.descriminantRef;					//	14. Уровень дискриминации датчика
+	*(data++)	= mv.refFreq;							//	15. Частота излучателя(кГц)
+	*(data++)	= mv.filtrType;							//	16. Фильтр
+	*(data++)	= mv.packType;							//	17. Упаковка
+	*(data++)	= mv.cmSPR;								//	18. Количество волновых картин на оборот головки в режиме цементомера
+	*(data++)	= mv.imSPR;								//	19. Количество точек на оборот головки в режиме имиджера
+	*(data++)	= mv.fireVoltage;						//	20. Напряжение излучателя(В)
+
 	return data - start;
 }
 
@@ -924,10 +936,10 @@ static bool RequestMan_10(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	InitRspMan_10(manTrmData);
+	len = InitRspMan_10(manTrmData);
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 19;
+	mtb->len1 = len;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -940,29 +952,35 @@ static u32 InitRspMan_20(__packed u16 *data)
 {
 	__packed u16 *start = data;
 
-	*(data++)	= manReqWord|0x20;			//	1. ответное слово
-	*(data++)	= dspMMSEC; 				//	2. Время (0.1мс). младшие 2 байта
-	*(data++)	= dspMMSEC>>16;				//	3. Время. старшие 2 байта
-	*(data++)  	= shaftMMSEC;				//	4. Время датчика Холла (0.1мс). младшие 2 байта
-	*(data++)  	= shaftMMSEC>>16;			//	5. Время датчика Холла. старшие 2 байта
-	*(data++)  	= motoRPS;					//	6. Частота вращения двигателя (0.01 об/сек)
-	*(data++)  	= motoCur;					//	7. Ток двигателя (мА)
-	*(data++)  	= motoCounter;				//	8. Счётчик оборотов двигателя (1/6 об)
-	*(data++)  	= GetShaftRPS();			//	9. Частота вращения головки (0.01 об/сек)
-	*(data++)  	= GetShaftCount();			//	10. Счётчик оборотов головки (об)
-	*(data++)  	= ax;						//	11. AX (уе)
-	*(data++)  	= ay;						//	12. AY (уе)
-	*(data++)  	= az;						//	13. AZ (уе)
-	*(data++)  	= at;						//	14. AT (short 0.01 гр)
-	*(data++)	= temp;						//	15. Температура в приборе (short)(0.1гр)
-	*(data++)	= sensMinMax[0].ampMax;		//	16. Амплитуда измерительного датчика максимум по всей волне(у.е)
-	*(data++)	= sensMinMax[0].ampMin;		//	17. Амплитуда измерительного датчика минимум по всей волне(у.е)
-	*(data++)	= sensMinMax[0].timeMax;	//	18. Время измерительного датчика максимум по первому вступлению(0.05 мкс)
-	*(data++)	= sensMinMax[0].timeMin;	//	19. Время измерительного датчика минимум по первому вступлению(0.05 мкс)
-	*(data++)	= sensMinMax[1].ampMax;		//	20. Амплитуда опорного датчика максимум по всей волне(у.е)
-	*(data++)	= sensMinMax[1].ampMin;		//	21. Амплитуда опорного датчика минимум по всей волне(у.е)
-	*(data++)	= sensMinMax[1].timeMax;	//	22. Время опорного датчика максимум по первому вступлению(0.05 мкс)
-	*(data++)	= sensMinMax[1].timeMin;	//	23. Время опорного датчика минимум по первому вступлению(0.05 мкс)
+	*(data++)	= manReqWord|0x20;				//	1. ответное слово	
+	*(data++)	= dspMMSEC; 					//	2. Время(0.1мс).младшие 2 байта
+	*(data++)	= dspMMSEC>>16;					//	3. Время.старшие 2 байта
+	*(data++)  	= shaftMMSEC;					//	4. Время датчика Холла(0.1мс).младшие 2 байта
+	*(data++)  	= shaftMMSEC>>16;				//	5. Время датчика Холла.старшие 2 байта
+	*(data++)  	= motoRPS;						//	6. Частота вращения двигателя(0.01 об / сек)
+	*(data++)  	= motoCur;						//	7. Ток двигателя(мА)
+	*(data++)  	= motoCounter;					//	8. Счётчик оборотов двигателя(1 / 6 об)
+	*(data++)  	= GetShaftRPS();				//	9. Частота вращения головки(0.01 об / сек)
+	*(data++)  	= GetShaftCount();				//	10. Счётчик оборотов головки(об)
+	*(data++)  	= ax;							//	11. AX(уе)
+	*(data++)  	= ay;							//	12. AY(уе)
+	*(data++)  	= az;							//	13. AZ(уе)
+	*(data++)  	= at;							//	14. AT(short 0.01 гр)
+	*(data++)	= temp;							//	15. Температура в приборе(short)(0.1гр)
+	*(data++)	= sensMinMax[0].ampMax;			//	16. Амплитуда измерительного датчика максимум по всей волне(у.е)
+	*(data++)	= sensMinMax[0].ampMin;			//	17. Амплитуда измерительного датчика минимум по всей волне(у.е)
+	*(data++)	= sensMinMax[0].timeMax;		//	18. Время измерительного датчика максимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[0].timeMin;		//	19. Время измерительного датчика минимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[1].ampMax;			//	20. Амплитуда опорного датчика максимум по всей волне(у.е)
+	*(data++)	= sensMinMax[1].ampMin;			//	21. Амплитуда опорного датчика минимум по всей волне(у.е)
+	*(data++)	= sensMinMax[1].timeMax;		//	22. Время опорного датчика максимум по первому вступлению(0.05 мкс)
+	*(data++)	= sensMinMax[1].timeMin;		//	23. Время опорного датчика минимум по первому вступлению(0.05 мкс)
+	*(data++)	= GetShaftState();				//	24. Состояние датчика Холла(0, 1)
+	*(data++)	= curFireVoltage;				//	25. Напряжение излучателя(В)
+	*(data++)	= motoVoltage;					//	26. Напряжение двигателя(В)
+	*(data++)	= dspRcvCount;					//	27. Счётчик запросов DSP
+	*(data++)	= motoRcvCount;					//	28. Счётчик запросов двигателя
+	*(data++)	= GetRcvManQuality();			//	29. Качество сигнала запроса телеметрии (%)
 
 	return data - start;
 }
@@ -1308,6 +1326,8 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 		case 0x30:	mv.cmSPR = data[2]; Update_RPS_SPR();	break;
 		case 0x31:	mv.imSPR = data[2]; Update_RPS_SPR();	break;
+
+		case 0x40:	mv.fireVoltage		= data[2];			break;
 
 		default:
 
@@ -1666,6 +1686,7 @@ static void UpdateMan()
 
 			if (tm.Check(US2RT(100)))
 			{
+				//mtb.len1 = 2;
 				SendManData(&mtb);
 
 				i++;
@@ -2472,8 +2493,9 @@ static void InitMainVars()
 	mv.refFreq			= 500; 
 	mv.filtrType		= 0;
 	mv.packType			= 0;
-	mv.cmSPR			= 32;
-	mv.imSPR			= 100;
+	mv.cmSPR			= 36;
+	mv.imSPR			= 180;
+	mv.fireVoltage		= 500;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2590,7 +2612,7 @@ static void SaveVars()
 	static DSCI2C dsc;
 	static DSCSPI spi,spi2;
 	static u16 romAdr = 0;
-	static byte buf[100];
+	static byte buf[sizeof(mv) * 2 + 8];
 
 	static byte i = 0;
 	static TM32 tm;
