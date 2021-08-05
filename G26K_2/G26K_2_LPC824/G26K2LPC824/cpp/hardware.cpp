@@ -11,6 +11,7 @@
 
 #define GEAR_RATIO	12.25
 #define CUR_LIM		3000
+#define CUR_MIN		100
 #define IMP_CUR_LIM	13000
 #define POWER_LIM	30000
 
@@ -1340,7 +1341,7 @@ static void UpdateMotor()
 			motorState = 0;
 		};
 
-		impCur = (u32)avrCurADC * pwmPeriod / (curDuty+1);
+		impCur = (u32)avrCurADC * pwmPeriod / (curDuty+10);
 
 		//power = avrCurADC * voltage;
 
@@ -1354,7 +1355,7 @@ static void UpdateMotor()
 
 			//motorState = 3;
 		}
-		else if ((avrCurADC < CUR_LIM) && (impCur < IMP_CUR_LIM))
+		else if ((avrCurADC < CUR_MIN) || ((avrCurADC < CUR_LIM) && (impCur < IMP_CUR_LIM)))
 		{
 			if (limDuty < maxDuty) limDuty += 1;
 
