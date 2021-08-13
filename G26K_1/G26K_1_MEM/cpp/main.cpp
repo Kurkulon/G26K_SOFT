@@ -2528,7 +2528,7 @@ static void LoadVars()
 
 	bool loadVarsOk = false;
 
-	spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|3;
+	spi.adr = (ReverseDword(FRAM_SPI_MAINVARS_ADR) & ~0xFF) | 3;
 	spi.alen = 4;
 	spi.csnum = 1;
 	spi.wdata = 0;
@@ -2587,7 +2587,7 @@ static void LoadVars()
 		{
 			c2 = false;
 		}
-		else
+		else if (mv1.timeStamp < mv2.timeStamp)
 		{
 			c1 = false;
 		};
@@ -2597,9 +2597,9 @@ static void LoadVars()
 
 	loadVarsOk = c1 || c2;
 
-	if (!loadVarsOk)
+	if (!c1 || !c2)
 	{
-		InitMainVars();
+		if (!loadVarsOk) InitMainVars();
 
 		svCount = 2;
 	};
@@ -2642,7 +2642,7 @@ static void SaveVars()
 				p.WriteW(p.CRC.w);
 			};
 
-			spi.adr = ((u32)ReverseWord(FRAM_SPI_MAINVARS_ADR)<<8)|2;
+			spi.adr = (ReverseDword(FRAM_SPI_MAINVARS_ADR) & ~0xFF) | 2;
 			spi.alen = 4;
 			spi.csnum = 1;
 			spi.wdata = buf;
