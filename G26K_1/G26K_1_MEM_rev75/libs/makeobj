@@ -1,0 +1,137 @@
+
+##################################################################################################
+
+!ifndef version
+version = Release
+!endif
+
+##################################################################################################
+
+curdir = $+ $(%cdrive):$(%cwd) $-
+#cppdir = .\cpp
+hdir = .\cpp
+libdir = $(curdir)\libs
+bindir = $(%ARMCC50BIN)
+
+!ifeq version Debug
+
+debug_compiler_options = -O0 --debug -D_DEBUG
+debug_linker_options = DEBUG ALL
+libsuffix = d
+
+!else 
+
+debug_compiler_options = -O3 -Otime --debug
+debug_linker_options = 
+libsuffix = r
+
+!endif
+
+##################################################################################################
+
+target_name = G7A_MEM_$(targetcpu)
+
+##################################################################################################
+
+!ifeq targetcpu SAM7X
+
+cpu_compiler_options = --cpu=ARM7TDMI --thumb --apcs=/softfp/interwork
+cpu_asm_options = --cpu ARM7TDMI --apcs /softfp/interwork	--pd "__PROGNAME__ SETS \"KAPCAP G7A.2.1(MC ynp)-1.1\""
+cpu_link_options = --cpu ARM7TDMI
+cpu_obj = $(objdir)\SAM7.o
+cpu_scatter = SAM7X.sct
+
+!else ifeq targetcpu SAME53
+
+cpu_compiler_options = --cpu=CORTEX-M4.fp.sp --thumb
+cpu_asm_options = --cpu CORTEX-M4.fp.sp --apcs /interwork	--pd "__PROGNAME__ SETS \"KAPCAP G7A.2.1(MC ynp)-3.1\""
+cpu_link_options = --cpu CORTEX-M4.fp.sp
+cpu_obj = $(objdir)\startup_SAME53.o
+cpu_scatter = SAME53.sct
+
+!else ifeq targetcpu XMC48
+
+cpu_compiler_options = --cpu=CORTEX-M4.fp.sp --thumb
+cpu_asm_options = --cpu CORTEX-M4.fp.sp --apcs /interwork	--pd "__PROGNAME__ SETS \"KAPCAP G7A.2.1(MC ynp)-2.2\""
+cpu_link_options = --cpu CORTEX-M4.fp.sp
+cpu_obj = $(objdir)\startup_SAME53.o
+cpu_scatter = XMC48.sct
+
+!else
+
+cpu_compiler_options = 
+cpu_asm_options =
+cpu_link_options = 
+cpu_obj = 
+cpu_scatter = 
+
+!endif
+
+##################################################################################################
+
+libname = $(curdir)\$(targetcpu)_$(libsuffix).a
+
+##################################################################################################
+
+.ERASE
+.EXTENSIONS:
+.EXTENSIONS: .exe .o .cpp .h .s .d
+
+##################################################################################################
+
+.cpp:	$(cppdir)
+.o:	$(objdir)
+.h:	$(hdir)
+.s: $(cppdir)
+.d:	$(objdir)
+
+
+##################################################################################################
+
+.BEFORE
+	@if NOT EXIST $(objdir) @md $(objdir) >nul
+	@call echo Building $(version) version ...
+
+##################################################################################################
+
+compiler_options = $(debug_compiler_options) $(cpu_compiler_options) --gnu --asm --interleave -g -c --diag_style=ide &
+	  --diag_suppress=68,368,1165,1299,3017 &
+	 -D__MICROLIB -DCPU_$(targetcpu) --no_depend_system_headers --reduce_paths -I$(libdir)\cpp
+
+##################################################################################################
+
+asm_options = $(cpu_asm_options) -g --xref --diag_style=ide --pd "__MICROLIB SETA 1" --cpreproc
+
+##################################################################################################
+
+link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph --symbols --summary_stderr --library_type=microlib
+  
+##################################################################################################
+
+!include $(objdir)\mkoutcpp
+!include $(objdir)\mkoutobj
+
+##################################################################################################
+
+$(libname) : $(modules_obj)	
+	@echo Creating library $(libname) ...
+	@$(bindir)\armar --create $(libname) $(modules_obj)
+	
+##################################################################################################
+
+!include $(objdir)\mkoutdep
+
+##################################################################################################
+
+.cpp.o:
+	@echo Compiling $[. ...
+	@$(bindir)\armcc $(compiler_options) --depend="$(objdir)\$^&.d" -o "$(objdir)\$^." $[@
+
+##################################################################################################
+
+.s.o:
+	@echo Assembling $[. ...
+	@$(bindir)\armasm $(asm_options) --list $(objdir)\$^&.lst  -o $(objdir)\$^. $[@	
+
+##################################################################################################
+

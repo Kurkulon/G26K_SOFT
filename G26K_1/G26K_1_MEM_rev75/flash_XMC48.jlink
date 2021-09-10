@@ -1,0 +1,6 @@
+SWDSelect
+speed 2000
+r
+exec device = XMC4800-1536
+loadbin obj\G26K_XMC48.bin,0x8010000
+exit
