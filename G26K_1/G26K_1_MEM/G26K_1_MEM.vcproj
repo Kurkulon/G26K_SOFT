@@ -94,6 +94,26 @@
 				CompileAsManaged=""
 			/>
 		</Configuration>
+		<Configuration
+			Name="Win32_Debug|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="0"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="wmake -h version=Win32_Debug targetcpu=WIN32"
+				ReBuildCommandLine="wmake -h -a version=Win32_Debug targetcpu=WIN32"
+				CleanCommandLine="@del /Q $(OutDir)\*.*"
+				Output="$(OutDir)\G26K_WIN32.exe"
+				PreprocessorDefinitions="_DEBUG,__softfp=,WIN32"
+				IncludeSearchPath="$(ProjectDir)libs\cpp;"
+				ForcedIncludes=""
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -106,38 +126,74 @@
 			<File
 				RelativePath=".\cpp\ComPort.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\emac.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\flash.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\hardware.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\main.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\options.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\req.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\trap.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\xtrap.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -148,79 +204,155 @@
 			<File
 				RelativePath=".\cpp\COM_DEF.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\common.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\ComPort.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\emac.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\EMAC_DEF.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\flash.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\hardware.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\list.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\main.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\options.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\req.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\rtc.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\trap.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\trap_def.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\vector.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\xtrap.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<File
 			RelativePath=".\makeobj"
 			>
+			<FileConfiguration
+				Name="Win32_Debug|Win32"
+				>
+			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\cpp\startup_SAME53.s"
 			>
+			<FileConfiguration
+				Name="Win32_Debug|Win32"
+				>
+			</FileConfiguration>
 		</File>
 		<File
 			RelativePath=".\cpp\startup_XMC4800.s"
 			>
+			<FileConfiguration
+				Name="Win32_Debug|Win32"
+				>
+			</FileConfiguration>
 		</File>
 	</Files>
 	<Globals>

@@ -12,6 +12,8 @@
 #define NAND_COL_BITS		11
 #define NAND_BLOCK_BITS		13
 #define NAND_PAGE_BITS		6
+#define NAND_SPARE_SIZE		64
+#define NAND_PAGE_SIZE		(1 << NAND_COL_BITS)
 #define NAND_RAWPAGE_MASK	((1 << (NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 #define NAND_RAWBLOCK_MASK	((1 << (NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 #define NAND_RAWADR_MASK	(((u64)1 << (NAND_COL_BITS + NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
@@ -194,5 +196,15 @@ extern void EnableDSP();
 extern void DisableDSP();	
 extern void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
 extern bool DSP_CheckDataComplete();
+
+#ifdef WIN32
+
+extern void I2C_Destroy();
+extern void SPI_Destroy();
+extern void UpdateDisplay();
+extern int PutString(u32 x, u32 y, byte c, const char *str);
+extern int Printf(u32 x, u32 y, byte c, const char *format, ... );
+
+#endif
 
 #endif // HARDWARE_H__23_12_2013__11_37

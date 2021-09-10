@@ -6,10 +6,14 @@
 //#include "rtc.h"
 //#include "vector.h"
 #include "trap_def.h"
+#include "list.h"
+#include <stddef.h>
 
 
 #define FLWB_LEN (8192+32)
 #define FLRB_LEN 1536
+
+#define UNIBUF_LEN (8192+32)
 
 //#define NAND_MAX_CHIP		8
 //#define NAND_CHIP_MASK		7
@@ -50,7 +54,7 @@ enum flash_save_repeat_type
 	FLASH_SAVE_REPEAT_HIGH = 4,	// .... 3 в новый блок
 };
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct FLADR
 {
@@ -100,7 +104,7 @@ struct FLADR
 	void	SubRaw(u32 v) { raw -= v; raw -= NAND_GetMemSize()->chipOffsetPrev[chip]; }
 };
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct VecData
 {
@@ -120,17 +124,103 @@ __packed struct VecData
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct FLWB
-{
-	FLWB *next;
+//struct _FLWB
+//{
+//	friend class Ptr<FLWB>;
+//	friend class List<FLWB>;
+//	friend class ListPtr<FLWB>;
+//
+//	FLWB*	next;
+//	u32		count;
+//
+//protected:
+//
+//	static List<FLWB> freeBufList;
+//
+//	static	FLWB*	Alloc()	{ FLWB* p = freeBufList.Get(); if (p != 0) p->count = 1; return p; };
+//			void	Free()	{ if (this != 0 && count != 0) { count--; if (count == 0) freeBufList.Add(this); }; }
+//
+//public:
+//
+//	FLWB() : next(0), count(0) { freeBufList.Add(this); }
+//
+//	//void* operator new(size_t i) { return ((FLWB*)0)->Alloc(); }
+//
+//	u16 	dataLen;
+//
+//	VecData vd;
+//};
 
-	//void	*data;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct UNIBUF : public PtrItem<UNIBUF>
+{
+	UNIBUF() : dataOffset(sizeof(VecData::Hdr)), dataLen(0)  { /*freeBufList.Add(this);*/ }
+
+	u16		dataOffset;
 	u16 	dataLen;
 
-	VecData vd;
+	byte	data[UNIBUF_LEN]; // Последние 2 байта CRC16
+
+	void*	GetDataPtr() { return data+dataOffset; }
 };
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//struct UNIBUF
+//{
+//	friend class Ptr<UNIBUF>;
+//	friend class List<UNIBUF>;
+//	friend class ListPtr<UNIBUF>;
+//
+//	UNIBUF*	next;
+//	u32		count;
+//
+//protected:
+//
+//	static List<UNIBUF> freeBufList;
+//
+//	static	UNIBUF*	Alloc()	{ UNIBUF* p = freeBufList.Get(); if (p != 0) p->count = 1; return p; };
+//			void	Free()	{ if (this != 0 && count != 0) { count--; if (count == 0) freeBufList.Add(this); }; }
+//
+//public:
+//
+//	UNIBUF() : next(0), count(0), dataOffset(sizeof(VecData::Hdr)), dataLen(0)  { freeBufList.Add(this); }
+//
+//	u16		dataOffset;
+//	u16 	dataLen;
+//
+//	byte	data[UNIBUF_LEN]; // Последние 2 байта CRC16
+//
+//	void*	GetDataPtr() { return data+dataOffset; }
+//};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//class PtrFLWB
+//{
+//	friend class List<PtrFLWB>;
+//
+//protected:
+//
+//	FLWB* buf;
+//
+//public:
+//
+//	PtrFLWB() : buf(0) {}
+//	PtrFLWB(const PtrFLWB& p) : buf(p.buf) { buf->count++; }
+//
+//	PtrFLWB& operator=(const PtrFLWB& p) { if (buf != p.buf) { buf->Free(); buf = p.buf; buf->count++; }; return *this; }
+//	~PtrFLWB() { buf->Free(); }
+//	bool Valid() { return buf != 0; }
+//
+//	void AllocBuf() { buf->Free(); buf = buf->Alloc(); }
+//	void FreeBuf() { buf->Free(); buf = 0; }
+//
+//	//FLWB* operator->() { return buf; }
+//};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 struct FLRB
 {
@@ -150,7 +240,7 @@ struct FLRB
 	byte	*data;
 };
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct FileDsc
 {
@@ -163,7 +253,7 @@ __packed struct FileDsc
 	byte		flags;
 };	
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct SpareArea
 {
@@ -199,15 +289,14 @@ __packed struct SpareArea
 	enum { CRC_SKIP = 6 };
 };
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-extern FLWB*	AllocFlashWriteBuffer();
+//extern FLWB*	AllocFlashWriteBuffer();
 extern FLRB*	AllocFlashReadBuffer();
-extern void		FreeFlashWriteBuffer(FLWB* b);
+//extern void		FreeFlashWriteBuffer(FLWB* b);
 extern void		FreeFlashReadBuffer(FLRB* b);
 extern bool		RequestFlashRead(FLRB* b);
-extern bool		RequestFlashWrite(FLWB* b, u16 devID);
+extern bool		RequestFlashWrite(Ptr<UNIBUF> &b, u16 devID);
 
 extern void NAND_Idle();
 extern void NAND_FullErase();
@@ -221,7 +310,8 @@ extern FileDsc* GetSessionInfo(u16 session, u64 adr);
 //extern const SessionInfo* GetLastSessionInfo();
 
 
-/*************************/
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 extern void FLASH_Init();
 extern bool FLASH_Reset();
 extern void FLASH_Update();
@@ -231,7 +321,8 @@ extern bool FLASH_WriteEnable();
 extern void FLASH_WriteDisable();
 extern byte FLASH_Status();
 
-/*****************************************************************************/
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// 
 //extern bool FLASH_Erase_Full();
 //extern bool FLASH_UnErase_Full();
 //extern bool FLASH_Write_Vector(u16 session, u16 device, RTC_type rtc, byte flags, byte *data, u16 size, flash_save_repeat_type repeat);
@@ -255,6 +346,6 @@ extern u64 FLASH_Used_Size_Get();
 //extern i64 FLASH_Empty_Size_Get();
 
 
-/*****************************************************************************/
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #endif // FLASH_H__09_08_2019__08_17

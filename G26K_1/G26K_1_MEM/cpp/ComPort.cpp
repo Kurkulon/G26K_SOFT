@@ -68,6 +68,8 @@ extern dword millisecondsCount;
 
 bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte stopBits)
 {
+#ifndef WIN32
+
 	if (_connected || port >= ArraySize(_bases) || _bases[port].used)
 	{
 		return false;
@@ -198,6 +200,12 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 	_status485 = READ_END;
 
 	return _connected = cb.used = true;
+
+#else
+
+	return true;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -228,6 +236,8 @@ void ComPort::InitHW()
 
 bool ComPort::Disconnect()
 {
+#ifndef WIN32
+
 	if (!_connected) return false;
 
 	DisableReceive();
@@ -236,6 +246,8 @@ bool ComPort::Disconnect()
 	_status485 = READ_END;
 
 	_connected = _bases[_portNum].used = false;
+
+#endif
 
 	return true;
 }
@@ -264,6 +276,10 @@ word ComPort::BoudToPresc(dword speed)
 
 		return 1024 - presc;
 
+	#elif defined(WIN32)
+		
+		return 0;
+
 	#endif
 }
 
@@ -271,6 +287,8 @@ word ComPort::BoudToPresc(dword speed)
 
 void ComPort::TransmitByte(byte v)
 {
+#ifndef WIN32
+
 	_pm->SET(_pinRTS);
 
 	#ifdef CPU_SAME53	
@@ -300,12 +318,15 @@ void ComPort::TransmitByte(byte v)
 
 	_pm->CLR(_pinRTS);
 
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::EnableTransmit(void* src, word count)
 {
+#ifndef WIN32
+
 	if (count == 0) return;
 
 	_pm->SET(_pinRTS);
@@ -413,12 +434,16 @@ void ComPort::EnableTransmit(void* src, word count)
 	#endif
 
 	_status485 = WRITEING;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::DisableTransmit()
 {
+#ifndef WIN32
+
 	#ifdef CPU_SAME53	
 
 		_chdma->CTRLA = 0;
@@ -440,12 +465,16 @@ void ComPort::DisableTransmit()
 	#endif
 
 	_pm->CLR(_pinRTS);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void ComPort::EnableReceive(void* dst, word count)
 {
+#ifndef WIN32
+
 	_pm->CLR(_pinRTS);
 
 	#ifdef CPU_SAME53	
@@ -549,6 +578,8 @@ void ComPort::EnableReceive(void* dst, word count)
 
 	#endif
 
+#endif
+
 	_rtm.Reset();
 
 	_status485 = WAIT_READ;
@@ -558,6 +589,8 @@ void ComPort::EnableReceive(void* dst, word count)
 
 void ComPort::DisableReceive()
 {
+#ifndef WIN32
+
 	_pm->CLR(_pinRTS);
 
 	#ifdef CPU_SAME53	
@@ -579,6 +612,8 @@ void ComPort::DisableReceive()
 		HW::DLR->LNEN &= ~(1<<_dlr);
 
 	#endif
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

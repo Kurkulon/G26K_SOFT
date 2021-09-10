@@ -45,12 +45,30 @@ void GetTime(RTC *t)
 {
 	if (t == 0) return;
 
+#ifndef WIN32
+
 	__disable_irq();
 
 	t->date = timeBDC.date;
 	t->time = timeBDC.time;
 
 	__enable_irq();
+
+#else
+
+	SYSTEMTIME lt;
+
+	GetLocalTime(&lt);
+
+	t->msec =  lt.wMilliseconds;
+	t->sec	=  lt.wSecond;
+	t->min 	=  lt.wMinute;
+	t->hour =  lt.wHour;
+	t->day 	=  lt.wDay;
+	t->mon 	=  lt.wMonth;
+	t->year =  lt.wYear;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -70,6 +88,8 @@ bool CheckTime(const RTC &t)
 
 bool SetTime(const RTC &t)
 {
+#ifndef WIN32
+
 	if (!CheckTime(t)) { return false; };
 
 	__disable_irq();
@@ -79,9 +99,29 @@ bool SetTime(const RTC &t)
 	__enable_irq();
 
 	return true;
+
+#else
+
+	SYSTEMTIME lt;
+
+	lt.wMilliseconds	=	t.msec;
+	lt.wSecond			=	t.sec;
+	lt.wMinute			=	t.min;
+	lt.wHour			=	t.hour;
+	lt.wDay				=	t.day;
+	lt.wMonth			=	t.mon;
+	lt.wYear			=	t.year;
+
+	return SetLocalTime(&lt);
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static __irq void Timer_Handler (void)
 {
@@ -148,10 +188,14 @@ static __irq void Timer_Handler (void)
 	};
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitTimer()
 {
+#ifndef WIN32
+
 	enum { freq = 1000 };
 
 	timeBDC.day = 1;
@@ -164,12 +208,16 @@ static void InitTimer()
 	CM4::SysTick->VAL = 0;
 	CM4::SysTick->CTRL = 7;
 	__enable_irq();
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void RTT_Init()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	#ifdef CPU_SAME53	
@@ -207,13 +255,15 @@ void RTT_Init()
 		slice->TCSET = 1;
 
 	#endif
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void Init_time()
 {
-	using namespace HW;
+	//using namespace HW;
 
 	InitTimer();
 	RTT_Init();

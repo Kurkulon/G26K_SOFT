@@ -1,8 +1,13 @@
 #ifndef TIME_H__04_08_2009__17_35
 #define TIME_H__04_08_2009__17_35
 
-#include "types.h"
+#ifdef WIN32
+#include <windows.h>
+#else
 #include "core.h"
+#endif
+
+#include "types.h"
 
 #define RTC_type RTC
 
@@ -47,23 +52,50 @@ extern void GetTime(RTC *t);
 
 //extern const u32 msec;
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 inline u32 GetMilliseconds()
 {
-	extern volatile u32 msec;
+#ifndef WIN32
+	extern u32 msec;
 	return msec;
+#else
+	return GetTickCount();
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline word GetMillisecondsLow()
+inline u16 GetMillisecondsLow()
 {
-	extern volatile u32 msec;
+#ifndef WIN32
+	extern u32 msec;
 	return (u16)msec;
+#else
+	return (u16)(GetTickCount());
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#ifdef CPU_SAME53	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define US2RT(x) ((x+500)/1000)
+#define MS2RT(x) (x)
+
+inline u32 GetRTT() { return (u32)(GetTickCount()); }
+
+struct RTM
+{
+	u32 pt;
+
+//	RTM32() : pt(0) {}
+	bool Check(u32 v) { u32 t = GetRTT(); if ((t - pt) >= v) { pt = t; return true; } else { return false; }; }
+	bool Timeout(u32 v) { return (GetRTT() - pt) >= v; }
+	void Reset() { pt = GetRTT(); }
+};
+
+#elif defined(CPU_SAME53)	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 #define US2RT(x) ((x*32768+500000)/1000000)

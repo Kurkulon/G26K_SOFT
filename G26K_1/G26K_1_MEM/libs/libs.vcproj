@@ -94,6 +94,26 @@
 				CompileAsManaged=""
 			/>
 		</Configuration>
+		<Configuration
+			Name="Win32_Debug|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="0"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="wmake -h version=Win32_Debug targetcpu=Win32"
+				ReBuildCommandLine="wmake -h -a version=Win32_Debug targetcpu=Win32"
+				CleanCommandLine="@del /Q $(OutDir)\*.*"
+				Output="$(ProjectDir)\sam3x8e_d.a"
+				PreprocessorDefinitions="_DEBUG,__softfp=,WIN32"
+				IncludeSearchPath=""
+				ForcedIncludes=""
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -106,54 +126,74 @@
 			<File
 				RelativePath=".\cpp\CRC16.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16_CCIT.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC32.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC16.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC16_2.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC16_CCIT.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC32.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\PointerCRC.cpp"
 				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayB.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayD.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayF.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\ReadArrayW.cpp"
-				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\time.cpp"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -164,47 +204,91 @@
 			<File
 				RelativePath=".\cpp\cm4.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\core.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16_CCIT.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC32.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\PointerCRC.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\same53.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\time.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\types.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\XMC4800.h"
 				>
+				<FileConfiguration
+					Name="Win32_Debug|Win32"
+					>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<File
 			RelativePath=".\makeobj"
 			>
+			<FileConfiguration
+				Name="Win32_Debug|Win32"
+				>
+			</FileConfiguration>
 		</File>
 	</Files>
 	<Globals>

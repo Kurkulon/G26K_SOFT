@@ -19,6 +19,12 @@ debug_compiler_options = -O0 --debug -D_DEBUG
 debug_linker_options = DEBUG ALL
 libsuffix = d
 
+!else ifeq version Win32_Debug
+
+debug_compiler_options = -O1
+debug_linker_options = 
+libsuffix=Win32
+
 !else 
 
 debug_compiler_options = -O3 -Otime --debug
@@ -108,6 +114,10 @@ link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph
   
 ##################################################################################################
 
+win32_compiler_options = -nologo -DWIN32 -D_TESTONPC_ -c -Z7 -Zp -wd4996
+
+##################################################################################################
+
 !include $(objdir)\mkoutcpp
 !include $(objdir)\mkoutobj
 
@@ -115,8 +125,18 @@ link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph
 
 $(libname) : $(modules_obj)	
 	@echo Creating library $(libname) ...
+!ifneq version Win32_Debug
 	@$(bindir)\armar --create $(libname) $(modules_obj)
+!else
+	@echo Library adding: $(modules)
+	@if NOT EXIST "$(libname)" (call lib -NOLOGO -OUT:"$(libname)" -LIBPATH:"$(objdir)\" $(modules_obj)) &
+	ELSE call lib -NOLOGO -OUT:"$(libname)" -LIBPATH:"$(objdir)\" "$(libname)" $(modules_obj)
+!endif
 	
+##################################################################################################
+
+!ifneq version Win32_Debug
+
 ##################################################################################################
 
 !include $(objdir)\mkoutdep
@@ -134,4 +154,15 @@ $(libname) : $(modules_obj)
 	@$(bindir)\armasm $(asm_options) --list $(objdir)\$^&.lst  -o $(objdir)\$^. $[@	
 
 ##################################################################################################
+
+!else
+
+##################################################################################################
+
+.cpp.o:	.AUTODEPEND
+	@cl $(win32_compiler_options) -Fo"$(objdir)\$^." $[@
+
+##################################################################################################
+
+!endif
 

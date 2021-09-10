@@ -120,12 +120,21 @@ class ComPort
 //		u16	GetRecievedLen() { return _pReadBuffer->maxLen - _prevDmaCounter; }
 		u16	GetRecievedLen() { return _chdma->DAR - _startDmaCounter; }
 
+	#elif defined(WIN32)
+
+		bool IsTransmited() { return true; }
+		u32	GetDmaCounter() { return 0; }
+		u16	GetRecievedLen() { return 0; }
+
 	#endif
 
-
+#ifndef WIN32
 	static ComBase	_bases[3];
 
 	ComBase			*_cb;
+
+#endif
+
 	bool			_connected;
 	byte			_status485;
 	byte			_portNum;
@@ -183,9 +192,9 @@ class ComPort
 
 	void		TransmitByte(byte v);
 
-	static __irq void _IntHandlerCom1();
-	static __irq void _IntHandlerCom2();
-	static __irq void _IntHandlerCom3();
+	//static __irq void _IntHandlerCom1();
+	//static __irq void _IntHandlerCom2();
+	//static __irq void _IntHandlerCom3();
 
 };
 

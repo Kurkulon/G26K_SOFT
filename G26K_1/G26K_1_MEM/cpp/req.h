@@ -3,6 +3,8 @@
 
 #include "ComPort.h"
 
+#include "list.h"
+#include "flash.h"
 
 //struct Request
 //{
@@ -173,138 +175,162 @@ __packed struct  ReqDsp07	// перезагрузить блэкфин
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqTrm01	
+union ReqUnion
 {
-	byte 	len;
-	byte 	func;
-	byte 	n; 
-	word 	crc;  
+	ReqDsp01 	dsp01;	
+	ReqDsp05 	dsp05;	
+	ReqDsp06 	dsp06;	
+	ReqDsp07 	dsp07;	
+	ReqMoto		moto;	
+	ReqBootMoto bootMoto;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqTrm02	
-{
-	byte 	len;
-	byte 	f;
-	word 	crc;  
-};
+//__packed struct ReqTrm01	
+//{
+//	byte 	len;
+//	byte 	func;
+//	byte 	n; 
+//	word 	crc;  
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct RspTrm02	
-{
-	byte f; 
-	u16 hv; 
-	u16 crc;
-};
+//__packed struct ReqTrm02	
+//{
+//	byte 	len;
+//	byte 	f;
+//	word 	crc;  
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqTrm03	
-{
-	byte 	len;
-	byte	f; 
-	byte	fireCountM; 
-	byte	fireCountXY; 
-	u16		hv;
-	word 	crc;  
-};
+//__packed struct RspTrm02	
+//{
+//	byte f; 
+//	u16 hv; 
+//	u16 crc;
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct RspTrm03	
-{
-	byte f; 
-	u16 crc;
-};
+//__packed struct ReqTrm03	
+//{
+//	byte 	len;
+//	byte	f; 
+//	byte	fireCountM; 
+//	byte	fireCountXY; 
+//	u16		hv;
+//	word 	crc;  
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqMem
-{
-	u16 rw; 
-	u32 cnt; 
-	u16 gain; 
-	u16 st; 
-	u16 len; 
-	u16 delay; 
-	u16 data[1024*4]; 
-	u16 crc;
-
-	//byte adr;
-	//byte func;
-	
-	//__packed union
-	//{
-	//	__packed struct  { word crc; } f1;  // Старт новой сессии
-	//	__packed struct  { word crc; } f3;  
-	//};
-};
+//__packed struct RspTrm03	
+//{
+//	byte f; 
+//	u16 crc;
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct RspMem
-{
-	u16 rw; 
-	u16 crc; 
-
-	//byte	adr;
-	//byte	func;
-	
-	//__packed union
-	//{
-	//	__packed struct  { word crc; } f1;  // Старт новой сессии
-	//	__packed struct  { word crc; } f2;  // Запись вектора
-	//	__packed struct  { word crc; } f3;  // 
-	//	__packed struct  { word crc; } fFE;  // Ошибка CRC
-	//	__packed struct  { word crc; } fFF;  // Неправильный запрос
-	//};
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-__packed struct RspMan60
-{
-	u16 rw; 
-	u32 cnt; 
-	u16 maxAmp[96]; 
-	u16 power[96];
-};
+//__packed struct ReqMem
+//{
+//	u16 rw; 
+//	u32 cnt; 
+//	u16 gain; 
+//	u16 st; 
+//	u16 len; 
+//	u16 delay; 
+//	u16 data[1024*4]; 
+//	u16 crc;
+//
+//	//byte adr;
+//	//byte func;
+//	
+//	//__packed union
+//	//{
+//	//	__packed struct  { word crc; } f1;  // Старт новой сессии
+//	//	__packed struct  { word crc; } f3;  
+//	//};
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct REQ
+//__packed struct RspMem
+//{
+//	u16 rw; 
+//	u16 crc; 
+//
+//	//byte	adr;
+//	//byte	func;
+//	
+//	//__packed union
+//	//{
+//	//	__packed struct  { word crc; } f1;  // Старт новой сессии
+//	//	__packed struct  { word crc; } f2;  // Запись вектора
+//	//	__packed struct  { word crc; } f3;  // 
+//	//	__packed struct  { word crc; } fFE;  // Ошибка CRC
+//	//	__packed struct  { word crc; } fFF;  // Неправильный запрос
+//	//};
+//};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//__packed struct RspMan60
+//{
+//	u16 rw; 
+//	u32 cnt; 
+//	u16 maxAmp[96]; 
+//	u16 power[96];
+//};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct REQ : public PtrItem<REQ>
 {
 	bool	ready;
 	bool	crcOK;
 	bool	checkCRC;
 	bool	updateCRC;
 
-	typedef void tRsp(REQ*);
+	typedef void tRsp(Ptr<REQ> &q);
 
 	u16		tryCount;
 	
-	REQ *next;
+	//REQ *next;
 
-	tRsp*	CallBack;
-	void*	ptr;
+	tRsp		*CallBack;
+	Ptr<UNIBUF>	rsp;
 
-	ComPort::WriteBuffer *wb;
-	ComPort::ReadBuffer *rb;
+	ComPort::WriteBuffer wb;
+	ComPort::ReadBuffer rb;
 
 	u32		preTimeOut, postTimeOut;
 
-	REQ() : next(0), wb(0), rb(0), tryCount(0) {}
+	byte	reqData[(sizeof(ReqUnion)+64) & ~3];
+
+protected:
+
+	virtual void _FreeCallBack() { rsp.Free(); }
+
+public:
+
+	//void	Free() { if (this != 0) rsp.Free(), PtrItem<REQ>::Free(); }
+
+	REQ() : tryCount(0) { }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 class RequestQuery
 {
-	REQ* _first;
-	REQ* _last;
-	REQ* _req;
+	//REQ* _first;
+	//REQ* _last;
+	Ptr<REQ> _req;
+
+	ListPtr<REQ>	reqList;
 	
 	byte _state;
 
@@ -316,18 +342,18 @@ class RequestQuery
 
 	ComPort *com;
 
-	u32		count;
+	//u32		count;
 
 	bool _run;
 
 public:
 
-	RequestQuery(ComPort *p) : _first(0), _last(0), _run(true), _state(0), com(p), count(0) {}
-	void Add(REQ* req);
-	REQ* Get();
-	bool Empty() { return _first == 0; }
-	bool Idle() { return (_first == 0) && (_req == 0); }
-	bool Stoped() { return _req == 0; }
+				RequestQuery(ComPort *p) : _run(true), _state(0), com(p) {}
+	void		Add(const Ptr<REQ>& req)	{ reqList.Add(req); }
+	Ptr<REQ>	Get()						{ return reqList.Get(); }
+	//bool Empty() { return reqList.Empty(); }
+	//bool Idle() { return (_first == 0) && (_req == 0); }
+	bool Stoped() { return !_req.Valid(); }
 	void Update();
 	void Stop() { _run = false; }
 	void Start() { _run = true; }
@@ -335,22 +361,35 @@ public:
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct R01
-{
-	R01* next;
-
-//	bool memNeedSend;
-	ComPort::WriteBuffer	wb;
-	ComPort::ReadBuffer		rb;
-	REQ			q;
-	ReqDsp01	req;
-	RspDsp01	rsp;
-};
+//struct R01
+//{
+//	R01*	next;
+//
+//protected:
+//
+//	u32		count;
+//
+//	static List<R01> freeList;
+//
+//public:
+//
+////	bool memNeedSend;
+//	//ComPort::WriteBuffer	wb;
+//	//ComPort::ReadBuffer		rb;
+//	REQ			q;
+//	ReqDsp01	req;
+//	RspDsp01	rsp;
+//
+//	R01() : next(0) { freeList.Add(this); }
+//
+//	static	R01*	Alloc()	{ R01* p = freeList.Get(); if (p != 0) p->count = 1; return p; };
+//			void	Free()	{ if (this != 0 && count != 0) { count--; if (count == 0) freeList.Add(this); }; }
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-struct RMEM
+/*struct RMEM
 {
 	RMEM* next;
 
@@ -361,7 +400,7 @@ struct RMEM
 	REQ		q;
 	ReqMem	req;
 	RspMem	rsp;
-};
+};*/
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

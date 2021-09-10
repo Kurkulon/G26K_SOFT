@@ -6,46 +6,57 @@
 #pragma O3
 #pragma Otime
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//List<R01> R01::freeList;
+//static R01 r02[8];
 
-void RequestQuery::Add(REQ* req)
-{
-	if (req != 0)
-	{
-		req->ready = false;
-
-		if (_first == 0)
-		{
-			_first = _last = req;
-		}
-		else
-		{
-			_last->next = req;
-			_last = req;
-		};
-
-		req->next = 0;
-
-		count++;
-	};
-}
+//List< PtrItem<REQ> > PtrItem<REQ>::_freeList;
+template <class T> List< PtrItem<T> > PtrItem<T>::_freeList;
+static REQ reqArray[8];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-REQ* RequestQuery::Get()
-{
-	REQ* r = _first;
+//void REQ::_FreeCallBack() 
 
-	if (_first != 0)
-	{
-		_first = _first->next;
-		r->next = 0;
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-		count--;
-	};
+//void RequestQuery::Add(REQ* req)
+//{
+//	if (req != 0)
+//	{
+//		req->ready = false;
+//
+//		if (_first == 0)
+//		{
+//			_first = _last = req;
+//		}
+//		else
+//		{
+//			_last->next = req;
+//			_last = req;
+//		};
+//
+//		req->next = 0;
+//
+//		count++;
+//	};
+//}
 
-	return r;
-}
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//REQ* RequestQuery::Get()
+//{
+//	REQ* r = _first;
+//
+//	if (_first != 0)
+//	{
+//		_first = _first->next;
+//		r->next = 0;
+//
+//		count--;
+//	};
+//
+//	return r;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -57,27 +68,30 @@ void RequestQuery::Update()
 	{
 		case 0:
 
-			_req = (_run) ? Get() : 0;
+			if (_run)
+			{
+				_req = Get();
 
-			if (_req != 0) _state++;
+				if (_req.Valid()) _state++;
+			};
 
 			break;
 
 		case 1:
 
-			if (_req->wb != 0)
+			if (_req->wb.data != 0 && _req->wb.len != 0)
 			{
 				if (_req->updateCRC)
 				{
 					_crc = 0xFFFF;
-					_crcLen = _req->wb->len;
-					_crcPtr = (byte*) _req->wb->data;
+					_crcLen = _req->wb.len;
+					_crcPtr = (byte*) _req->wb.data;
 
 					_state++;
 				}
 				else
 				{
-					com->Write(_req->wb);
+					com->Write(&_req->wb);
 					_state = 3;
 				};
 			}
@@ -105,10 +119,10 @@ void RequestQuery::Update()
 				{
 					DataPointer p(_crcPtr);
 					*p.w = _crc;
-					_req->wb->len += 2;
+					_req->wb.len += 2;
 					_req->updateCRC = false;
 
-					com->Write(_req->wb);
+					com->Write(&_req->wb);
 					_state++;
 				};
 			};
@@ -119,9 +133,9 @@ void RequestQuery::Update()
 
 			if (!com->Update())
 			{
-				if (_req->rb != 0)
+				if (_req->rb.data != 0 && _req->rb.maxLen != 0)
 				{
-					com->Read(_req->rb, _req->preTimeOut, _req->postTimeOut); 
+					com->Read(&_req->rb, _req->preTimeOut, _req->postTimeOut); 
 					_state++;
 				}
 				else
@@ -136,11 +150,11 @@ void RequestQuery::Update()
 
 			if (!com->Update())
 			{
-				if (_req->checkCRC && _req->rb->recieved)
+				if (_req->checkCRC && _req->rb.recieved)
 				{
 					_crc = 0xFFFF;
-					_crcLen = _req->rb->len;
-					_crcPtr = (byte*) _req->rb->data;
+					_crcLen = _req->rb.len;
+					_crcPtr = (byte*) _req->rb.data;
 
 					_state++;
 				}
@@ -187,11 +201,6 @@ void RequestQuery::Update()
 
 			if (_req->CallBack != 0)
 			{
-				//if (!HW::RomCheck((void*)_req->CallBack))
-				//{
-				//	__breakpoint(0);
-				//};
-
 				_req->CallBack(_req);
 			};
 

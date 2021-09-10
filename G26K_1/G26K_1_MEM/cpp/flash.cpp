@@ -59,16 +59,31 @@ static bool __memcmp(ConstDataPointer s, ConstDataPointer d, u32 len)
 //#define FLASH_SAVE_BUFFER_SIZE		8400
 //#define FLASH_READ_BUFFER_SIZE		8400
 
-static FLWB flashWriteBuffer[4];
+//static PtrFLWB flashPtrFLWB_Buffer[16];
+
+
+List<ListItem> ListItem::freeItemList;
+static ListItem listItems[128];
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//void UNIBUF::_FreeCallBack() {  }
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//List<UNIBUF> UNIBUF::freeBufList;
+static UNIBUF flashWriteBuffer[4];
 static FLRB flashReadBuffer[4];
 
-static List<FLWB> freeFlWrBuf;
-static List<FLWB> writeFlBuf;
+//List<PtrFLWB> PtrFLWB::freePtrList;
+
+//static List<FLWB> freeFlWrBuf;
+static ListRef<UNIBUF> writeFlBuf;
 
 static List<FLRB> freeFlRdBuf;
 static List<FLRB> readFlBuf;
 
-static FLWB *curWrBuf = 0;
+static Ptr<UNIBUF> curWrBuf;
 static FLRB *curRdBuf = 0;
 
 //static SpareArea spareRead;
@@ -213,10 +228,10 @@ static u32		invalidBlocks = 0;
 
 static void InitFlashBuffer()
 {
-	for (byte i = 0; i < ArraySize(flashWriteBuffer); i++)
-	{
-		freeFlWrBuf.Add(&flashWriteBuffer[i]);
-	};
+	//for (byte i = 0; i < ArraySize(flashWriteBuffer); i++)
+	//{
+	//	freeFlWrBuf.Add(&flashWriteBuffer[i]);
+	//};
 
 	for (byte i = 0; i < ArraySize(flashReadBuffer); i++)
 	{
@@ -226,17 +241,17 @@ static void InitFlashBuffer()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-FLWB* AllocFlashWriteBuffer()
-{
-	return freeFlWrBuf.Get();
-}
+//FLWB* AllocFlashWriteBuffer()
+//{
+//	return FLWB::freeBufList.Get();
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void FreeFlashWriteBuffer(FLWB* b)
-{
-	freeFlWrBuf.Add(b);
-}
+//void FreeFlashWriteBuffer(FLWB* b)
+//{
+//	b->Free();
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -473,6 +488,7 @@ struct Write
 
 	byte	wr_pg_error;
 	u16		wr_count;
+	VecData *vector;
 	byte*	wr_data	;
 	void*	wr_ptr	;
 
@@ -612,32 +628,29 @@ void Write::Vector_Make(VecData *vd, u16 size)
 
 bool Write::Start()
 {
-	if ((curWrBuf = writeFlBuf.Get()) != 0)
+	curWrBuf = writeFlBuf.Get();
+
+	if (curWrBuf.Valid())
 	{
 		rcvVec += 1;
 
-		if (!writeFlashEnabled || flashFull)
+		if (!writeFlashEnabled || flashFull || curWrBuf->dataOffset < sizeof(VecData::Hdr))
 		{
 //			rejVec += 1;
 
 //			curWrBuf->ready[0] = true;
-			freeFlWrBuf.Add(curWrBuf);
+			curWrBuf.Free();
 			return false;
 		};
 
-		Vector_Make(&curWrBuf->vd, curWrBuf->dataLen); 
+		vector = (VecData*)(curWrBuf->data + curWrBuf->dataOffset - sizeof(VecData::Hdr));
 
-//		curWrBuf->dataLen += sizeof(curWrBuf->vd.vec);
-//		curWrBuf->hdrLen = 0;
-
-		
+		Vector_Make(vector, curWrBuf->dataLen);
+	
 		prWrAdr = wr.GetRawAdr();
 
-		wr_data = (byte*)&curWrBuf->vd;
-		wr_count = curWrBuf->dataLen + sizeof(curWrBuf->vd.h);
-
-//		wr_cur_col = wr.col;
-//		wr_cur_pg = wr.GetRawPage();
+		wr_data = (byte*)vector;
+		wr_count = vector->h.dataLen + sizeof(vector->h);
 
 		if (spare.vecFstOff == 0xFFFF)
 		{
@@ -667,19 +680,19 @@ bool Write::Start()
 
 void Write::Finish()
 {
-	if (curWrBuf != 0)
+	if (curWrBuf.Valid())
 	{
-		nvv.f.size += curWrBuf->vd.h.dataLen;
-		nvv.f.stop_rtc = curWrBuf->vd.h.rtc;
+		nvv.f.size += vector->h.dataLen + sizeof(vector->h);
+		nvv.f.stop_rtc = vector->h.rtc;
 		nvv.f.lastPage = spare.rawPage;
 
 		SaveParams();
 
 //		curWrBuf->ready[0] = true;
 
-		freeFlWrBuf.Add(curWrBuf);
+		curWrBuf.Free();
 
-		curWrBuf = 0;
+		//curWrBuf = 0;
 
 		//wr_prev_col = wr_cur_col;
 		//wr_prev_pg = wr_cur_pg;
@@ -2219,29 +2232,32 @@ static byte GetRequestCRC(byte *s, u32 len)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool RequestFlashWrite(FLWB* fwb, u16 devID)
+bool RequestFlashWrite(Ptr<UNIBUF> &fwb, u16 devID)
 {
 	bool result = false;
 
-	if (fwb == 0)
+	if (!fwb.Valid())
 	{
-//		freeReqList.Add(req);
+		//		freeReqList.Add(req);
 	}
-	else if (fwb->dataLen > 0)
+	else
 	{
-		DataPointer p(fwb->vd.data);
+		if (fwb->dataLen > 0 && fwb->dataOffset >= sizeof(VecData::Hdr))
+		{
+			VecData* vd = (VecData*)(curWrBuf->data + fwb->dataOffset - sizeof(VecData::Hdr));
 
-		p.b += fwb->dataLen;
+			DataPointer p(vd->data);
 
-		*p.w = CRC_CCITT_DMA(fwb->vd.data, fwb->dataLen, 0xFFFF);
+			p.b += fwb->dataLen;
 
-		fwb->dataLen += 2;
+			*p.w = CRC_CCITT_DMA(vd->data, fwb->dataLen, 0xFFFF);
 
-		fwb->vd.h.device = deviceID = devID;
+			fwb->dataLen += 2;
 
-		writeFlBuf.Add(fwb);
+			vd->h.device = deviceID = devID;
 
-		result = true;
+			result = writeFlBuf.Add(fwb);
+		};
 	};
 
 	return result;
@@ -2249,61 +2265,56 @@ bool RequestFlashWrite(FLWB* fwb, u16 devID)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestTestWrite(FLWB *fwb)
-{
-	__packed struct Req 
-	{ 
-		u32 cnt; 
-		
-		__packed struct Control	{ u16 version; u32 count; /* счЄтчик 50√ц измерений */ i16 voltage, temperature; byte status, flags; u16 errors; } con;
-		__packed struct Gen		{ u16 version; i16 voltage, current, offset, temperature;	byte status, flags;	u16 errors;	} gen;
-		__packed struct Incl	{ u16 version, ax, ay,az,fx,fy,fz, az_correction, temperature_sensor;	i16 temperature; byte status,flags;	u16 errors;	} incl;
-		__packed struct Zond	{ u16 version; i16 compensation, temperature; byte status, flags; u16 errors; } zond;
-		__packed struct Driver	{ u16 version,voltage,current; i16 temperature; byte status, flags; u16 errors;} driver;
-		__packed struct Comm	{ u16 version;	i16 radius[4];	i16 temperature;byte status;byte flags;	u16 errors;	} comm[2];
-		__packed struct Electrode {	u16 version; i16 current[24]; i16 phase[24]; i16 temperature; byte status; byte flags; u16 errors; } elect[8];
-
-		u16 crc; 
-	};
-
-	static u32 pt = 0;
-
-	if (fwb == 0)
-	{
-		return;
-	};
-
-	u32 t = GetMilliseconds();
-
-	if (t == pt)
-	{
-		freeFlWrBuf.Add(fwb);
-
-		return;
-	};
-
-	pt = t;
-
-	static byte nr = 0;
-	static byte nf = 0;
-	static u32 count = 0;
-
-	VecData &vd = fwb->vd;
-
-	Req &req = *((Req*)vd.data);
-
-	vd.h.device = 0xEC00;
-	req.cnt = count;
-
-	count += 1;
-
-	fwb->dataLen = sizeof(req);
-
-//	req.crc = GetCRC16(fwb->vd.data, fwb->dataLen - 2);
-	req.crc = CRC_CCITT_DMA(fwb->vd.data, fwb->dataLen - 2, 0xFFFF);
-	
-	RequestFlashWrite(fwb, 0xEC00);
-}
+//static void RequestTestWrite(Ptr<UNIBUF> &fwb)
+//{
+//	__packed struct Req 
+//	{ 
+//		u32 cnt; 
+//		
+//		__packed struct Control	{ u16 version; u32 count; /* счЄтчик 50√ц измерений */ i16 voltage, temperature; byte status, flags; u16 errors; } con;
+//		__packed struct Gen		{ u16 version; i16 voltage, current, offset, temperature;	byte status, flags;	u16 errors;	} gen;
+//		__packed struct Incl	{ u16 version, ax, ay,az,fx,fy,fz, az_correction, temperature_sensor;	i16 temperature; byte status,flags;	u16 errors;	} incl;
+//		__packed struct Zond	{ u16 version; i16 compensation, temperature; byte status, flags; u16 errors; } zond;
+//		__packed struct Driver	{ u16 version,voltage,current; i16 temperature; byte status, flags; u16 errors;} driver;
+//		__packed struct Comm	{ u16 version;	i16 radius[4];	i16 temperature;byte status;byte flags;	u16 errors;	} comm[2];
+//		__packed struct Electrode {	u16 version; i16 current[24]; i16 phase[24]; i16 temperature; byte status; byte flags; u16 errors; } elect[8];
+//
+//		u16 crc; 
+//	};
+//
+//	static u32 pt = 0;
+//
+//	u32 t = GetMilliseconds();
+//
+//	if (!fwb.Valid() || t == pt)
+//	{
+//		fwb.Free();
+//
+//		return;
+//	};
+//
+//	pt = t;
+//
+//	static byte nr = 0;
+//	static byte nf = 0;
+//	static u32 count = 0;
+//
+//	VecData &vd = fwb->vd;
+//
+//	Req &req = *((Req*)vd.data);
+//
+//	vd.h.device = 0xEC00;
+//	req.cnt = count;
+//
+//	count += 1;
+//
+//	fwb->dataLen = sizeof(req);
+//
+////	req.crc = GetCRC16(fwb->vd.data, fwb->dataLen - 2);
+//	req.crc = CRC_CCITT_DMA(fwb->vd.data, fwb->dataLen - 2, 0xFFFF);
+//	
+//	RequestFlashWrite(fwb, 0xEC00);
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

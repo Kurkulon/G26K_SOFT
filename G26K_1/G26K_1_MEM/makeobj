@@ -18,6 +18,13 @@ debug_compiler_options = -O0 --debug -D_DEBUG
 debug_linker_options = 
 libsuffix=d
 
+!else ifeq version Win32_Debug
+
+debug_compiler_options = -Od #/analyze
+debug_compiler_options6 = -Od
+debug_linker_options = 
+libsuffix=Win32
+	
 !else
 
 debug_compiler_options = -O3 -Otime --debug 
@@ -101,6 +108,14 @@ link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph
   
 ##################################################################################################
 
+win32_compiler_options = $(debug_compiler_options) -nologo -DWIN32 -D_TESTONPC_ -D_DEBUG_ -c -Z7 -Zp -wd4996 -I"$(libdir)\cpp"
+
+##################################################################################################
+
+win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib user32.lib gdi32.lib WS2_32.lib
+  
+##################################################################################################
+
 !include $(objdir)\mkoutcpp
 !include $(objdir)\mkoutobj
 
@@ -134,6 +149,7 @@ link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph
 #	$]: 	c:\dir2\
 #
 ##################################################################################################
+!ifneq version Win32_Debug
 
 $(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cppdir)\G26K2LPC824.BIN.H $(cpu_obj) $(modules_obj)
 	@echo Linking ...
@@ -147,6 +163,14 @@ $(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cppdir)\G26K2LPC824.
 	@$(bindir)\fromelf --text -z $^@ 
 	@if NOT EXIST .\OBJ @md .\OBJ >nul
 	@copy /Y $^@ .\OBJ\ >nul
+
+!else
+
+$(objdir)\$(target_name).exe : makefile $(libname) $(modules_obj)	
+	@echo Linking ...
+	@call link $(win32_link_options) -OUT:$^@ $(objdir)\*.o $(libname)
+
+!endif
 	
 ##################################################################################################
 
@@ -157,6 +181,10 @@ $(cppdir)\G26K1BF592.LDR.H : ..\..\G26K_2\G26K_2_BF592\G26K2BF592\Release\G26K1B
 
 $(cppdir)\G26K2LPC824.BIN.H : ..\..\G26K_2\G26K_2_LPC824\G26K2LPC824\OBJ\G26K2LPC824.bin
 	@bin2cpp $[@ $^@
+
+##################################################################################################
+
+!ifneq version Win32_Debug
 
 ##################################################################################################
 
@@ -179,4 +207,15 @@ $(cppdir)\G26K2LPC824.BIN.H : ..\..\G26K_2\G26K_2_LPC824\G26K2LPC824\OBJ\G26K2LP
 	@$(bindir)\armasm $(asm_options) --list $(objdir)\$^&.lst  -o $(objdir)\$^. $[@	
 
 ##################################################################################################
+
+!else
+
+##################################################################################################
+
+.cpp.o:	.AUTODEPEND
+	@cl $(win32_compiler_options) -Fo"$(objdir)\$^." $[@
+
+##################################################################################################
+
+!endif
 

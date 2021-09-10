@@ -530,7 +530,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 		{
 			case TRAP_INFO_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-				TrapInfoSet &ts = (TrapInfoSet&)*t;
+				//TrapInfoSet &ts = (TrapInfoSet&)*t;
 
 				switch (t->hdr.cmd)
 				{
@@ -543,7 +543,9 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 					case TRAP_INFO_COMMAND_SET_NUMBER:
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_INFO_DEVICE, TrapRxCounter);
-						SetNumDevice(ts.number);
+						
+						{ TrapInfoSet &ts = (TrapInfoSet&)*t; SetNumDevice(ts.number); };
+						
 						SaveMainParams();
 
 						break;
@@ -580,10 +582,11 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 					case TRAP_CLOCK_COMMAND_SET:
 
-						TrapClock &tc = (TrapClock&)*t;
+						//TrapClock &tc = (TrapClock&)*t;
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_CLOCK_DEVICE, TrapRxCounter);	
-						SetClock(tc.rtc);
+
+						{ TrapClock &tc = (TrapClock&)*t; SetClock(tc.rtc); };
 
 						if (__trace) { TRAP_TRACE_PrintString(" TRAP_CLOCK_COMMAND_SET \r\n"); };
 
@@ -593,7 +596,8 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						TRAP_INFO_SendError(TRAP_PACKET_ERROR_UNKNOW);
 						break;
-				}
+				};
+
 				break;
 
 			case TRAP_MEMORY_DEVICE: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -624,9 +628,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						if(need_ask == TRAP_PACKET_NEED_ASK) TRAP_SendAsknowlege(TRAP_MEMORY_DEVICE, TrapRxCounter);
 
-						TrapReadVector &tr = (TrapReadVector&)*t;
-
-						StartSendVector(tr.session, tr.last_adress);
+						{ TrapReadVector &tr = (TrapReadVector&)*t; StartSendVector(tr.session, tr.last_adress); };
 
 //						Mode_Ethernet_Flash_Read_Vector_Start(tr.session, tr.last_adress);
 

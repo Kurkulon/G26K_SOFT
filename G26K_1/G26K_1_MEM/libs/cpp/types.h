@@ -14,6 +14,7 @@
 #define __irq __declspec(naked)
 #define __align(v)
 #define __attribute__(v)
+#define __func__ __FUNCTION__
 
 inline void __disable_irq() {}
 inline void __enable_irq() {}
@@ -50,19 +51,21 @@ inline bool dIsValid(float v) { return (((u32*)&v)[2] & 0x7FF0) != 0x7FF0; }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef WIN32
+
+inline void Read32(u32 v) {  }
+inline word ReverseWord(word v) { return ((v&0x00FF)<<8 | (v&0xFF00)>>8); }
+inline dword ReverseDword(dword v) { v = (v&0x00FF00FF)<<8 | (v&0xFF00FF00)>>8;	return (v&0x0000FFFF)<<16 | (v&0xFFFF0000)>>16; }
+inline dword SwapDword(dword v) { return (v&0x00FF00FF)<<8 | (v&0xFF00FF00)>>8; }
+
+#else
+
 inline void Read32(u32 v) { u32 t; __asm { add t, v }; }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 inline u16 ReverseWord(u16 v) { __asm	{ rev16 v, v };	return v; }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 inline u32 ReverseDword(u32 v) { return __rev(v); }
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 inline dword SwapDword(dword v) { __asm { rev16 v, v }; return v; }
+
+#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

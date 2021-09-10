@@ -4,15 +4,45 @@
 #include "COM_DEF.h"
 
 #include "hardware.h"
-//#include "options.h"
 
-//#pragma O3
-//#pragma Otime
+#ifdef WIN32
 
-#ifdef CPU_SAME53	
-#elif defined(CPU_XMC48)
-#endif
+#include <windows.h>
+#include <Share.h>
+#include <conio.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include "CRC16_CCIT.h"
 
+static HANDLE handleNandFile;
+static const char nameNandFile[] = "NAND_FLASH_STORE.BIN";
+
+static byte nandChipSelected = 0;
+
+static u64 curNandFilePos = 0;
+static u64 curNandFileBlockPos = 0;
+static u32 curBlock = 0;
+static u16 curPage = 0;
+static u16 curCol = 0;
+
+static OVERLAPPED	_overlapped;
+static u32			_ovlReadedBytes = 0;
+static u32			_ovlWritenBytes = 0;
+
+static void* nandEraseFillArray;
+static u32 nandEraseFillArraySize = 0;
+static byte nandReadStatus = 0x41;
+static u32 lastError = 0;
+
+
+static byte fram_I2c_Mem[0x10000];
+static byte fram_SPI_Mem[0x40000];
+
+static bool fram_spi_WREN = false;
+
+static u16 crc_ccit_result = 0;
+
+#endif 
 
 #define GEAR_RATIO 12.25
 
@@ -726,6 +756,11 @@ static void I2C_Init();
 
 	static void delay(u32 cycles) { for(volatile u32 i = 0UL; i < cycles ;++i) { __nop(); }}
 
+#elif defined(WIN32) //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define BAUD2CLK(x)				(x)
+	#define MT(v)					(v)
+
 #endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -735,16 +770,21 @@ static void I2C_Init();
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifndef WIN32
+
 __forceinline 	void EnableVCORE()	{ PIO_ENVCORE->CLR(ENVCORE); 	}
 __forceinline 	void DisableVCORE()	{ PIO_ENVCORE->SET(ENVCORE); 	}
 				void EnableDSP()	{ PIO_RESET->CLR(RESET); 		}
 				void DisableDSP()	{ PIO_RESET->SET(RESET); 		}
+
+#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 /*----------------------------------------------------------------------------
   Initialize the system
  *----------------------------------------------------------------------------*/
+#ifndef WIN32
 
 extern "C" void SystemInit()
 {
@@ -1059,6 +1099,7 @@ extern "C" void SystemInit()
 
 }
 
+#endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //#define NAND_BASE_PIO_DATA 		AT91C_BASE_PIOA
@@ -1093,10 +1134,13 @@ __packed struct NandID
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static u32 chipSelect[NAND_MAX_CHIP] = { FCS0, FCS1, FCS2, FCS3, FCS4, FCS5, FCS6, FCS7 };
 
 #define maskChipSelect (FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7)
+
+#endif
 
 #ifdef CPU_SAME53	
 
@@ -1108,6 +1152,11 @@ static u32 chipSelect[NAND_MAX_CHIP] = { FCS0, FCS1, FCS2, FCS3, FCS4, FCS5, FCS
 	volatile byte * const FLC = (byte*)0x60000008;	
 	volatile byte * const FLA = (byte*)0x60000010;	
 	volatile byte * const FLD = (byte*)0x60000000;	
+
+	#define NAND_DIR_IN() {}
+	#define NAND_DIR_OUT() {}
+
+#elif defined(WIN32)
 
 	#define NAND_DIR_IN() {}
 	#define NAND_DIR_OUT() {}
@@ -1131,6 +1180,8 @@ static byte NAND_READ()
 		return v; 
 	#elif defined(CPU_XMC48)
 		return *FLD;
+	#elif defined(WIN32)
+		return 0;
 	#endif
 }
 
@@ -1300,6 +1351,8 @@ bool NAND_BUSY()
 		return PIO_FLREADY->TBCLR(PIN_FLREADY); 
 	#elif defined(CPU_XMC48)
 		return PIO_FLREADY->TBCLR(PIN_FLREADY);
+	#elif defined(WIN32)
+		return !HasOverlappedIoCompleted(&_overlapped);
 	#endif
 };
 
@@ -1307,14 +1360,18 @@ bool NAND_BUSY()
 
 inline void EnableWriteProtect()
 {
+#ifndef WIN32
 	PIO_WP->CLR(WP);
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline void DisableWriteProtect()
 {
+#ifndef WIN32
 	PIO_WP->SET(WP);
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1338,6 +1395,7 @@ bool NAND_CmdBusy()
 
 void NAND_Chip_Select(byte chip) 
 {    
+#ifndef WIN32
 	if(chip < NAND_MAX_CHIP)                   
 	{ 				
 	#ifdef CPU_SAME53	
@@ -1346,18 +1404,26 @@ void NAND_Chip_Select(byte chip)
 		PIO_FCS->SET(maskChipSelect ^ chipSelect[chip]);
 		PIO_FCS->CLR(chipSelect[chip]);
 	};
+#else
+	nandChipSelected = chip;
+#endif
 }                                                                              
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_Chip_Disable() 
-{    
+{  
+#ifndef WIN32
 	PIO_FCS->SET(maskChipSelect);
 
 	#ifdef CPU_SAME53	
 		NAND_DIR_IN();
 		PIO_WE_RE->SET(RE|WE); 
 	#endif
+
+#else
+	nandChipSelected = ~0;
+#endif
 }                                                                              
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1381,6 +1447,8 @@ bool NAND_CheckDataComplete_old()
 		return (HW::DMAC->CH[NAND_DMACH].CTRLA & DMCH_ENABLE) == 0;
 	#elif defined(CPU_XMC48)
 		return (HW::GPDMA1->CHENREG & (1<<3)) == 0;
+	#elif defined(WIN32)
+		return HasOverlappedIoCompleted(&_overlapped);
 	#endif
 }
 
@@ -1407,6 +1475,10 @@ bool NAND_CheckDataComplete()
 	#elif defined(CPU_XMC48)
 
 		return (NAND_DMA->CHENREG & NAND_DMA_CHST) == 0;
+
+	#elif defined(WIN32)
+
+		return HasOverlappedIoCompleted(&_overlapped);
 
 	#endif
 }
@@ -1436,58 +1508,137 @@ inline u32 NAND_ROW(u32 block, u16 page)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef WIN32
+
+static void SetCurAdrNandFile(u16 col, u32 bl, u16 pg)
+{
+	curBlock = bl;
+	curPage = pg;
+	curCol = col;
+
+	//bl = ROW(bl, pg);
+
+	u64 adr = bl;
+	
+	adr = (adr << NAND_CHIP_BITS) + nandChipSelected;
+
+	adr *= (NAND_PAGE_SIZE + NAND_SPARE_SIZE) << NAND_PAGE_BITS;
+
+	adr += (u32)(NAND_PAGE_SIZE + NAND_SPARE_SIZE) * pg;
+
+	adr += col & ((1 << (NAND_COL_BITS+1))-1);
+
+	curNandFilePos = adr;
+
+	//SetFilePointer(handleNandFile, _overlapped.Offset, (i32*)&_overlapped.OffsetHigh, FILE_BEGIN);
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void NAND_CmdEraseBlock(u32 bl)
 {
+#ifndef WIN32
+
 	bl = NAND_ROW(bl, 0);
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_BLOCK_ERASE_1);
 	NAND_ADR_LATCH_ROW(bl);
 	NAND_CMD_LATCH(NAND_CMD_BLOCK_ERASE_2);
+
+#else
+
+	SetCurAdrNandFile(0, bl, 0);
+
+	*((u32*)nandEraseFillArray) = (bl << NAND_CHIP_BITS) + nandChipSelected;
+
+	_overlapped.Offset = (u32)curNandFilePos;
+	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	_overlapped.hEvent = 0;
+	_overlapped.Internal = 0;
+	_overlapped.InternalHigh = 0;
+
+	WriteFile(handleNandFile, nandEraseFillArray, (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS, 0, &_overlapped);
+
+	nandReadStatus = 0;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_CmdRandomRead(u16 col)
 {
+#ifndef WIN32
+
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_RANDREAD_1);
 	NAND_ADR_LATCH_COL(col);
 	NAND_CMD_LATCH(NAND_CMD_RANDREAD_2);
+
+#else
+
+	SetCurAdrNandFile(col, curBlock, curPage);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_CmdReadPage(u16 col, u32 bl, u16 pg)
 {
+#ifndef WIN32
+
 	bl = NAND_ROW(bl, pg);
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_READ_1);
 	NAND_ADR_LATCH_COL_ROW(col, bl);
 	NAND_CMD_LATCH(NAND_CMD_READ_2);
+
+#else
+
+	SetCurAdrNandFile(col, bl, pg);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_CmdWritePage(u16 col, u32 bl, u16 pg)
 {
+#ifndef WIN32
+
 	bl = NAND_ROW(bl, pg);
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_PAGE_PROGRAM_1);
 	NAND_ADR_LATCH_COL_ROW(col, bl);
+
+#else
+
+	SetCurAdrNandFile(col, bl, pg);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_CmdWritePage2()
 {
+#ifndef WIN32
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_PAGE_PROGRAM_2);
+#else
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void NAND_Init()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 #ifdef CPU_SAME53
@@ -1672,6 +1823,38 @@ static void NAND_Init()
 	NAND_Chip_Disable();
 
 	DisableWriteProtect();
+
+#else
+
+	printf("Open file %s ... ", nameNandFile);
+
+	handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, FILE_FLAG_OVERLAPPED , 0);
+	//handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0 , 0);
+
+	cputs((handleNandFile == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
+
+	nandSize.pg = 1 << (nandSize.bitCol = NAND_COL_BITS);
+	nandSize.bl = 1 << (nandSize.shBl = NAND_COL_BITS+NAND_PAGE_BITS);
+	nandSize.ch = 1ULL << (nandSize.shCh = NAND_COL_BITS+NAND_PAGE_BITS+NAND_BLOCK_BITS);
+	
+	nandSize.pagesInBlock = 1 << (nandSize.bitPage = nandSize.shBl - nandSize.shPg);
+
+	nandSize.maskPage = nandSize.pagesInBlock - 1;
+	nandSize.maskBlock = (1 << (nandSize.bitBlock = nandSize.shCh - nandSize.shBl)) - 1;
+			
+	nandSize.fl = nandSize.ch * NAND_MAX_CHIP;
+			
+	nandSize.mask = (1 << NAND_MAX_CHIP) - 1;
+
+	cputs("Alloc nandEraseFillArray ... ");
+
+	nandEraseFillArray = VirtualAlloc(0, nandEraseFillArraySize = nandSize.bl*2, MEM_COMMIT, PAGE_READWRITE);
+
+	cputs((nandEraseFillArray == NULL) ? "!!! ERROR !!!\n" : "OK\n");
+
+	if (nandEraseFillArray != 0) for (u32 i = nandEraseFillArraySize/4, *p = (u32*)nandEraseFillArray; i != 0; i--) *(p++) = ~0;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1724,6 +1907,8 @@ static void NAND_Init()
 
 void NAND_WriteDataDMA(volatile void *src, u16 len)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	#ifdef CPU_SAME53	
@@ -1778,13 +1963,27 @@ void NAND_WriteDataDMA(volatile void *src, u16 len)
 //		NAND_WriteDataPIO(src, len);
 
 	#endif
+
+#else
+
+	_overlapped.Offset = (u32)curNandFilePos;
+	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	_overlapped.hEvent = 0;
+	_overlapped.Internal = 0;
+	_overlapped.InternalHigh = 0;
+
+	WriteFile(handleNandFile, (void*)src, len, 0, &_overlapped);
+
+	curNandFilePos += len;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_WriteDataPIO(volatile void *src, u16 len)
 {
-	using namespace HW;
+	//using namespace HW;
 
 	byte* p = (byte*)src;
 
@@ -1853,6 +2052,8 @@ void NAND_WriteDataPIO(volatile void *src, u16 len)
 
 void NAND_ReadDataDMA(volatile void *dst, u16 len)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	#ifdef CPU_SAME53	
@@ -1910,13 +2111,27 @@ void NAND_ReadDataDMA(volatile void *dst, u16 len)
 		NAND_DMA->CHENREG = NAND_DMA_CHEN;
 
 	#endif
+
+#else
+
+	_overlapped.Offset = (u32)curNandFilePos;
+	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	_overlapped.hEvent = 0;
+	_overlapped.Internal = 0;
+	_overlapped.InternalHigh = 0;
+
+	ReadFile(handleNandFile, (void*)dst, len, 0, &_overlapped);
+
+	curNandFilePos += len;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void NAND_ReadDataPIO(volatile void *dst, u16 len)
 {
-	using namespace HW;
+	//using namespace HW;
 
 	byte* p = (byte*)dst;
 
@@ -1939,6 +2154,8 @@ void NAND_ReadDataPIO(volatile void *dst, u16 len)
 
 void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	#ifdef CPU_SAME53	
@@ -1971,10 +2188,21 @@ void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 		NAND_DMA->CHENREG = NAND_DMA_CHEN;
 
 	#endif
+
+#else
+
+	DataPointer s((void*)src);
+	DataPointer d((void*)dst);
+
+	while (len > 3) *d.d++ = *s.d++, len -= 4;
+	while (len > 0) *d.b++ = *s.b++, len -= 1;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 inline void ManDisable()	{ PIO_MANCH->CLR(L1|L2);	PIO_MANCH->SET(H1|H2);							} 
 inline void ManZero()		{ PIO_MANCH->CLR(L2);		PIO_MANCH->SET(L1|H1);		PIO_MANCH->CLR(H2);	} 
@@ -1992,12 +2220,17 @@ static u16 trmHalfPeriod4 = manbaud[0] * 2;
 static u16 trmHalfPeriod6 = manbaud[0] * 3;
 static u16 trmHalfPeriod7 = (manbaud[0] * 7 + 1) / 2;
 
+#endif 
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static byte stateManTrans = 0;
 static MTB *manTB = 0;
 static bool trmBusy = false;
 static bool trmTurbo = false;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static u16 GetTrmBaudRate(byte i)
 {
@@ -2005,7 +2238,7 @@ static u16 GetTrmBaudRate(byte i)
 
 	return manbaud[i]/2;
 }
-
+#endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //static u16 rcvCount = 0;
@@ -2047,6 +2280,7 @@ u16 rcvManQuality = 0;
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 inline u16 CheckParity(u16 x)
 {
@@ -2206,8 +2440,14 @@ static __irq void ManTrmIRQ()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 bool SendManData(MTB *mtb)
 {
+#ifndef WIN32
+
 	if (trmBusy || rcvBusy || mtb == 0 || mtb->data1 == 0 || mtb->len1 == 0)
 	{
 		return false;
@@ -2260,9 +2500,18 @@ bool SendManData(MTB *mtb)
 	#endif
 
 	return trmBusy = true;
+
+#else
+
+	mtb->ready = true;
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void InitManTransmit()
 {
@@ -2489,10 +2738,12 @@ static __irq void ManTrmIRQ2()
 	Pin_ManTrmIRQ_Clr();
 }
 
+#endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool SendManData2(MTB* mtb)
 {
+#ifndef WIN32
 	if (trmBusy || rcvBusy || mtb == 0 || mtb->data1 == 0 || mtb->len1 == 0)
 	{
 		return false;
@@ -2568,12 +2819,21 @@ bool SendManData2(MTB* mtb)
 #endif
 
 	return trmBusy = true;
+#else
+
+	mtb->ready = true;
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void InitManTransmit2()
 {
+
 	using namespace HW;
 
 	VectorTableExt[MANT_CCU8_IRQ] = ManTrmIRQ2;
@@ -2618,6 +2878,8 @@ static void InitManTransmit2()
 	//ManT->INTE = CC8_PME;
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void ManRcvEnd(bool ok)
@@ -2644,8 +2906,8 @@ static void ManRcvEnd(bool ok)
 
 static RTM manRcvTime;
 
-
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static __irq void ManRcvIRQ2()
 {
@@ -2784,6 +3046,7 @@ static __irq void ManRcvIRQ2()
 
 	Pin_ManRcvIRQ_Clr();
 }
+#endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2803,13 +3066,7 @@ void ManRcvUpdate()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-//void ManRcvStop()
-//{
-//	ManRcvEnd(true);
-//}
-//
-////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void InitManRecieve()
 {
@@ -2931,10 +3188,14 @@ static void InitManRecieve()
 
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool RcvManData(MRB *mrb)
 {
+#ifndef WIN32
+
 	if (rcvBusy /*|| trmBusy*/ || mrb == 0 || mrb->data == 0 || mrb->maxLen == 0)
 	{
 		return false;
@@ -2967,6 +3228,15 @@ bool RcvManData(MRB *mrb)
 	#endif
 
 	return rcvBusy = true;
+
+#else
+
+	mrb->ready = mrb->OK = false;
+	mrb->len = 0;
+
+	return true;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3212,6 +3482,8 @@ static __irq void I2C_Handler()
 
 bool I2C_Write(DSCI2C *d)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	if (twi_dsc != 0 || d == 0) { return false; };
@@ -3259,6 +3531,8 @@ bool I2C_Write(DSCI2C *d)
 		
 	__enable_irq();
 
+#endif
+
 	return true;
 }
 
@@ -3268,6 +3542,8 @@ bool I2C_AddRequest(DSCI2C *d)
 {
 	if (d == 0) { return false; };
 	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+
+#ifndef WIN32
 
 	d->next = 0;
 	d->ready = false;
@@ -3291,6 +3567,66 @@ bool I2C_AddRequest(DSCI2C *d)
 
 		__enable_irq();
 	};
+
+#else
+
+	u16 adr;
+
+	switch (d->adr)
+	{
+		case 0x49: //Temp
+
+			if (d->rlen >= 2)
+			{
+				byte *p = (byte*)d->rdata;
+
+				p[0] = 0;
+				p[1] = 0;
+			};
+				
+			d->readedLen = d->rlen;
+			d->ack = true;
+			d->ready = true;
+
+			break;
+
+		case 0x50: // FRAM
+
+			d->readedLen = 0;
+
+			if (d->wdata != 0 && d->wlen == 2)
+			{
+				adr = ReverseWord(*((u16*)d->wdata));
+
+				adr %= sizeof(fram_I2c_Mem);
+
+				if (d->wdata2 != 0 && d->wlen2 != 0)
+				{
+					u16 count = d->wlen2;
+					byte *s = (byte*)d->wdata2;
+					byte *d = fram_I2c_Mem + adr;
+
+					while (count-- != 0) { *(d++) = *(s++); adr++; if (adr >= sizeof(fram_I2c_Mem)) { adr = 0; d = fram_I2c_Mem; }; };
+				}
+				else if (d->rdata != 0 && d->rlen != 0)
+				{
+					d->readedLen = d->rlen;
+					u16 count = d->rlen;
+
+					byte *p = (byte*)(d->rdata);
+					byte *s = fram_I2c_Mem + adr;
+
+					while (count-- != 0) { *(p++) = *(s++); adr++; if (adr >= sizeof(fram_I2c_Mem)) { adr = 0; s = fram_I2c_Mem; }; };
+				};
+			};
+
+			d->ack = true;
+			d->ready = true;
+
+			break;
+	};
+
+#endif
 
 	return true;
 }
@@ -3381,80 +3717,126 @@ bool I2C_Update()
 
 static void I2C_Init()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
-#ifdef CPU_SAME53	
+	#ifdef CPU_SAME53	
 
-	HW::GCLK->PCHCTRL[GCLK_SERCOM3_CORE]	= GCLK_GEN(GEN_25M)|GCLK_CHEN;	// 25 MHz
+		HW::GCLK->PCHCTRL[GCLK_SERCOM3_CORE]	= GCLK_GEN(GEN_25M)|GCLK_CHEN;	// 25 MHz
 
-	MCLK->APBBMASK |= APBB_SERCOM3;
+		MCLK->APBBMASK |= APBB_SERCOM3;
 
-	PIO_I2C->SetWRCONFIG(SDA|SCL, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+		PIO_I2C->SetWRCONFIG(SDA|SCL, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
 
-	I2C->CTRLA = I2C_SWRST;
+		I2C->CTRLA = I2C_SWRST;
 
-	while(I2C->SYNCBUSY);
+		while(I2C->SYNCBUSY);
 
-	I2C->CTRLA = SERCOM_MODE_I2C_MASTER;
+		I2C->CTRLA = SERCOM_MODE_I2C_MASTER;
 
-	I2C->CTRLA = SERCOM_MODE_I2C_MASTER|I2C_INACTOUT_205US|I2C_SPEED_SM;
-	I2C->CTRLB = 0;
-	I2C->BAUD = 0x0018;
+		I2C->CTRLA = SERCOM_MODE_I2C_MASTER|I2C_INACTOUT_205US|I2C_SPEED_SM;
+		I2C->CTRLB = 0;
+		I2C->BAUD = 0x0018;
 
-	I2C->CTRLA |= I2C_ENABLE;
+		I2C->CTRLA |= I2C_ENABLE;
 
-	while(I2C->SYNCBUSY);
+		while(I2C->SYNCBUSY);
 
-	I2C->STATUS = 0;
-	I2C->STATUS.BUSSTATE = BUSSTATE_IDLE;
+		I2C->STATUS = 0;
+		I2C->STATUS.BUSSTATE = BUSSTATE_IDLE;
 
-	VectorTableExt[SERCOM3_0_IRQ] = I2C_Handler;
-	VectorTableExt[SERCOM3_1_IRQ] = I2C_Handler;
-	VectorTableExt[SERCOM3_3_IRQ] = I2C_Handler;
-	CM4::NVIC->CLR_PR(SERCOM3_0_IRQ);
-	CM4::NVIC->CLR_PR(SERCOM3_1_IRQ);
-	CM4::NVIC->CLR_PR(SERCOM3_3_IRQ);
-	CM4::NVIC->SET_ER(SERCOM3_0_IRQ);
-	CM4::NVIC->SET_ER(SERCOM3_1_IRQ);
-	CM4::NVIC->SET_ER(SERCOM3_3_IRQ);
+		VectorTableExt[SERCOM3_0_IRQ] = I2C_Handler;
+		VectorTableExt[SERCOM3_1_IRQ] = I2C_Handler;
+		VectorTableExt[SERCOM3_3_IRQ] = I2C_Handler;
+		CM4::NVIC->CLR_PR(SERCOM3_0_IRQ);
+		CM4::NVIC->CLR_PR(SERCOM3_1_IRQ);
+		CM4::NVIC->CLR_PR(SERCOM3_3_IRQ);
+		CM4::NVIC->SET_ER(SERCOM3_0_IRQ);
+		CM4::NVIC->SET_ER(SERCOM3_1_IRQ);
+		CM4::NVIC->SET_ER(SERCOM3_3_IRQ);
 
-#elif defined(CPU_XMC48)
+	#elif defined(CPU_XMC48)
 
-	HW::Peripheral_Enable(I2C_PID);
+		HW::Peripheral_Enable(I2C_PID);
 
- 	P5->ModePin0(A1OD);
-	P5->ModePin2(A1PP);
+ 		P5->ModePin0(A1OD);
+		P5->ModePin2(A1PP);
 
-	I2C->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+		I2C->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
-	I2C->SCTR = I2C__SCTR;
+		I2C->SCTR = I2C__SCTR;
 
-	I2C->FDR = I2C__FDR;
-	I2C->BRG = I2C__BRG;
-    
-	I2C->TCSR = I2C__TCSR;
+		I2C->FDR = I2C__FDR;
+		I2C->BRG = I2C__BRG;
+	    
+		I2C->TCSR = I2C__TCSR;
 
-	I2C->PSCR = ~0;
+		I2C->PSCR = ~0;
 
-	I2C->CCR = 0;
+		I2C->CCR = 0;
 
-	I2C->DX0CR = I2C__DX0CR;
-	I2C->DX1CR = I2C__DX1CR;
+		I2C->DX0CR = I2C__DX0CR;
+		I2C->DX1CR = I2C__DX1CR;
 
-	I2C->CCR = I2C__CCR;
+		I2C->CCR = I2C__CCR;
 
 
-	I2C->PCR_IICMode = I2C__PCR;
+		I2C->PCR_IICMode = I2C__PCR;
 
-	VectorTableExt[I2C_IRQ] = I2C_Handler;
-	CM4::NVIC->CLR_PR(I2C_IRQ);
-	CM4::NVIC->SET_ER(I2C_IRQ);
+		VectorTableExt[I2C_IRQ] = I2C_Handler;
+		CM4::NVIC->CLR_PR(I2C_IRQ);
+		CM4::NVIC->SET_ER(I2C_IRQ);
+
+	#endif
+
+#else
+
+	HANDLE h;
+
+	h = CreateFile("FRAM_I2C_STORE.BIN", GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		return;
+	};
+
+	dword bytes;
+
+	ReadFile(h, fram_I2c_Mem, sizeof(fram_I2c_Mem), &bytes, 0);
+	CloseHandle(h);
 
 #endif
-
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+void I2C_Destroy()
+{
+	HANDLE h;
+
+	h = CreateFile("FRAM_I2C_STORE.BIN", GENERIC_WRITE, 0, 0, OPEN_ALWAYS, 0, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		return;
+	};
+
+	dword bytes;
+
+	if (!WriteFile(h, fram_I2c_Mem, sizeof(fram_I2c_Mem), &bytes, 0))
+	{
+		dword le = GetLastError();
+	};
+
+	CloseHandle(h);
+}
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void SetClock(const RTC &t)
 {
@@ -3722,6 +4104,52 @@ static void Init_CRC_CCITT_DMA()
 	//HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE|DMAC_CRCPOLY_CRC16|DMAC_CRCMODE_CRCGEN|DMAC_CRCSRC(0x3F);
 }
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#elif defined(WIN32)
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
+{
+	return GetCRC16_CCIT(data, len, init);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
+{
+	crc_ccit_result = GetCRC16_CCIT(data, len, init);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool CRC_CCITT_DMA_CheckComplete(u16* crc)
+{
+	if (crc != 0)
+	{
+		*crc = crc_ccit_result;
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void Init_CRC_CCITT_DMA()
+{
+	//T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
+	//T_HW::S_DMAC::S_DMAC_CH	&dmach = HW::DMAC->CH[CRC_DMACH];
+
+	//HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE|DMAC_CRCPOLY_CRC16|DMAC_CRCMODE_CRCGEN|DMAC_CRCSRC(0x3F);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3795,6 +4223,8 @@ static __irq void RotTrmIRQ()
 
 void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 {
+#ifndef WIN32
+
 	u32 t = RPS;
 
 	if (t == 0) t = 100;
@@ -3820,51 +4250,54 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 
 	if (r > 0xFFFF) r = 0xFFFF;
 
-#ifdef CPU_SAME53	
+	#ifdef CPU_SAME53	
 
-	SyncTmr->PER = t;
-	SyncTmr->CC[0] = US2SRT(10); 
+		SyncTmr->PER = t;
+		SyncTmr->CC[0] = US2SRT(10); 
 
-	SyncTmr->CTRLA = (t != 0) ? TCC_ENABLE : 0;
+		SyncTmr->CTRLA = (t != 0) ? TCC_ENABLE : 0;
 
-	RotTmr->CC[0] = r;
+		RotTmr->CC[0] = r;
 
-	RotTmr->CTRLA = (r != 0) ? TCC_ENABLE : 0;
+		RotTmr->CTRLA = (r != 0) ? TCC_ENABLE : 0;
 
-	SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
-	RotTmr->CTRLBSET = TCC_CMD_RETRIGGER;
+		SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
+		RotTmr->CTRLBSET = TCC_CMD_RETRIGGER;
 
-#elif defined(CPU_XMC48)
+	#elif defined(CPU_XMC48)
 
-	PIO_SYNC->ModePin(PIN_SYNC, A3PP);
-	PIO_ROT->ModePin(PIN_ROT, A3PP);
+		PIO_SYNC->ModePin(PIN_SYNC, A3PP);
+		PIO_ROT->ModePin(PIN_ROT, A3PP);
 
-	HW::CCU_Enable(SyncRotCCU_PID);
+		HW::CCU_Enable(SyncRotCCU_PID);
 
-	SyncRotCCU->GCTRL = 0;
+		SyncRotCCU->GCTRL = 0;
 
-	SyncRotCCU->GIDLC = SyncRot_GIDLC;
+		SyncRotCCU->GIDLC = SyncRot_GIDLC;
 
-	SyncTmr->PRS = t-1;
-	SyncTmr->CRS = US2SRT(10)-1;
-	SyncTmr->PSC = SyncRot_PSC; 
-	SyncTmr->PSL = 1; 
+		SyncTmr->PRS = t-1;
+		SyncTmr->CRS = US2SRT(10)-1;
+		SyncTmr->PSC = SyncRot_PSC; 
+		SyncTmr->PSL = 1; 
 
-	if (t != 0) { SyncTmr->TCSET = CC4_TRBS; } else { SyncTmr->TCCLR = CC4_TRBC; };
+		if (t != 0) { SyncTmr->TCSET = CC4_TRBS; } else { SyncTmr->TCCLR = CC4_TRBC; };
 
-	RotTmr->PRS = r-1;
-	RotTmr->CRS = r/2;
-	RotTmr->PSC = SyncRot_PSC; 
-	RotTmr->TC = CC4_TCM;
+		RotTmr->PRS = r-1;
+		RotTmr->CRS = r/2;
+		RotTmr->PSC = SyncRot_PSC; 
+		RotTmr->TC = CC4_TCM;
 
-	if (r != 0) { RotTmr->TCSET = CC4_TRBS; } else { RotTmr->TCCLR = CC4_TRBC; };
+		if (r != 0) { RotTmr->TCSET = CC4_TRBS; } else { RotTmr->TCCLR = CC4_TRBC; };
 
-	SyncRotCCU->GCSS = Sync_GCSS|Rot_GCSS;  
+		SyncRotCCU->GCSS = Sync_GCSS|Rot_GCSS;  
+
+	#endif
 
 #endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void Init_Sync_Rot()
 {
@@ -4003,14 +4436,21 @@ static void UpdateShaft()
 	};
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 u16 GetShaftState()
 {
+#ifndef WIN32
 	return PIO_SHAFT->TBCLR(PIN_SHAFT);
+#else
+	return 0;
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void InitShaft()
 {
@@ -4054,10 +4494,14 @@ static void InitShaft()
 
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	#ifdef CPU_SAME53	
@@ -4092,6 +4536,9 @@ void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 		DSP_DMA->CHENREG = DSP_DMA_CHEN;
 
 	#endif
+#else
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -4106,6 +4553,10 @@ bool DSP_CheckDataComplete()
 
 		return (DSP_DMA->CHENREG & DSP_DMA_CHST) == 0;
 
+	#elif defined(WIN32)
+
+		return true;
+		
 	#endif
 }
 
@@ -4121,7 +4572,11 @@ static u16 spi_wrCount2 = 0;
 static u32 spi_adr = 0;
 static DSCSPI* spi_dsc = 0;
 static DSCSPI* spi_lastDsc = 0;
+
+#ifndef WIN32
 static u32 SPI_CS_MASK[2] = { CS0, CS1 };
+#endif
+
 static u32 spi_timestamp = 0;
 
 //static bool SPI_Write(DSCSPI *d);
@@ -4358,6 +4813,8 @@ static __irq void SPI_Handler_Read()
 
 static bool SPI_WriteRead(DSCSPI *d)
 {
+#ifndef WIN32
+
 	using namespace HW;
 
 	if (spi_dsc != 0 || d == 0) { return false; };
@@ -4554,6 +5011,10 @@ static bool SPI_WriteRead(DSCSPI *d)
 		
 	__enable_irq();
 
+#else
+
+#endif
+
 	return true;
 }
 
@@ -4563,6 +5024,8 @@ bool SPI_AddRequest(DSCSPI *d)
 {
 	if (d == 0) { return false; };
 	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
+
+#ifndef WIN32
 
 	d->next = 0;
 	d->ready = false;
@@ -4584,6 +5047,83 @@ bool SPI_AddRequest(DSCSPI *d)
 
 		__enable_irq();
 	};
+
+#else
+
+	u32 adr;
+
+	switch (d->csnum)
+	{
+		case 0x0: //Accel
+
+			if (d->rlen >= 2)
+			{
+				byte *p = (byte*)d->rdata;
+
+				p[0] = 0;
+				p[1] = 0;
+			};
+				
+			d->ready = true;
+
+			break;
+
+		case 0x1: // FRAM
+
+			switch(d->adr&0xFF)
+			{
+				case 0x2: // WRITE
+
+					if (d->alen == 4 && d->wdata != 0 && d->wlen != 0 && fram_spi_WREN)
+					{
+						adr = ReverseDword(d->adr & ~0xFF);
+						adr %= sizeof(fram_SPI_Mem);
+
+						u16 count = d->wlen;
+						byte *s = (byte*)d->wdata;
+						byte *d = fram_SPI_Mem + adr;
+
+						while (count-- != 0) { *(d++) = *(s++); adr++; if (adr >= sizeof(fram_SPI_Mem)) { adr = 0; d = fram_SPI_Mem; }; };
+					};
+
+					fram_spi_WREN = false;
+
+					break;
+
+				case 0x3: // READ
+
+					if (d->alen == 4 && d->rdata != 0 && d->rlen != 0)
+					{
+						adr = ReverseDword(d->adr & ~0xFF);
+						adr %= sizeof(fram_SPI_Mem);
+
+						u16 count = d->rlen;
+
+						byte *p = (byte*)(d->rdata);
+						byte *s = fram_SPI_Mem + adr;
+
+						while (count-- != 0) { *(p++) = *(s++); adr++; if (adr >= sizeof(fram_SPI_Mem)) { adr = 0; s = fram_SPI_Mem; }; };
+					};
+
+					fram_spi_WREN = false;
+
+					break;
+
+				case 0x6: // WREN
+
+					fram_spi_WREN = (d->alen == 1);
+
+					break;
+
+				default:	fram_spi_WREN = false; break;
+			};
+
+			d->ready = true;
+
+			break;
+	};
+
+#endif
 
 	return true;
 }
@@ -4635,116 +5175,563 @@ bool SPI_Update()
 
 static void SPI_Init()
 {
+#ifndef WIN32
+
 	using namespace HW;
 
-#ifdef CPU_SAME53	
+	#ifdef CPU_SAME53	
 
-	HW::GCLK->PCHCTRL[GCLK_SERCOM0_CORE] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;	// 25 MHz
+		HW::GCLK->PCHCTRL[GCLK_SERCOM0_CORE] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;	// 25 MHz
 
-	MCLK->APBAMASK |= APBA_SERCOM0;
+		MCLK->APBAMASK |= APBA_SERCOM0;
 
-	PIO_SPCK->SetWRCONFIG(SPCK, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
-	PIO_MOSI->SetWRCONFIG(MOSI, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
-	PIO_MISO->SetWRCONFIG(MISO, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
-	PIO_CS->DIRSET = CS0|CS1; 
-	PIO_CS->SetWRCONFIG(CS0|CS1, PORT_WRPINCFG|PORT_WRPMUX);
-	PIO_CS->SET(CS0|CS1); 
+		PIO_SPCK->SetWRCONFIG(SPCK, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+		PIO_MOSI->SetWRCONFIG(MOSI, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+		PIO_MISO->SetWRCONFIG(MISO, PORT_PMUX(2)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX);
+		PIO_CS->DIRSET = CS0|CS1; 
+		PIO_CS->SetWRCONFIG(CS0|CS1, PORT_WRPINCFG|PORT_WRPMUX);
+		PIO_CS->SET(CS0|CS1); 
 
-	SPI->CTRLA = SPI_SWRST;
+		SPI->CTRLA = SPI_SWRST;
 
-	while(SPI->SYNCBUSY);
+		while(SPI->SYNCBUSY);
 
-	SPI->CTRLA = SERCOM_MODE_SPI_MASTER;
+		SPI->CTRLA = SERCOM_MODE_SPI_MASTER;
 
-	SPI->CTRLA = SERCOM_MODE_SPI_MASTER|SPI_CPHA|SPI_DIPO(2)|SPI_DOPO(0);
-	SPI->CTRLB = 0;
-	SPI->CTRLC = 1;
-	SPI->BAUD = 12;
+		SPI->CTRLA = SERCOM_MODE_SPI_MASTER|SPI_CPHA|SPI_DIPO(2)|SPI_DOPO(0);
+		SPI->CTRLB = 0;
+		SPI->CTRLC = 1;
+		SPI->BAUD = 12;
 
-	SPI->DBGCTRL = 1;
+		SPI->DBGCTRL = 1;
 
-	SPI->CTRLA |= SPI_ENABLE;
+		SPI->CTRLA |= SPI_ENABLE;
 
-	while(SPI->SYNCBUSY);
+		while(SPI->SYNCBUSY);
 
-	SPI->STATUS = ~0;
+		SPI->STATUS = ~0;
 
-	VectorTableExt[SERCOM0_0_IRQ] = SPI_Handler;
-	VectorTableExt[SERCOM0_1_IRQ] = SPI_Handler;
-	VectorTableExt[SERCOM0_3_IRQ] = SPI_Handler;
-	CM4::NVIC->CLR_PR(SERCOM0_0_IRQ);
-	CM4::NVIC->CLR_PR(SERCOM0_1_IRQ);
-	CM4::NVIC->CLR_PR(SERCOM0_3_IRQ);
-	CM4::NVIC->SET_ER(SERCOM0_0_IRQ);
-	CM4::NVIC->SET_ER(SERCOM0_1_IRQ);
-	CM4::NVIC->SET_ER(SERCOM0_3_IRQ);
+		VectorTableExt[SERCOM0_0_IRQ] = SPI_Handler;
+		VectorTableExt[SERCOM0_1_IRQ] = SPI_Handler;
+		VectorTableExt[SERCOM0_3_IRQ] = SPI_Handler;
+		CM4::NVIC->CLR_PR(SERCOM0_0_IRQ);
+		CM4::NVIC->CLR_PR(SERCOM0_1_IRQ);
+		CM4::NVIC->CLR_PR(SERCOM0_3_IRQ);
+		CM4::NVIC->SET_ER(SERCOM0_0_IRQ);
+		CM4::NVIC->SET_ER(SERCOM0_1_IRQ);
+		CM4::NVIC->SET_ER(SERCOM0_3_IRQ);
 
-#elif defined(CPU_XMC48)
+	#elif defined(CPU_XMC48)
 
-	HW::Peripheral_Enable(SPI_PID);
+		HW::Peripheral_Enable(SPI_PID);
 
-	SPI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+		SPI->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
 
-	SPI->CCR = 0;
+		SPI->CCR = 0;
 
-	SPI->FDR = SPI__FDR;
-	SPI->BRG = SPI__BRG;
-    
-	SPI->SCTR = SPI__SCTR;
-	SPI->TCSR = SPI__TCSR;
+		SPI->FDR = SPI__FDR;
+		SPI->BRG = SPI__BRG;
+	    
+		SPI->SCTR = SPI__SCTR;
+		SPI->TCSR = SPI__TCSR;
 
-	SPI->PCR_SSCMode = SPI__PCR;
+		SPI->PCR_SSCMode = SPI__PCR;
 
-	SPI->PSCR = ~0;
+		SPI->PSCR = ~0;
 
-	SPI->CCR = 0;
+		SPI->CCR = 0;
 
-	SPI->DX0CR = SPI__DX0CR;
-	SPI->DX1CR = SPI__DX1CR;
+		SPI->DX0CR = SPI__DX0CR;
+		SPI->DX1CR = SPI__DX1CR;
 
-	SPI->TBCTR = 0;// TBCTR_SIZE8|TBCTR_LIMIT(0);
-	SPI->RBCTR = 0;//RBCTR_SIZE8|RBCTR_LIMIT(0);
+		SPI->TBCTR = 0;// TBCTR_SIZE8|TBCTR_LIMIT(0);
+		SPI->RBCTR = 0;//RBCTR_SIZE8|RBCTR_LIMIT(0);
 
-	SPI->CCR = SPI__CCR;
+		SPI->CCR = SPI__CCR;
 
-	PIO_SPCK->ModePin(PIN_SPCK, A2PP);
-	PIO_MOSI->ModePin(PIN_MOSI, A2PP);
- 	PIO_MISO->ModePin(PIN_MISO, I0DNP);
-	PIO_CS->ModePin(PIN_CS0, G_PP);
-	PIO_CS->ModePin(PIN_CS1, G_PP);
-	PIO_CS->SET(CS0|CS1);
+		PIO_SPCK->ModePin(PIN_SPCK, A2PP);
+		PIO_MOSI->ModePin(PIN_MOSI, A2PP);
+ 		PIO_MISO->ModePin(PIN_MISO, I0DNP);
+		PIO_CS->ModePin(PIN_CS0, G_PP);
+		PIO_CS->ModePin(PIN_CS1, G_PP);
+		PIO_CS->SET(CS0|CS1);
 
-	VectorTableExt[SPI_IRQ] = SPI_Handler_Read;
-	CM4::NVIC->CLR_PR(SPI_IRQ);
-	CM4::NVIC->SET_ER(SPI_IRQ);
+		VectorTableExt[SPI_IRQ] = SPI_Handler_Read;
+		CM4::NVIC->CLR_PR(SPI_IRQ);
+		CM4::NVIC->SET_ER(SPI_IRQ);
 
 
-	//SPI->PCR_SSCMode = SPI__PCR|SELO(1);
-	
-//	SPI->PSCR |= TBIF;
+		//SPI->PCR_SSCMode = SPI__PCR|SELO(1);
+		
+	//	SPI->PSCR |= TBIF;
 
-//	SPI->CCR = SPI__CCR|TBIEN;
-//	SPI->INPR = 0;
+	//	SPI->CCR = SPI__CCR|TBIEN;
+	//	SPI->INPR = 0;
 
-	//SPI->IN[0] = 0x55;
-	//SPI->IN[0] = 0x55;
+		//SPI->IN[0] = 0x55;
+		//SPI->IN[0] = 0x55;
 
-	//while ((SPI->PSR & TSIF) == 0);
+		//while ((SPI->PSR & TSIF) == 0);
 
-//	SPI->CCR = SPI__CCR;
+	//	SPI->CCR = SPI__CCR;
 
+	#endif
+#else
+
+	HANDLE h;
+
+	h = CreateFile("FRAM_SPI_STORE.BIN", GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		return;
+	};
+
+	dword bytes;
+
+	ReadFile(h, fram_SPI_Mem, sizeof(fram_SPI_Mem), &bytes, 0);
+	CloseHandle(h);
 
 #endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+void SPI_Destroy()
+{
+	HANDLE h;
+
+	h = CreateFile("FRAM_SPI_STORE.BIN", GENERIC_WRITE, 0, 0, OPEN_ALWAYS, 0, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		return;
+	};
+
+	dword bytes;
+
+	if (!WriteFile(h, fram_SPI_Mem, sizeof(fram_SPI_Mem), &bytes, 0))
+	{
+		dword le = GetLastError();
+	};
+
+	CloseHandle(h);
+}
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+//extern dword DI;
+//extern dword DO;
+char pressedKey;
+//extern  dword maskLED[16];
+
+//byte _array1024[0x60000]; 
+
+HWND  hMainWnd;
+
+HCURSOR arrowCursor;
+HCURSOR handCursor;
+
+HBRUSH	redBrush;
+HBRUSH	yelBrush;
+HBRUSH	grnBrush;
+HBRUSH	gryBrush;
+
+RECT rectLed[10] = { {20, 41, 33, 54}, {20, 66, 33, 79}, {20, 91, 33, 104}, {21, 117, 22, 118}, {20, 141, 33, 154}, {218, 145, 219, 146}, {217, 116, 230, 129}, {217, 91, 230, 104}, {217, 66, 230, 79}, {217, 41, 230, 54}  }; 
+HBRUSH* brushLed[10] = { &yelBrush, &yelBrush, &yelBrush, &gryBrush, &grnBrush, &gryBrush, &redBrush, &redBrush, &redBrush, &redBrush };
+
+//int x,y,Depth;
+
+HFONT font1;
+HFONT font2;
+
+HDC memdc;
+HBITMAP membm;
+
+//HANDLE facebitmap;
+
+static const u32 secBufferWidth = 80;
+static const u32 secBufferHeight = 12;
+static const u32 fontWidth = 12;
+static const u32 fontHeight = 16;
+
+
+static char secBuffer[secBufferWidth*secBufferHeight*2];
+
+static u32 pallete[16] = {	0x000000,	0x800000,	0x008000,	0x808000,	0x000080,	0x800080,	0x008080,	0xC0C0C0,
+							0x808080,	0xFF0000,	0x00FF00,	0xFFFF00,	0x0000FF,	0xFF00FF,	0x00FFFF,	0xFFFFFF };
+
+const char lpAPPNAME[] = "¿—76÷_”œ–";
+
+int screenWidth = 0, screenHeight = 0;
+
+LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+static __int64		tickCounter = 0;
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+static void InitDisplay()
+{
+	WNDCLASS		    wcl;
+
+	wcl.hInstance		= NULL;
+	wcl.lpszClassName	= lpAPPNAME;
+	wcl.lpfnWndProc		= WindowProc;
+	wcl.style	    	= CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+
+	wcl.hIcon	    	= NULL;
+	wcl.hCursor	    	= NULL;
+	wcl.lpszMenuName	= NULL;
+
+	wcl.cbClsExtra		= 0;
+	wcl.cbWndExtra		= 0;
+	wcl.hbrBackground	= NULL;
+
+	RegisterClass (&wcl);
+
+	int sx = screenWidth = GetSystemMetrics (SM_CXSCREEN);
+	int sy = screenHeight = GetSystemMetrics (SM_CYSCREEN);
+
+	hMainWnd = CreateWindowEx (0, lpAPPNAME, lpAPPNAME,	WS_DLGFRAME|WS_POPUP, 0, 0,	640, 480, NULL,	NULL, NULL, NULL);
+
+	if(!hMainWnd) 
+	{
+		cputs("Error creating window\r\n");
+		exit(0);
+	};
+
+	RECT rect;
+
+	if (GetClientRect(hMainWnd, &rect))
+	{
+		MoveWindow(hMainWnd, 0, 0, 641 + 768 - rect.right - 2, 481 - rect.bottom - 1 + 287, true);
+	};
+
+	ShowWindow (hMainWnd, SW_SHOWNORMAL);
+
+	font1 = CreateFont(30, 14, 0, 0, 100, false, false, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH|FF_DONTCARE, "Lucida Console");
+	font2 = CreateFont(fontHeight, fontWidth-2, 0, 0, 100, false, false, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY, FIXED_PITCH|FF_DONTCARE, "Lucida Console");
+
+	if (font1 == 0 || font2 == 0)
+	{
+		cputs("Error creating font\r\n");
+		exit(0);
+	};
+
+	GetClientRect(hMainWnd, &rect);
+	HDC hdc = GetDC(hMainWnd);
+    memdc = CreateCompatibleDC(hdc);
+	membm = CreateCompatibleBitmap(hdc, rect.right - rect.left + 1, rect.bottom - rect.top + 1 + secBufferHeight*fontHeight);
+    SelectObject(memdc, membm);
+	ReleaseDC(hMainWnd, hdc);
+
+
+	arrowCursor = LoadCursor(0, IDC_ARROW);
+	handCursor = LoadCursor(0, IDC_HAND);
+
+	if (arrowCursor == 0 || handCursor == 0)
+	{
+		cputs("Error loading cursors\r\n");
+		exit(0);
+	};
+
+	LOGBRUSH lb;
+
+	lb.lbStyle = BS_SOLID;
+	lb.lbColor = RGB(0xFF, 0, 0);
+
+	redBrush = CreateBrushIndirect(&lb);
+
+	lb.lbColor = RGB(0xFF, 0xFF, 0);
+
+	yelBrush = CreateBrushIndirect(&lb);
+
+	lb.lbColor = RGB(0x7F, 0x7F, 0x7F);
+
+	gryBrush = CreateBrushIndirect(&lb);
+
+	lb.lbColor = RGB(0, 0xFF, 0);
+
+	grnBrush = CreateBrushIndirect(&lb);
+
+	for (u32 i = 0; i < sizeof(secBuffer); i+=2)
+	{
+		secBuffer[i] = 0x20;
+		secBuffer[i+1] = 0xF0;
+	};
+}
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+void UpdateDisplay()
+{
+	static byte curChar = 0;
+	//static byte c = 0, i = 0;
+	//static byte flashMask = 0;
+	static const byte a[4] = { 0x80, 0x80+0x40, 0x80+20, 0x80+0x40+20 };
+
+	MSG msg;
+
+	static dword pt = 0;
+	static TM32 tm;
+
+	u32 t = GetTickCount();
+
+	if ((t-pt) >= 2)
+	{
+		pt = t;
+
+		if(PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE))
+		{
+			GetMessage (&msg, NULL, 0, 0);
+
+			TranslateMessage (&msg);
+
+			DispatchMessage (&msg);
+		};
+	};
+
+	static char buf[80];
+	static char buf1[sizeof(secBuffer)];
+
+	if (tm.Check(20))
+	{
+		bool rd = true;
+
+		if (rd)
+		{
+			//SelectObject(memdc, font1);
+			//SetBkColor(memdc, 0x074C00);
+			//SetTextColor(memdc, 0x00FF00);
+			//TextOut(memdc, 443, 53, buf, 20);
+			//TextOut(memdc, 443, 30*1+53, buf+20, 20);
+			//TextOut(memdc, 443, 30*2+53, buf+40, 20);
+			//TextOut(memdc, 443, 30*3+53, buf+60, 20);
+
+			SelectObject(memdc, font2);
+
+			for (u32 j = 0; j < secBufferHeight; j++)
+			{
+				for (u32 i = 0; i < secBufferWidth; i++)
+				{
+					u32 n = (j*secBufferWidth+i)*2;
+
+					u8 t = secBuffer[n+1];
+
+					SetBkColor(memdc, pallete[(t>>4)&0xF]);
+					SetTextColor(memdc, pallete[t&0xF]);
+					TextOut(memdc, i*fontWidth, j*fontHeight+287, secBuffer+n, 1);
+				};
+			};
+
+			RedrawWindow(hMainWnd, 0, 0, RDW_INVALIDATE);
+
+		}; // if (rd)
+
+	}; // if ((t-pt) > 10)
+
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	int i;
+	HDC hdc;
+	PAINTSTRUCT ps;
+	bool c;
+	static int x, y;
+	int x0, y0, r0;
+	static char key = 0;
+	static char pkey = 0;
+
+	RECT rect;
+
+	static bool move = false;
+	static int movex, movey = 0;
+
+//	char *buf = (char*)screenBuffer;
+
+    switch (message)
+	{
+        case WM_CREATE:
+
+            break;
+
+	    case WM_DESTROY:
+
+		    break;
+
+        case WM_PAINT:
+
+			if (GetUpdateRect(hWnd, &rect, false)) 
+			{
+				hdc = BeginPaint(hWnd, &ps);
+
+				//printf("Update RECT: %li, %li, %li, %li\r\n", ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom);
+
+				c = BitBlt(hdc, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right - ps.rcPaint.left + 1, ps.rcPaint.bottom - ps.rcPaint.top + 1, memdc, ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
+	 
+				EndPaint(hWnd, &ps);
+			};
+
+            break;
+
+        case WM_CHAR:
+
+			pressedKey = wParam;
+
+			if (pressedKey == '`')
+			{
+				GetWindowRect(hWnd, &rect);
+
+				if ((rect.bottom-rect.top) > 340)
+				{
+					MoveWindow(hWnd, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top-fontHeight*secBufferHeight, true); 
+				}
+				else
+				{
+					MoveWindow(hWnd, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top+fontHeight*secBufferHeight, true); 
+				};
+			};
+
+            break;
+
+		case WM_MOUSEMOVE:
+
+			x = LOWORD(lParam); y = HIWORD(lParam);
+
+			if (move)
+			{
+				GetWindowRect(hWnd, &rect);
+				SetWindowPos(hWnd, HWND_TOP, rect.left+x-movex, rect.top+y-movey, 0, 0, SWP_NOSIZE); 
+			};
+
+			return 0;
+
+			break;
+
+		case WM_MOVING:
+
+			return TRUE;
+
+			break;
+
+		case WM_SYSCOMMAND:
+
+			return 0;
+
+			break;
+
+		case WM_LBUTTONDOWN:
+
+			move = true;
+			movex = x; movey = y;
+
+			SetCapture(hWnd);
+
+			return 0;
+
+			break;
+
+		case WM_LBUTTONUP:
+
+			move = false;
+
+			ReleaseCapture();
+
+			return 0;
+
+			break;
+
+		case WM_MBUTTONDOWN:
+
+			ShowWindow(hWnd, SW_MINIMIZE);
+
+			return 0;
+
+			break;
+
+		case WM_ACTIVATE:
+
+			if (HIWORD(wParam) != 0 && LOWORD(wParam) != 0)
+			{
+				ShowWindow(hWnd, SW_NORMAL);
+			};
+
+			break;
+
+		case WM_CLOSE:
+
+			//run = false;
+
+			break;
+	};
+    
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+#endif		
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+int PutString(u32 x, u32 y, byte c, const char *str)
+{
+	char *dst = secBuffer+(y*secBufferWidth+x)*2;
+	dword i = secBufferWidth-x;
+
+	while (*str != 0 && i > 0)
+	{
+		*(dst++) = *(str++);
+		*(dst++) = c;
+		i -= 1;
+	};
+
+	return secBufferWidth-x-i;
+}
+
+#endif
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef	WIN32
+
+int Printf(u32 xx, u32 yy, byte c, const char *format, ... )
+{
+	char buf[1024];
+
+	va_list arglist;
+
+    va_start(arglist, format);
+    vsprintf(buf, format, arglist);
+    va_end(arglist);
+
+	return PutString(xx, yy, c, buf);
+}
+
+#endif
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void InitHardware()
 {
-	using namespace HW;
-
 #ifdef CPU_SAME53	
+	
+	using namespace HW;
 
 //	HW::PIOA->BSET(13);
 
@@ -4775,6 +5762,10 @@ void InitHardware()
 	Init_time();
 	NAND_Init();
 	I2C_Init();
+	SPI_Init();
+
+#ifndef WIN32
+
 	InitClock();
 
 	InitManTransmit();
@@ -4789,16 +5780,21 @@ void InitHardware()
 
 	EnableVCORE();
 
-	SPI_Init();
-
 	WDT_Init();
+
+#else
+
+	InitDisplay();
+
+#endif
 }
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void UpdateHardware()
 {
+#ifndef WIN32
+
 	static byte i = 0;
 
 	static Deb db(false, 20);
@@ -4813,6 +5809,8 @@ void UpdateHardware()
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
+
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
