@@ -326,25 +326,25 @@ public:
 
 class RequestQuery
 {
-	//REQ* _first;
-	//REQ* _last;
-	Ptr<REQ> _req;
+	//REQ*			_first;
+	//REQ*			_last;
+	Ptr<REQ>		_req;
 
 	ListPtr<REQ>	reqList;
 	
-	byte _state;
+	byte			_state;
 
-	u16	_crc;
-	u16 _crcLen;
+	u16				_crc;
+	u16 			_crcLen;
 
-	byte* _crcPtr;
+	byte*			_crcPtr;
 
 
-	ComPort *com;
+	ComPort			*com;
 
-	//u32		count;
+	//u32			count;
 
-	bool _run;
+	bool			_run;
 
 public:
 

@@ -329,7 +329,7 @@ struct EraseBlock
 	bool check;		// Проверить результат стирания
 	u16	errBlocks;
 
-	EraseBlock() : state(WAIT), force(false), check(true), errBlocks(0), er(-1, -1, -1, -1) {}
+	EraseBlock() : state(WAIT), force(false), check(true), errBlocks(0), er(~0) {}
 
 	void Start(const FLADR &rd, bool frc, bool chk);
 	bool Update();
@@ -361,17 +361,17 @@ bool EraseBlock::Update()
 
 		case ERASE_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++		
 																																
-			NAND_Chip_Select(er.chip);
+			NAND_Chip_Select(er.GetChip());
 
 			if (force)
 			{
-				NAND_CmdEraseBlock(er.block);																						
+				NAND_CmdEraseBlock(er.GetBlock());																						
 																															
 				state = ERASE_2;																				
 			}
 			else
 			{
-				NAND_CmdReadPage(er.pg, er.block, 0);																					
+				NAND_CmdReadPage(er.pg, er.GetBlock(), 0);																					
 																																	
 				state = ERASE_0;																						
 			};
@@ -396,7 +396,7 @@ bool EraseBlock::Update()
 				if (spare.validPage != 0xFFFF && spare.validBlock != 0xFFFF)									
 				{																												
 					errBlocks += 1;	
-					nvv.badBlocks[er.chip] += 1;
+					nvv.badBlocks[er.GetChip()] += 1;
 																																
 					er.NextBlock();	
 
@@ -406,7 +406,7 @@ bool EraseBlock::Update()
 				{
 					errBlocks += 1;	
 																																
-					NAND_CmdWritePage(er.pg, er.block, 0);																			
+					NAND_CmdWritePage(er.pg, er.GetBlock(), 0);																			
 																																
 					NAND_WRITE(0); NAND_WRITE(0); NAND_WRITE(0); NAND_WRITE(0); //*(u32*)FLD = 0;		// spareErase.validPage = 0; spareErase.validBlock = 0;																
 																																
@@ -416,7 +416,7 @@ bool EraseBlock::Update()
 				}
 				else																											
 				{																												
-					NAND_CmdEraseBlock(er.block);																						
+					NAND_CmdEraseBlock(er.GetBlock());																						
 																																
 					state = ERASE_2;																				
 				};																												
@@ -432,11 +432,11 @@ bool EraseBlock::Update()
 				if ((NAND_CmdReadStatus() & 1) != 0 && check) // erase error																	
 				{																												
 					errBlocks += 1;	
-					nvv.badBlocks[er.chip] += 1;
+					nvv.badBlocks[er.GetChip()] += 1;
 
 //					__breakpoint(0);																							
 																																
-					NAND_CmdWritePage(er.pg, er.block, 0);																			
+					NAND_CmdWritePage(er.pg, er.GetBlock(), 0);																			
 																																
 					NAND_WRITE(0);NAND_WRITE(0);NAND_WRITE(0);NAND_WRITE(0);//*(u32*)FLD = 0;		// spareErase.validPage = 0; spareErase.validBlock = 0;																
 																																
@@ -654,11 +654,11 @@ bool Write::Start()
 
 		if (spare.vecFstOff == 0xFFFF)
 		{
-			spare.vecFstOff = wr.col;
+			spare.vecFstOff = wr.GetCol();
 			spare.vecFstLen = wr_count;
 		};
 
-		spare.vecLstOff = wr.col;
+		spare.vecLstOff = wr.GetCol();
 		spare.vecLstLen = wr_count;
 
 		spare.vectorCount += 1;
@@ -714,10 +714,10 @@ bool Write::Update()
 //			NAND_Chip_Select(wr.chip);
 
 			{
-				register u16 c = wr.pg - wr.col;
+				register u16 c = wr.pg - wr.GetCol();
 
 
-				if (wr.col == 0 && wr_count >= wr.pg) // писать сразу во флеш
+				if (wr.GetCol() == 0 && wr_count >= wr.pg) // писать сразу во флеш
 				{
 					wr_ptr = wr_data;
 					wr_count -= wr.pg;
@@ -729,9 +729,9 @@ bool Write::Update()
 				{
 					if (wr_count < c ) c = wr_count;
 
-					NAND_CopyDataDMA(wr_data, (byte*)wrBuf+wr.col, c);	// BufWriteData(wr_data, c);
+					NAND_CopyDataDMA(wr_data, (byte*)wrBuf+wr.GetCol(), c);	// BufWriteData(wr_data, c);
 
-					wr.col += c;
+					wr.SetCol(wr.GetCol() + c);
 					wr_data += c;
 					wr_count -= c;
 
@@ -745,7 +745,7 @@ bool Write::Update()
 
 			if (NAND_CheckDataComplete())
 			{
-				if (wr.col == 0)
+				if (wr.GetCol() == 0)
 				{
 					wr_ptr = wrBuf;
 //					wr.col = 0;
@@ -783,9 +783,9 @@ bool Write::Update()
 
 		case WRITE_PAGE_0:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			NAND_Chip_Select(wr.chip);
+			NAND_Chip_Select(wr.GetChip());
 
-			NAND_CmdWritePage(0, wr.block, wr.page);
+			NAND_CmdWritePage(0, wr.GetBlock(), wr.GetPage());
 
 			NAND_WriteDataDMA(wr_ptr, wr.pg);
 			
@@ -832,9 +832,9 @@ bool Write::Update()
 				if ((t & 1) != 0) // program error
 				{
 					spare.fbp += 1;
-					nvv.pageError[wr.chip] += 1;
+					nvv.pageError[wr.GetChip()] += 1;
 
-					NAND_CmdWritePage(wr.pg, wr.block, wr.page);
+					NAND_CmdWritePage(wr.pg, wr.GetBlock(), wr.GetPage());
 
 					NAND_WRITE(0);NAND_WRITE(0);//*(u16*)FLD = 0; // spareErase.validPage = 0;
 
@@ -844,7 +844,7 @@ bool Write::Update()
 				}
 				else if (verifyWritePage)
 				{
-					NAND_CmdReadPage(0, wr.block, wr.page);
+					NAND_CmdReadPage(0, wr.GetBlock(), wr.GetPage());
 					
 					state = WRITE_PAGE_6;
 				}
@@ -862,7 +862,7 @@ bool Write::Update()
 			{																													
 				if (wr_pg_error == 2) // пометить блок как имеющий сбойные страницы
 				{
-					NAND_CmdWritePage(wr.pg + sizeof(spare.validPage) + sizeof(spare.validBlock), wr.block, 0);
+					NAND_CmdWritePage(wr.pg + sizeof(spare.validPage) + sizeof(spare.validBlock), wr.GetBlock(), 0);
 
 					NAND_WRITE(0);NAND_WRITE(0);//*(u16*)FLD = 0; // spare.badPages = 0;
 
@@ -912,7 +912,7 @@ bool Write::Update()
 
 					spare.fbp += 1;
 
-					NAND_CmdWritePage(wr.pg, wr.block, wr.page);
+					NAND_CmdWritePage(wr.pg, wr.GetBlock(), wr.GetPage());
 
 					NAND_WRITE(0);NAND_WRITE(0);//*(u16*)FLD = 0; // spareErase.validPage = 0;
 
@@ -989,23 +989,23 @@ bool Write::Update()
 
 		case WRITE_CREATE_FILE_0:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if (wr.col > 0)
+			if (wr.GetCol() > 0)
 			{
 				wr_ptr = wrBuf;
 				wr_count = 0;
 
 				byte *p = (byte*)wrBuf;
 
-				p += wr.col;
+				p += wr.GetCol();
 
-				for (u16 i = wr.col&3; i > 0; i--)
+				for (u16 i = wr.GetCol()&3; i > 0; i--)
 				{
 					*(p++) = 0xff;
 				};
 
-				u32 *d = wrBuf + (wr.col+3)/4;
+				u32 *d = wrBuf + (wr.GetCol()+3)/4;
 
-				for (u16 i = (sizeof(wrBuf)-wr.col)/4; i > 0; i--)
+				for (u16 i = (sizeof(wrBuf)-wr.GetCol())/4; i > 0; i--)
 				{
 					*(d++) = -1;
 				};
@@ -1024,7 +1024,7 @@ bool Write::Update()
 
 			spare.prev = spare.start;		
 
-			if (wr.page > 0)
+			if (wr.GetPage() > 0)
 			{
 				wr.NextBlock();
 
@@ -1112,9 +1112,9 @@ bool ReadSpare::Update()
 
 		case START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			NAND_Chip_Select(rd->chip);
+			NAND_Chip_Select(rd->GetChip());
 
-			NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+			NAND_CmdReadPage(rd->pg, rd->GetBlock(), rd->GetPage());
 
 			state = READ_1;
 
@@ -1143,8 +1143,8 @@ bool ReadSpare::Update()
 
 						rd->NextBlock();
 
-						NAND_Chip_Select(rd->chip);
-						NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+						NAND_Chip_Select(rd->GetChip());
+						NAND_CmdReadPage(rd->pg, rd->GetBlock(), rd->GetPage());
 
 						state = READ_1;
 					}
@@ -1161,8 +1161,8 @@ bool ReadSpare::Update()
 
 						rd->NextPage();
 
-						NAND_Chip_Select(rd->chip);
-						NAND_CmdReadPage(rd->pg, rd->block, rd->page);
+						NAND_Chip_Select(rd->GetChip());
+						NAND_CmdReadPage(rd->pg, rd->GetBlock(), rd->GetPage());
 
 						state = READ_1;
 					}
@@ -1261,7 +1261,7 @@ bool Read::Update()
 
 		case READ_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			NAND_Chip_Select(rd.chip);
+			NAND_Chip_Select(rd.GetChip());
 
 			if (rd.GetRawPage() != sparePage)
 			{
@@ -1272,7 +1272,7 @@ bool Read::Update()
 			else
 			{
 				//NAND_CmdReadPage(rd.col, rd.block, rd.page);
-				NAND_CmdRandomRead(rd.col);
+				NAND_CmdRandomRead(rd.GetCol());
 
 				state = READ_PAGE;
 			};
@@ -1285,7 +1285,7 @@ bool Read::Update()
 			{
 				sparePage = rd.GetRawPage();
 
-				NAND_CmdRandomRead(rd.col);
+				NAND_CmdRandomRead(rd.GetCol());
 
 				state = READ_PAGE;
 			};
@@ -1301,7 +1301,7 @@ bool Read::Update()
 
 			if(!NAND_BUSY())
 			{
-				register u16 c = rd.pg - rd.col;
+				register u16 c = rd.pg - rd.GetCol();
 
 				if (rd_count < c) c = rd_count;
 
@@ -1389,7 +1389,7 @@ bool Read::Update()
 					state = FIND_1;
 				};
 			}
-			else if (spare.crc != 0 || spare.vecFstOff == 0xFFFF || spare.vecLstOff == 0xFFFF || rd.col > spare.vecLstOff)
+			else if (spare.crc != 0 || spare.vecFstOff == 0xFFFF || spare.vecLstOff == 0xFFFF || rd.GetCol() > spare.vecLstOff)
 			{
 				rd.NextPage();
 
@@ -1399,17 +1399,17 @@ bool Read::Update()
 			}
 			else 
 			{
-				if (rd.col <= spare.vecFstOff)
+				if (rd.GetCol() <= spare.vecFstOff)
 				{
-					rd.col = spare.vecFstOff;
+					rd.SetCol(spare.vecFstOff);
 				}
-				else if (rd.col <= (spare.vecFstOff+spare.vecFstLen))
+				else if (rd.GetCol() <= (spare.vecFstOff+spare.vecFstLen))
 				{
-					rd.col = spare.vecFstOff+spare.vecFstLen;
+					rd.SetCol(spare.vecFstOff+spare.vecFstLen);
 				}
-				else if (rd.col <= spare.vecLstOff)
+				else if (rd.GetCol() <= spare.vecLstOff)
 				{
-					rd.col = spare.vecLstOff;
+					rd.SetCol(spare.vecLstOff);
 				};
 
 				rd_data = (byte*)&curRdBuf->hdr;
@@ -1830,7 +1830,7 @@ void NAND_Idle()
 
 		case NAND_STATE_FULL_ERASE_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-			t = eb = nandSZ->fl >> (NAND_COL_BITS + NAND_PAGE_BITS); // blocks count
+			t = eb = nandSZ->fl >> er.CHIP_OFF; // blocks count
 
 			er.SetRawAdr(0);
 

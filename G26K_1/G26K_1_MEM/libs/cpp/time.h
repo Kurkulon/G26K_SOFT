@@ -57,7 +57,7 @@ extern void GetTime(RTC *t);
 inline u32 GetMilliseconds()
 {
 #ifndef WIN32
-	extern u32 msec;
+	extern volatile u32 msec;
 	return msec;
 #else
 	return GetTickCount();
@@ -69,7 +69,7 @@ inline u32 GetMilliseconds()
 inline u16 GetMillisecondsLow()
 {
 #ifndef WIN32
-	extern u32 msec;
+	extern volatile u32 msec;
 	return (u16)msec;
 #else
 	return (u16)(GetTickCount());

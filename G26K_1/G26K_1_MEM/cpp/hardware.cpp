@@ -2,6 +2,7 @@
 #include "core.h"
 #include "time.h"
 #include "COM_DEF.h"
+#include "CRC16_8005.h"
 
 #include "hardware.h"
 
@@ -12,6 +13,7 @@
 #include <conio.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <intrin.h>
 #include "CRC16_CCIT.h"
 
 static HANDLE handleNandFile;
@@ -1108,17 +1110,22 @@ extern "C" void SystemInit()
 //#define NAND_READ_PACK_BYTES	512
 //#define NAND_WRITE_PACK_BYTES	256
 
-#define NAND_CMD_RESET			0xFF
-#define NAND_CMD_READ_ID		0x90
-#define NAND_CMD_READ_1			0x00
-#define NAND_CMD_READ_2			0x30
-#define NAND_CMD_RANDREAD_1		0x05
-#define NAND_CMD_RANDREAD_2		0xE0
-#define NAND_CMD_PAGE_PROGRAM_1	0x80
-#define NAND_CMD_PAGE_PROGRAM_2	0x10
-#define NAND_CMD_READ_STATUS	0x70
-#define NAND_CMD_BLOCK_ERASE_1	0x60
-#define NAND_CMD_BLOCK_ERASE_2	0xD0
+#define NAND_CMD_RESET				0xFF
+#define NAND_CMD_READ_ID			0x90
+#define NAND_CMD_READ_1				0x00
+#define NAND_CMD_READ_2				0x30
+#define NAND_CMD_RANDREAD_1			0x05
+#define NAND_CMD_RANDREAD_2			0xE0
+#define NAND_CMD_PAGE_PROGRAM_1		0x80
+#define NAND_CMD_PAGE_PROGRAM_2		0x10
+#define NAND_CMD_READ_STATUS		0x70
+#define NAND_CMD_BLOCK_ERASE_1		0x60
+#define NAND_CMD_BLOCK_ERASE_2		0xD0
+#define NAND_CMD_READ_PARAM			0xEC
+#define NAND_CMD_CHANGE_WRCOL		0x85
+#define NAND_CMD_COPYBACK_PROGRAM	0x85
+#define NAND_CMD_SET_FEATURES		0xEF
+#define NAND_CMD_GET_FEATURES		0xEE
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1128,12 +1135,131 @@ NandMemSize nandSize;
 
 __packed struct NandID
 {
- 	byte marker;
+ 	byte maker;
  	byte device;
- 	byte data[3];
+	byte data0;
+
+	__packed union
+	{
+		__packed struct 
+		{
+			u16 pageSize			: 2;
+			u16 z_reserved1			: 2;
+			u16 blockSize			: 2;
+			u16 z_reserved2			: 4;
+			u16 planeNumber			: 2;
+			u16 planeSize			: 3;
+		};
+
+	 	byte data[2];
+	};
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct NandParamPage
+{
+ 	char	signature[4];
+ 	u16		revisionNumber;
+ 	u16		featuresSupported;
+	u16		optionalCommandsSupported;
+	byte	_rezerved1[22];
+	char	deviceManufacturer[12];
+	char	deviceModel[20];
+	byte	JEDEC_manufacturer_ID;
+	u16		dateCode;
+	byte	_rezerved2[13];
+	u32		numberDataBytesPerPage;
+	u16		numberSpareBytesPerPage;
+	byte	_rezerved3[6];
+	u32		numberPagesPerBlock;
+	u32		numberBlocksPerLUN;
+	byte	numberLUNsPerChip;
+	byte	numberAddressCycles;
+	byte	numberBitsPerCell;
+	u16		badBlocksMaximumPerLUN;
+	u16		blockEndurans;
+	byte	guaranteedValidBlocks;
+	u16		blockEnduranceForGuaranteedValidBlocks;
+	byte	numberProgramsPerPage;
+	byte	_rezerved4[143];
+	u16		integrityCRC;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+NandParamPage nandParamPage[NAND_MAX_CHIP];
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+byte	FLADR::chipValidNext[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ следующий хороший чип
+byte	FLADR::chipValidPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ предыдущий хороший чип
+u32		FLADR::chipOffsetNext[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на следующий хороший чип
+u32		FLADR::chipOffsetPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на предыдущий хороший чип
+byte 	FLADR::COL_BITS;
+byte 	FLADR::PAGE_BITS;		
+byte 	FLADR::BLOCK_BITS;		
+//byte 	FLADR::COL_OFF;		// = 0
+byte 	FLADR::PAGE_OFF;	// = COL_BITS;
+byte 	FLADR::CHIP_OFF;	// = PAGE_OFF + PAGE_BITS
+byte 	FLADR::BLOCK_OFF;	// = CHIP_OFF + NAND_CHIP_BITS 		
+u32 	FLADR::COL_MASK;
+u32 	FLADR::PAGE_MASK;		
+u32 	FLADR::CHIP_MASK;		
+u32 	FLADR::BLOCK_MASK;		
+u32 	FLADR::RAWPAGE_MASK;	
+u32 	FLADR::RAWBLOCK_MASK;	
+u64 	FLADR::RAWADR_MASK;
+u32 	FLADR::pg; //enum { pg = (1<<NAND_COL_BITS) };
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void	FLADR::InitVaildTables(u16 mask)
+{
+	u32 blocksize = 1UL << CHIP_OFF;
+
+	for(byte chip = 0; chip < NAND_MAX_CHIP; chip++)
+	{
+		chipValidNext[chip] = 0;
+		chipValidPrev[chip] = 0;
+
+		u32 offset = 0;
+
+		for (byte i = 0; i < NAND_MAX_CHIP; i++)
+		{
+			byte cn = chip+i; if (cn >= NAND_MAX_CHIP) cn = 0;
+
+			if (mask & (1<<cn))
+			{
+				chipValidNext[chip] = cn;
+				chipOffsetNext[chip] = offset;
+				break;
+			};
+
+			offset += blocksize;
+		};
+
+		offset = 0;
+
+		for (byte i = 0; i < NAND_MAX_CHIP; i++)
+		{
+			byte cp = chip-i; if (cp >= NAND_MAX_CHIP) cp = NAND_MAX_CHIP - 1;
+
+			if (mask & (1<<cp))
+			{
+				chipValidPrev[chip] = cp;
+				chipOffsetPrev[chip] = offset;
+				break;
+			};
+			
+			offset += blocksize;
+		};
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static byte clog2(u32 v) {byte r = 0; while (v>>=1) {r++;}; return r;}
+
 #ifndef WIN32
 
 static u32 chipSelect[NAND_MAX_CHIP] = { FCS0, FCS1, FCS2, FCS3, FCS4, FCS5, FCS6, FCS7 };
@@ -1485,6 +1611,43 @@ bool NAND_CheckDataComplete()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void NAND_Set_Features(byte adr, byte p1, byte p2, byte p3, byte p4)
+{
+	NAND_DIR_OUT();
+	NAND_CMD_LATCH(NAND_CMD_SET_FEATURES);
+	NAND_ADR_LATCH(adr);
+	NAND_WRITE(p1); 
+	NAND_WRITE(p2); 
+	NAND_WRITE(p3); 
+	NAND_WRITE(p4); 
+	while(!NAND_BUSY());
+	while(NAND_BUSY());
+
+	NAND_DIR_IN();
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void NAND_Get_Features(byte adr, byte* p)
+{
+	NAND_DIR_OUT();
+	NAND_CMD_LATCH(NAND_CMD_GET_FEATURES);
+	NAND_ADR_LATCH(adr);
+
+	while(!NAND_BUSY());
+
+	NAND_DIR_IN();
+
+	while(NAND_BUSY());
+
+	p[0] = NAND_READ(); 
+	p[1] = NAND_READ(); 
+	p[2] = NAND_READ(); 
+	p[3] = NAND_READ(); 
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static bool NAND_Read_ID(NandID *id)
 {
 	NAND_DIR_OUT();
@@ -1501,9 +1664,26 @@ static bool NAND_Read_ID(NandID *id)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void NAND_Read_PARAM(NandParamPage *pp)
+{
+	NAND_DIR_OUT();
+	NAND_CMD_LATCH(NAND_CMD_READ_PARAM);
+	NAND_ADR_LATCH(0);
+	NAND_DIR_IN();
+
+	while(!NAND_BUSY());
+	while(NAND_BUSY());
+	
+	NAND_ReadDataDMA(pp, sizeof(NandParamPage)); while (!NAND_CheckDataComplete());
+
+	//PIO_WE_RE->SET(RE); 
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 inline u32 NAND_ROW(u32 block, u16 page)
 {
-	return (block << NAND_PAGE_BITS) + page;
+	return (block << FLADR::PAGE_BITS) + page;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1634,12 +1814,123 @@ void NAND_CmdWritePage2()
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
+
+struct FLADR_old
+{
+	union
+	{
+		struct
+		{
+			u64		col		: NAND_COL_BITS;
+			u64 	page	: NAND_PAGE_BITS;
+			u64		chip	: NAND_CHIP_BITS;
+			u64 	block	: NAND_BLOCK_BITS;
+
+			u64		overflow : (64-(NAND_COL_BITS+NAND_PAGE_BITS+NAND_CHIP_BITS+NAND_BLOCK_BITS));
+		};
+
+		u64	raw;
+	};
+
+	enum { pg = (1<<NAND_COL_BITS) };
+//	u32		rawpage;
+
+//	const NandMemSize& sz;
+
+	inline void operator=(const FLADR &a) { raw = a.raw; }
+
+	FLADR_old() : raw(0) {}
+	FLADR_old(u32 bl, u16 pg, u16 cl, byte ch) : block(bl), page(pg), col(cl), chip(ch) {}
+	FLADR_old(u32 pg) : col(0) { SetRawPage(pg); }
+
+	u32		GetRawPage() { return (raw & NAND_RAWADR_MASK) >> NAND_COL_BITS; }
+
+	void	SetRawPage(u32 p) { raw = (u64)(p & NAND_RAWPAGE_MASK) << NAND_COL_BITS; };
+
+	u32		GetRawBlock() { return (raw & NAND_RAWADR_MASK) >> (NAND_COL_BITS+NAND_PAGE_BITS); }
+
+	void	SetRawBlock(u32 b) { raw = (u64)(b & NAND_RAWBLOCK_MASK) << (NAND_COL_BITS+NAND_PAGE_BITS); };
+
+	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
+	void	SetRawAdr(u64 a) { raw  = a & NAND_RAWADR_MASK; };
+
+	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; raw += FLADR::chipOffsetNext[chip]; }
+	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS); raw += FLADR::chipOffsetNext[chip];}
+	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS; col = 0; raw -= FLADR::chipOffsetPrev[chip]; }
+	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0; raw -= FLADR::chipOffsetPrev[chip];}
+
+	void	AddRaw(u32 v) { raw += v; raw += FLADR::chipOffsetNext[chip]; }
+	void	SubRaw(u32 v) { raw -= v; raw -= FLADR::chipOffsetPrev[chip]; }
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void NAND_Test_FLADR()
+{
+	FLADR_old	x;
+	FLADR		y;
+
+	u32 col = 0;
+	u32 page = 0;
+	u32 chip = 0;
+	u32 block = 0;
+	u32 rawpage = 0;
+	u32 rawblock = 0;
+	u64 rawadr = 0;
+
+	for (u32 n = 1; n < (1<<NAND_MAX_CHIP); n++)
+	{
+		FLADR::InitVaildTables(n);
+
+		for (u32 i = 0; i < 10000; i++)
+		{
+			x.col = col;				y.SetCol(col);				if (x.raw != y.raw)	__debugbreak();
+
+			x.page = page;				y.SetPage(page);			if (x.raw != y.raw)	__debugbreak();
+
+			x.chip = chip;				y.SetChip(chip);			if (x.raw != y.raw)	__debugbreak();
+
+			x.block = block;			y.SetBlock(block);			if (x.raw != y.raw)	__debugbreak();
+
+			x.SetRawPage(rawpage);		y.SetRawPage(rawpage);		if (x.raw != y.raw)	__debugbreak();
+
+			x.SetRawBlock(rawblock);	y.SetRawBlock(rawblock);	if (x.raw != y.raw)	__debugbreak();
+
+			x.SetRawAdr(rawadr);		y.SetRawAdr(rawadr);		if (x.raw != y.raw)	__debugbreak();
+
+			x.NextPage();				y.NextPage();				if (x.raw != y.raw)	__debugbreak();
+			x.NextBlock();				y.NextBlock();				if (x.raw != y.raw)	__debugbreak();
+			x.PrevPage();				y.PrevPage();				if (x.raw != y.raw)	__debugbreak();
+			x.PrevBlock();				y.PrevBlock();				if (x.raw != y.raw)	__debugbreak();
+
+
+			if (x.GetRawPage()	!= y.GetRawPage())		__debugbreak();
+			if (x.GetRawBlock() != y.GetRawBlock())		__debugbreak();
+			if (x.GetRawAdr()	!= y.GetRawAdr())		__debugbreak();
+
+			col		+= 9859;
+			page	+= 1019;
+			chip	+= 647;
+			block		= (block+1019)*9871;
+			rawpage		= (rawpage+1087)*98887;
+			rawblock	= (rawblock+1153)*99901;
+			rawadr		= (rawadr+1229)*99991;
+		};
+	};
+
+}
+
+#endif
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void NAND_Init()
 {
 #ifndef WIN32
 
 	using namespace HW;
+
+	byte p[4];
 
 #ifdef CPU_SAME53
 
@@ -1730,10 +2021,9 @@ static void NAND_Init()
 
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip ++)
 	{
-
 		NAND_Chip_Select(chip);
 		ResetNand();
-		NandID k9k8g08u_id = {0};
+		NandID id = {0};
 
 		for (byte i = 0; i < ArraySize(checkBuf); i++)
 		{
@@ -1753,72 +2043,71 @@ static void NAND_Init()
 
 		nandSize.chipDataBusMask[chip] = ~bitMask;
 	
-		NAND_Read_ID(&k9k8g08u_id);
+		NAND_Read_ID(&id);
 
-		if((k9k8g08u_id.marker == 0xEC) && (k9k8g08u_id.device == 0xD3))
+		if((id.maker == 0xEC) && (id.device == 0xD3))
 		{
-			if (nandSize.shCh == 0)
+			if (nandSize.ch == 0)
 			{
-				nandSize.pg = 1 << (nandSize.bitCol = nandSize.shPg = ((k9k8g08u_id.data[1] >> 0) & 0x03) + 10);
-				nandSize.bl = 1 << (nandSize.shBl = ((k9k8g08u_id.data[1] >> 4) & 0x03) + 16);
-				nandSize.ch = 1 << (nandSize.shCh = (((k9k8g08u_id.data[2] >> 4) & 0x07) + 23) + (((k9k8g08u_id.data[2] >> 2) & 0x03) + 0));
-//				nandSize.row = 1 << (nandSize.shRow = nandSize.shCh - nandSize.shPg);
-				
-				nandSize.pagesInBlock = 1 << (nandSize.bitPage = nandSize.shBl - nandSize.shPg);
-
-				nandSize.maskPage = nandSize.pagesInBlock - 1;
-				nandSize.maskBlock = (1 << (nandSize.bitBlock = nandSize.shCh - nandSize.shBl)) - 1;
+				FLADR::PAGE_OFF			= FLADR::COL_BITS = id.pageSize + 10;
+				FLADR::CHIP_OFF			= id.blockSize + 16;
+				FLADR::PAGE_BITS		= FLADR::CHIP_OFF - FLADR::PAGE_OFF;
+				FLADR::BLOCK_BITS		= (id.planeSize + 23 + id.planeNumber) - FLADR::CHIP_OFF;
 			};
 			
 			nandSize.fl += nandSize.ch;
 		
 			if (bitMask == 0) { nandSize.mask |= (1 << chip); };
-
+		}
+		else if((id.maker == 0x2C) && (id.device == 0x68))
+		{
+			NAND_Set_Features(1, 5, 0, 0, 0);
+			
 			ResetNand();
+
+			NAND_Get_Features(1, p);
+
+			NandParamPage &np = nandParamPage[chip];
+
+			NAND_Read_PARAM(&np);
+
+			u16 crc = GetCRC16_8005_refl(&np, sizeof(np)-2, 0x4F4E);
+
+			if (np.integrityCRC == crc/* || np.integrityCRC == 0xA61F*/)
+			{
+				if (nandSize.mask == 0)
+				{
+					FLADR::PAGE_OFF			= FLADR::COL_BITS = clog2(np.numberDataBytesPerPage);
+					FLADR::PAGE_BITS		= clog2(np.numberPagesPerBlock);
+					FLADR::CHIP_OFF			= FLADR::PAGE_OFF + FLADR::PAGE_BITS;
+					FLADR::BLOCK_BITS		= clog2(np.numberBlocksPerLUN * np.numberLUNsPerChip);
+
+					nandSize.ch = 1ULL << (FLADR::COL_BITS+FLADR::PAGE_BITS+FLADR::BLOCK_BITS);
+				};
+				
+				nandSize.fl += nandSize.ch;
+				
+				if (bitMask == 0) { nandSize.mask |= (1 << chip); };
+			};
 		};
 	};
 
-	u32 blocksize = 1UL << (NAND_COL_BITS + NAND_PAGE_BITS);
+	if (nandSize.ch != 0)
+	{
+		FLADR::BLOCK_OFF		= FLADR::CHIP_OFF + NAND_CHIP_BITS;
+		FLADR::COL_MASK			= (1UL<<FLADR::COL_BITS)-1;
+		FLADR::PAGE_MASK		= (1UL<<FLADR::PAGE_BITS)-1;
+		FLADR::CHIP_MASK		= NAND_CHIP_MASK;
+		FLADR::BLOCK_MASK		= (1UL<<FLADR::BLOCK_BITS)-1;
+		FLADR::RAWPAGE_MASK		= (1UL<<(FLADR::PAGE_BITS+NAND_CHIP_BITS+FLADR::BLOCK_BITS))-1;
+		FLADR::RAWBLOCK_MASK	= (1UL<<(NAND_CHIP_BITS+FLADR::BLOCK_BITS))-1;
+		FLADR::RAWADR_MASK		= (1ULL<<(FLADR::COL_BITS+FLADR::PAGE_BITS+NAND_CHIP_BITS+FLADR::BLOCK_BITS))-1;
+		FLADR::pg				= 1UL << FLADR::COL_BITS;
+	};
 
 	nandSize.mask &= testNandChipMask;
 
-	for(byte chip = 0; chip < NAND_MAX_CHIP; chip++)
-	{
-		nandSize.chipValidNext[chip] = 0;
-		nandSize.chipValidPrev[chip] = 0;
-
-		u32 offset = 0;
-
-		for (byte i = 0; i < NAND_MAX_CHIP; i++)
-		{
-			byte cn = chip+i; if (cn >= NAND_MAX_CHIP) cn = 0;
-
-			if (nandSize.mask & (1<<cn))
-			{
-				nandSize.chipValidNext[chip] = cn;
-				nandSize.chipOffsetNext[chip] = offset;
-				break;
-			};
-
-			offset += blocksize;
-		};
-
-		offset = 0;
-
-		for (byte i = 0; i < NAND_MAX_CHIP; i++)
-		{
-			byte cp = chip-i; if (cp >= NAND_MAX_CHIP) cp = NAND_MAX_CHIP - 1;
-
-			if (nandSize.mask & (1<<cp))
-			{
-				nandSize.chipValidPrev[chip] = cp;
-				nandSize.chipOffsetPrev[chip] = offset;
-				break;
-			};
-			
-			offset += blocksize;
-		};
-	};
+	FLADR::InitVaildTables(nandSize.mask);
 
 	NAND_Chip_Disable();
 
@@ -1833,14 +2122,28 @@ static void NAND_Init()
 
 	cputs((handleNandFile == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
 
-	nandSize.pg = 1 << (nandSize.bitCol = NAND_COL_BITS);
-	nandSize.bl = 1 << (nandSize.shBl = NAND_COL_BITS+NAND_PAGE_BITS);
-	nandSize.ch = 1ULL << (nandSize.shCh = NAND_COL_BITS+NAND_PAGE_BITS+NAND_BLOCK_BITS);
-	
-	nandSize.pagesInBlock = 1 << (nandSize.bitPage = nandSize.shBl - nandSize.shPg);
+	FLADR::PAGE_OFF			= FLADR::COL_BITS = NAND_COL_BITS;
+	FLADR::PAGE_BITS		= NAND_PAGE_BITS;
+	FLADR::CHIP_OFF			= FLADR::PAGE_OFF + FLADR::PAGE_BITS;
+	FLADR::BLOCK_BITS		= NAND_BLOCK_BITS;
+	FLADR::BLOCK_OFF		= FLADR::CHIP_OFF + NAND_CHIP_BITS;
+	FLADR::COL_MASK			= (1UL<<FLADR::COL_BITS)-1;
+	FLADR::PAGE_MASK		= (1UL<<FLADR::PAGE_BITS)-1;
+	FLADR::CHIP_MASK		= NAND_CHIP_MASK;
+	FLADR::BLOCK_MASK		= (1UL<<FLADR::BLOCK_BITS)-1;
+	FLADR::RAWPAGE_MASK		= (1UL<<(FLADR::PAGE_BITS+NAND_CHIP_BITS+FLADR::BLOCK_BITS))-1;
+	FLADR::RAWBLOCK_MASK	= (1UL<<(NAND_CHIP_BITS+FLADR::BLOCK_BITS))-1;
+	FLADR::RAWADR_MASK		= (1ULL<<(FLADR::COL_BITS+FLADR::PAGE_BITS+NAND_CHIP_BITS+FLADR::BLOCK_BITS))-1;
+	FLADR::pg				= 1UL << FLADR::COL_BITS;
 
-	nandSize.maskPage = nandSize.pagesInBlock - 1;
-	nandSize.maskBlock = (1 << (nandSize.bitBlock = nandSize.shCh - nandSize.shBl)) - 1;
+	//nandSize.pg = 1 << (nandSize.bitCol = NAND_COL_BITS);
+	//nandSize.bl = 1 << (nandSize.shBl = NAND_COL_BITS+NAND_PAGE_BITS);
+	nandSize.ch = 1ULL << (NAND_COL_BITS+NAND_PAGE_BITS+NAND_BLOCK_BITS);
+	
+	//nandSize.pagesInBlock = 1 << (nandSize.bitPage = nandSize.shBl - nandSize.shPg);
+
+	//nandSize.maskPage = nandSize.pagesInBlock - 1;
+	//nandSize.maskBlock = (1 << (nandSize.bitBlock = nandSize.shCh - nandSize.shBl)) - 1;
 			
 	nandSize.fl = nandSize.ch * NAND_MAX_CHIP;
 			
@@ -1848,11 +2151,15 @@ static void NAND_Init()
 
 	cputs("Alloc nandEraseFillArray ... ");
 
-	nandEraseFillArray = VirtualAlloc(0, nandEraseFillArraySize = nandSize.bl*2, MEM_COMMIT, PAGE_READWRITE);
+	nandEraseFillArray = VirtualAlloc(0, nandEraseFillArraySize = 1UL << (NAND_COL_BITS+NAND_PAGE_BITS+1), MEM_COMMIT, PAGE_READWRITE);
 
 	cputs((nandEraseFillArray == NULL) ? "!!! ERROR !!!\n" : "OK\n");
 
 	if (nandEraseFillArray != 0) for (u32 i = nandEraseFillArraySize/4, *p = (u32*)nandEraseFillArray; i != 0; i--) *(p++) = ~0;
+
+	NAND_Test_FLADR();
+
+	FLADR::InitVaildTables(nandSize.mask);
 
 #endif
 }

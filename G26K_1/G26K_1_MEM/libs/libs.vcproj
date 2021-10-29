@@ -126,74 +126,46 @@
 			<File
 				RelativePath=".\cpp\CRC16.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\cpp\CRC16_8005.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16_CCIT.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC32.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC16.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC16_2.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\cpp\GetCRC16_8005.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC16_CCIT.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\GetCRC32.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\PointerCRC.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\time.cpp"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -204,91 +176,51 @@
 			<File
 				RelativePath=".\cpp\cm4.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\core.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\cpp\CRC16_8005.h"
+				>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16_CCIT.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\CRC32.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\PointerCRC.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\same53.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\time.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\types.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\cpp\XMC4800.h"
 				>
-				<FileConfiguration
-					Name="Win32_Debug|Win32"
-					>
-				</FileConfiguration>
 			</File>
 		</Filter>
 		<File
 			RelativePath=".\makeobj"
 			>
-			<FileConfiguration
-				Name="Win32_Debug|Win32"
-				>
-			</FileConfiguration>
 		</File>
 	</Files>
 	<Globals>

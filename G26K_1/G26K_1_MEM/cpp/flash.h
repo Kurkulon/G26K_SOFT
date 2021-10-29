@@ -56,56 +56,6 @@ enum flash_save_repeat_type
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct FLADR
-{
-	union
-	{
-		struct
-		{
-			u64		col		: NAND_COL_BITS;
-			u64 	page	: NAND_PAGE_BITS;
-			u64		chip	: NAND_CHIP_BITS;
-			u64 	block	: NAND_BLOCK_BITS;
-
-			u64		overflow : (64-(NAND_COL_BITS+NAND_PAGE_BITS+NAND_CHIP_BITS+NAND_BLOCK_BITS));
-		};
-
-		u64	raw;
-	};
-
-	enum { pg = (1<<NAND_COL_BITS) };
-//	u32		rawpage;
-
-//	const NandMemSize& sz;
-
-	inline void operator=(const FLADR &a) { raw = a.raw; }
-
-	FLADR() : raw(0) {}
-	FLADR(u32 bl, u16 pg, u16 cl, byte ch) : block(bl), page(pg), col(cl), chip(ch) {}
-	FLADR(u32 pg) : col(0) { SetRawPage(pg); }
-
-	u32		GetRawPage() { return (raw & NAND_RAWADR_MASK) >> NAND_COL_BITS; }
-
-	void	SetRawPage(u32 p) { raw = (u64)(p & NAND_RAWPAGE_MASK) << NAND_COL_BITS; };
-
-	u32		GetRawBlock() { return (raw & NAND_RAWADR_MASK) >> (NAND_COL_BITS+NAND_PAGE_BITS); }
-
-	void	SetRawBlock(u32 b) { raw = (u64)(b & NAND_RAWBLOCK_MASK) << (NAND_COL_BITS+NAND_PAGE_BITS); };
-
-	u64		GetRawAdr()	{ return raw & NAND_RAWADR_MASK; };
-	void	SetRawAdr(u64 a) { raw  = a & NAND_RAWADR_MASK; };
-
-	void	NextPage()	{ col = 0; raw += 1 << NAND_COL_BITS; raw += NAND_GetMemSize()->chipOffsetNext[chip]; }
-	void	NextBlock()	{ col = 0;page = 0;raw += 1 << (NAND_COL_BITS + NAND_PAGE_BITS); raw += NAND_GetMemSize()->chipOffsetNext[chip];}
-	void	PrevPage()	{ raw -= 1 << NAND_COL_BITS; col = 0; raw -= NAND_GetMemSize()->chipOffsetPrev[chip]; }
-	void	PrevBlock()	{ raw -= 1 << (NAND_COL_BITS + NAND_PAGE_BITS);col = 0;page = 0; raw -= NAND_GetMemSize()->chipOffsetPrev[chip];}
-
-	void	AddRaw(u32 v) { raw += v; raw += NAND_GetMemSize()->chipOffsetNext[chip]; }
-	void	SubRaw(u32 v) { raw -= v; raw -= NAND_GetMemSize()->chipOffsetPrev[chip]; }
-};
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 __packed struct VecData
 {
 	__packed struct Hdr
