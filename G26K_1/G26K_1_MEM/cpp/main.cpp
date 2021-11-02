@@ -1120,7 +1120,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 		if (curManVec40.Valid())
 		{
-			RspDsp01 &rsp = *((RspDsp01*)(curManVec40->data + curManVec40->dataOffset));
+			RspDsp01 &rsp = *((RspDsp01*)(curManVec40->GetDataPtr()));
 
 			u16 sz = 21 + rsp.CM.sl;
 
@@ -1153,7 +1153,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	}
 	else if (curManVec40.Valid())
 	{
-		RspDsp01 &rsp = *((RspDsp01*)(curManVec40->data + curManVec40->dataOffset));
+		RspDsp01 &rsp = *((RspDsp01*)(curManVec40->GetDataPtr()));
 
 		req40_count2++;
 
@@ -1246,7 +1246,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 
 		if (curManVec50.Valid())
 		{
-			RspDsp01 &rsp = *((RspDsp01*)curManVec40->GetDataPtr());
+			RspDsp01 &rsp = *((RspDsp01*)curManVec50->GetDataPtr());
 
 			mtb->data2 = ((u16*)&rsp)+1;
 
@@ -1275,7 +1275,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 	}
 	else if (curManVec50.Valid())
 	{
-		RspDsp01 &rsp = *((RspDsp01*)curManVec40->GetDataPtr());
+		RspDsp01 &rsp = *((RspDsp01*)curManVec50->GetDataPtr());
 
 		u16 off = prevOff + prevLen;
 		u16 len = prevLen;
@@ -1721,8 +1721,11 @@ static void UpdateMan()
 
 			if (tm.Check(US2RT(100)))
 			{
+				//manTrmData[0] = 1;
+				//manTrmData[1] = 0;
 				//mtb.len1 = 2;
-				SendManData(&mtb);
+				//mtb.data1 = manTrmData;
+				SendManData2(&mtb);
 
 				i++;
 			};
@@ -1746,7 +1749,7 @@ static void UpdateMan()
 static void MainMode()
 {
 	static Ptr<REQ> rq;
-	static Ptr<UNIBUF> flwb;
+	//static Ptr<UNIBUF> flwb;
 	static TM32 tm;
 	static RspDsp01 *rsp = 0;
 
@@ -1758,9 +1761,9 @@ static void MainMode()
 
 			if (rq.Valid())
 			{
-				rsp = (RspDsp01*)(rq->rsp->data + rq->rsp->dataOffset);
+				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
 
-				RequestFlashWrite(flwb, rsp->rw);
+				//RequestFlashWrite(rq->rsp, rsp->rw);
 
 				mainModeState++;
 			};
@@ -1840,7 +1843,7 @@ static void MainMode()
 			}
 			else if (tm.Check(1001))
 			{
-				cmdWriteStart_20 = true;
+				//cmdWriteStart_20 = true;
 			};
 
 			mainModeState = 0;
@@ -2868,9 +2871,9 @@ int main()
 
 	EnableDSP();
 
-	FlashMoto();
+//	FlashMoto();
 
-	FlashDSP();
+//	FlashDSP();
 
 #endif
 

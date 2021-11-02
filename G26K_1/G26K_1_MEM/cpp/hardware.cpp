@@ -44,6 +44,11 @@ static bool fram_spi_WREN = false;
 
 static u16 crc_ccit_result = 0;
 
+#else
+
+#pragma O3
+#pragma Otime
+
 #endif 
 
 #define GEAR_RATIO 12.25
@@ -370,24 +375,32 @@ static void I2C_Init();
 	#define ManRT_INS				(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
 	#define ManRT_SRS				CC4_POSR(3)
 
-	#define ManT					HW::CCU81_CC80
-	#define ManT2					HW::CCU81_CC81
+	#define ManT1					HW::CCU80_CC80
+	#define ManT2					HW::CCU80_CC81
+	#define ManT3					HW::CCU80_CC82
 	
-	#define ManT_L1					HW::CCU81_CC80
-	#define ManT_H1					HW::CCU81_CC81
-	#define ManT_L2					HW::CCU81_CC82
-	#define ManT_H2					HW::CCU81_CC83
+	//#define ManT_L1					HW::CCU81_CC80
+	//#define ManT_H1					HW::CCU81_CC81
+	//#define ManT_L2					HW::CCU81_CC82
+	//#define ManT_H2					HW::CCU81_CC83
 
-	#define ManT_CCU8				HW::CCU81
-	#define ManT_CCU8_PID			PID_CCU81
-	#define MANT_CCU8_IRQ			CCU81_0_IRQn
-	#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE)				// (CCU4_S1SE | CCU4_S2SE)
+	#define ManT_CCUCON				SCU_GENERAL_CCUCON_GSC80_Msk
+	#define ManT_CCU8				HW::CCU80
+	#define ManT_CCU8_PID			PID_CCU80
+	#define MANT_CCU8_IRQ			CCU80_0_IRQn
+	#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_CS2I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
 	#define ManT_PSC				3					// 0.04us
 	#define US2MT(v)				((u16)((MCK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
-	#define ManT_SET_PR(v)			{ ManT->PRS = (v); ManT2->PRS = (v); }
-	#define ManT_SET_CR(v)			{ ManT->CR1S = (v); ManT->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); }
+	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
+	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
+	#define ManT1_PSL				(0) 
+	#define ManT1_CHC				(CC8_OCS2 | CC8_OCS3)			
+	#define ManT2_CHC				(CC8_OCS2 | CC8_OCS3)			
+	#define ManT3_CHC				(CC8_OCS2)			
+	#define ManT_OUT_GCSS			(CCU8_S1ST1C | CCU8_S1ST2S | CCU8_S1ST2S)
+	#define ManT_OUT_GCSC			(CCU8_S0ST2C)
 
 
 	#define PIO_MANCH				HW::P0
@@ -2893,6 +2906,7 @@ static __irq void ManTrmIRQ2()
 
 			data = manTB->data1;
 			len = manTB->len1;
+			cmd = false;
 			stateManTrans++;
 
 		case 1:
@@ -2913,16 +2927,18 @@ static __irq void ManTrmIRQ2()
 
 				count = 17;
 
-				ManT_SET_CR(trmHalfPeriod3);
+				u32 tadd = (cmd) ? trmHalfPeriod : 0;
+
+				ManT_SET_CR(trmHalfPeriod3+tadd);
 
 				if (tw & 0x10000)
 				{
-					ManT_SET_PR(trmHalfPeriod7); //US2MT(96);
+					ManT_SET_PR(trmHalfPeriod7+tadd); //US2MT(96);
 					stateManTrans += 2;
 				}
 				else
 				{
-					ManT_SET_PR(trmHalfPeriod6); //US2MT(72);
+					ManT_SET_PR(trmHalfPeriod6+tadd); //US2MT(72);
 					stateManTrans++;
 				};
 
@@ -2945,6 +2961,7 @@ static __irq void ManTrmIRQ2()
 			if (count == 0)
 			{
 				ManT_SET_PR(trmHalfPeriod2);
+				cmd = false;
 				stateManTrans = 1;
 			}
 			else
@@ -2955,6 +2972,7 @@ static __irq void ManTrmIRQ2()
 
 					if (count == 1)
 					{
+						cmd = true;
 						stateManTrans = 1;
 					}
 					else
@@ -2987,6 +3005,7 @@ static __irq void ManTrmIRQ2()
 
 				if (count == 0)
 				{
+					cmd = true;
 					stateManTrans = 1;
 				};
 			}
@@ -3003,17 +3022,30 @@ static __irq void ManTrmIRQ2()
 					
 					if (count == 1)
 					{
+						cmd = true;
 						stateManTrans = 1;
 					};
 				}
 				else
 				{
 					ManT_SET_PR(trmHalfPeriod3);
-					stateManTrans--;
+
+					if (count == 0)
+					{
+						cmd = false;
+						stateManTrans = 1;
+					}
+					else
+					{
+						stateManTrans--;
+					}
 				};
 
-				tw <<= 1;
-				count--;
+//				if (count != 0)
+				{
+					tw <<= 1;
+					count--;
+				};
 			};
 
 			ManT_CCU8->GCSS = ManT_CCU8_GCSS;
@@ -3022,16 +3054,24 @@ static __irq void ManTrmIRQ2()
 
 		case 4:
 
+			stateManTrans++;
+			break;
+
+		case 5:
+
 			stateManTrans = 0;
 
-			HW::SCU_GENERAL->CCUCON &= ~SCU_GENERAL_CCUCON_GSC81_Msk;
+			HW::SCU_GENERAL->CCUCON &= ~ManT_CCUCON;
 
 
-			ManT->TCCLR = CC8_TRBC;
-			ManT->INTE = 0;
+			ManT1->TCCLR = CC8_TRBC;
+			ManT1->INTE = 0;
 			ManT2->TCCLR = CC8_TRBC;
+			ManT3->TCCLR = CC8_TRBC;
 
-			ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
+			ManT_CCU8->GCSS = ManT_OUT_GCSS;
+			ManT_CCU8->GCSC = ManT_OUT_GCSC;
+			//ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
 
 			manTB->ready = true;
 			trmBusy = false;
@@ -3098,30 +3138,44 @@ bool SendManData2(MTB* mtb)
 #elif defined(CPU_XMC48)
 
 	ManT_SET_PR(US2MT(50)-1); //trmHalfPeriod - 1;
-	ManT_SET_CR(0);
+	ManT1->CR2S = (~0); ManT2->CR1S = (0); ManT2->CR2S = (0); ManT3->CR1S = (~0);
 
-	ManT->PSC = ManT_PSC; //0.08us
+	ManT1->PSC = ManT_PSC; //0.08us
 	ManT2->PSC = ManT_PSC; //0.08us
+	ManT3->PSC = ManT_PSC; //0.08us
 
-	ManT->PSL = ~0;
-	ManT2->PSL = ~0;
+	//ManT1->PSL = ManT1_PSL;
+	//ManT2->PSL = ManT2_PSL;
+	//ManT3->PSL = ManT3_PSL;
 
-	ManT->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
-	ManT->CMC = CC4_STRTS_EVENT0;
+	ManT1->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
 	ManT2->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
-	ManT2->CMC = CC4_STRTS_EVENT0;
-	ManT->TC = CC8_STRM;
-	ManT2->TC = CC8_STRM;
+	ManT3->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
 
-	ManT->SWR = ~0;
-	ManT->INTE = CC8_PME;
+	ManT1->CMC = CC4_STRTS_EVENT0;
+	ManT2->CMC = CC4_STRTS_EVENT0;
+	ManT3->CMC = CC4_STRTS_EVENT0;
+	
+	ManT1->TC = CC8_STRM;
+	ManT2->TC = CC8_STRM;
+	ManT3->TC = CC8_STRM;
+
+	ManT1->SWR = ~0;
 	ManT2->SWR = ~0;
+	ManT3->SWR = ~0;
+
+	ManT1->CHC = ManT1_CHC;
+	ManT2->CHC = ManT2_CHC;
+	ManT3->CHC = ManT3_CHC;
+
+	ManT1->INTE = CC8_PME;
 	ManT2->INTE = 0;
+	ManT3->INTE = 0;
 
 	ManT_CCU8->GCSS = ManT_CCU8_GCSS;
 	ManT_CCU8->GIDLC = ManT_CCU8_GIDLC;
 
-	HW::SCU_GENERAL->CCUCON |= SCU_GENERAL_CCUCON_GSC81_Msk;
+	HW::SCU_GENERAL->CCUCON |= ManT_CCUCON;
 
 #endif
 
@@ -3149,38 +3203,50 @@ static void InitManTransmit2()
 
 	HW::CCU_Enable(ManT_CCU8_PID);
 
-	HW::P5->ModePin(3, A3PP);
-	HW::P5->ModePin(4, A3PP);
-	HW::P5->ModePin(5, A3PP);
-	HW::P5->ModePin(6, A3PP);
-	HW::P5->ModePin(7, A3PP);
-
 	ManT_CCU8->GCTRL = 0;
+	ManT_CCU8->GIDLC = ManT_CCU8_GIDLC;
+	ManT_CCU8->GCSS = ManT_OUT_GCSS;
+	ManT_CCU8->GCSC = ManT_OUT_GCSC;
 
-	ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
+	PIO_MANCH->ModePin(PIN_L1, A3PP);
+	PIO_MANCH->ModePin(PIN_H1, A3PP);
+	PIO_MANCH->ModePin(PIN_L2, A3PP);
+	PIO_MANCH->ModePin(PIN_H2, A3PP);
 
-	ManT->PRS = US2MT(100) - 1;
-	ManT->CR1S = US2MT(50) - 1;
-	ManT->CR2S = US2MT(50) - 1;
+	//ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
 
-	ManT->PSC = ManT_PSC; 
-	ManT2->PSC = ManT_PSC;
+	//ManT1->PRS = US2MT(100) - 1;
+	//ManT1->CR1S = US2MT(50) - 1;
+	//ManT1->CR2S = US2MT(50) - 1;
 
-	//ManT->CHC = CC8_;
+	//ManT1->PSC = ManT_PSC; 
+	//ManT2->PSC = ManT_PSC;
+	//ManT3->PSC = ManT_PSC; 
 
-	//ManT->TCSET = CC8_TRBS;
+	////ManT->CHC = CC8_;
 
-	ManT->PSL = ~0;
-	ManT->INS = CC8_EV0IS(9)|CC4_EV0EM_RISING_EDGE;
-	ManT->CMC = CC4_STRTS_EVENT0;
-	ManT2->INS = CC8_EV0IS(9) | CC4_EV0EM_RISING_EDGE;
-	ManT2->CMC = CC4_STRTS_EVENT0;
+	////ManT->TCSET = CC8_TRBS;
 
-	ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+	////ManT1->PSL = ManT1_PSL;
+	////ManT2->PSL = ManT2_PSL;
+	////ManT3->PSL = ManT3_PSL;
 
-	ManT->SRS = 0;
+	//ManT1->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
+	//ManT2->INS = CC8_EV0IS(7) | CC4_EV0EM_RISING_EDGE;
 
-	ManT->SWR = ~0;
+	//ManT1->CMC = CC4_STRTS_EVENT0;
+	//ManT2->CMC = CC4_STRTS_EVENT0;
+	//ManT3->CMC = CC4_STRTS_EVENT0;
+
+	ManT1->CHC = ManT1_CHC;
+	ManT2->CHC = ManT2_CHC;
+	ManT3->CHC = ManT3_CHC;
+
+	//ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+
+	//ManT1->SRS = 0;
+
+	//ManT1->SWR = ~0;
 	//ManT_CCU8->GIDLC = ManT_CCU8_GIDLC;
 	//ManT->INTE = CC8_PME;
 }
@@ -4481,13 +4547,13 @@ static void WDT_Init()
 
 		#ifndef _DEBUG
 	
-		HW::WDT_Enable();
+		//HW::WDT_Enable();
 
-		HW::WDT->WLB = OFI_FREQUENCY/2;
-		HW::WDT->WUB = (3 * OFI_FREQUENCY)/2;
-		HW::SCU_CLK->WDTCLKCR = 0|SCU_CLK_WDTCLKCR_WDTSEL_OFI;
+		//HW::WDT->WLB = OFI_FREQUENCY/2;
+		//HW::WDT->WUB = (3 * OFI_FREQUENCY)/2;
+		//HW::SCU_CLK->WDTCLKCR = 0|SCU_CLK_WDTCLKCR_WDTSEL_OFI;
 
-		HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
+		//HW::WDT->CTR = WDT_CTR_ENB_Msk|WDT_CTR_DSP_Msk;
 
 		#else
 
@@ -6075,11 +6141,11 @@ void InitHardware()
 
 	InitClock();
 
-	InitManTransmit();
+	//InitManTransmit();
 	InitManRecieve();
 	Init_CRC_CCITT_DMA();
 
-	//InitManTransmit2();
+	InitManTransmit2();
 
 	Init_Sync_Rot();
 

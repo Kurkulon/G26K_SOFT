@@ -8,6 +8,7 @@
 #include "trap_def.h"
 #include "list.h"
 #include <stddef.h>
+#include "CRC16.h"
 
 
 #define FLWB_LEN (8192+32)
@@ -211,32 +212,74 @@ __packed struct SpareArea
 	u16		validBlock;	// 0xFFFF - good block
 	u16		badPages;	// 0xFFFF - all pages good
 
-	u16		file;  		// file number
-//	u32		lpn;		// logic page number
-	u32		start;		// start page of file
-	u32		fpn;		// file page number
-	u32		prev;		// start page of previos file
-	u32		rawPage;	// raw page num
-
-	u32		vectorCount; // vector count in file
-
-	u16		vecFstOff;	// first vector header offset. 0xFFFF - no vector header 
-	u16		vecFstLen;	// first vector lenght. 0 - no vector
-
-	u16		vecLstOff;	// last vector header offset. 0xFFFF - no vector header 
-	u16		vecLstLen;	// last vector lenght. 0 - no vector
-
-	//u32		vecPrPg;	// previos vector raw page
-	//u16		vecPrOff;	// previos vector offset
-
-	u16		fbb;		// file bad blocks count
-	u16		fbp;		// file bad pages count
-
-	byte	chipMask;	
-
-	u16		crc;
-
 	enum { CRC_SKIP = 6 };
+
+	__packed union
+	{
+		__packed struct //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		{
+			u16		file;  			// file number
+
+			u32		start;			// start page of file
+			u32		fpn;			// file page number
+			u32		prev;			// start page of previos file
+			u32		rawPage;		// raw page num
+
+			u32		vectorCount;	// vector count in file
+
+			u16		vecFstOff;		// first vector header offset. 0xFFFF - no vector header 
+			u16		vecFstLen;		// first vector lenght. 0 - no vector
+
+			u16		vecLstOff;		// last vector header offset. 0xFFFF - no vector header 
+			u16		vecLstLen;		// last vector lenght. 0 - no vector
+
+			u16		fbb;			// file bad blocks count
+			u16		fbp;			// file bad pages count
+
+			byte	chipMask;	
+
+			u16		crc;
+
+			void CheckCRC() { crc = GetCRC16(this, sizeof(*this)); }
+			void UpdateCRC() { crc = GetCRC16(this, sizeof(*this) - sizeof(crc)); }
+
+		} v1;
+
+		__packed struct //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		{
+			u16		len;			// struct lenght
+			u16		version;		// struct version
+
+			u16		file;  			// file number
+
+			u32		start;			// start page of file
+			u32		fpn;			// file page number
+			u32		prev;			// start page of previos file
+			u32		rawPage;		// raw page num
+
+			u32		vectorCount;	// vector count in file
+
+			u16		vecFstOff;		// first vector header offset. 0xFFFF - no vector header 
+			u16		vecFstLen;		// first vector lenght. 0 - no vector
+
+			u16		vecLstOff;		// last vector header offset. 0xFFFF - no vector header 
+			u16		vecLstLen;		// last vector lenght. 0 - no vector
+
+			//u32		vecPrPg;	// previos vector raw page
+			//u16		vecPrOff;	// previos vector offset
+
+			u16		fbb;			// file bad blocks count
+			u16		fbp;			// file bad pages count
+
+			byte	chipMask;	
+
+			u16		crc;
+
+			void CheckCRC() { crc = GetCRC16(this, sizeof(*this)); }
+			void UpdateCRC() { crc = GetCRC16(this, sizeof(*this) - sizeof(crc)); }
+
+		} v2;
+	};
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

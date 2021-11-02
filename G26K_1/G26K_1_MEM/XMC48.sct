@@ -11,14 +11,14 @@ LR_IROM1 0x08010000 0x001F0000  {    ; load region size_region
    .ANY (+RO)
   }
 
-  RW_IRAM1 0x20000200 0x3FDC0  {  ; RW data
+  RW_IRAM1 0x20000240 0x3FDC0  {  ; RW data
    .ANY3 (+RW +ZI)
    startup_*.o (HEAP, +LAST)
   }
 
-  RW_IRAM2 0x20000000 0x200  {  ; RW data
-   .ANY2 (+ZI)
-  }
+;  RW_IRAM2 0x20000000 0x200  {  ; RW data
+;   .ANY2 (+ZI)
+;  }
 
   RW_IRAM3 0x1FFE8000 0x18000  {  ; RO data
    .ANY1 (+RW +ZI)

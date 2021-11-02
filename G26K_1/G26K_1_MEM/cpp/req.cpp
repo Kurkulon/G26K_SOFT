@@ -3,8 +3,8 @@
 #include "CRC16.h"
 #include "time.h"
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
 //List<R01> R01::freeList;
 //static R01 r02[8];

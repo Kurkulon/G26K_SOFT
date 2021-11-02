@@ -120,7 +120,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
-          <Name>d</Name>
+          <Name></Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -140,7 +140,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGTARM</Key>
-          <Name>(1010=2901,173,3351,726,0)(1007=2025,133,2202,394,0)(1008=-1,-1,-1,-1,0)(1009=2879,284,3137,868,0)(1012=2055,165,2522,466,0)</Name>
+          <Name>(1010=2901,173,3351,726,0)(1007=2025,133,2212,404,0)(1008=-1,-1,-1,-1,0)(1009=3394,264,3652,848,0)(1012=2254,225,2731,536,0)</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -229,6 +229,36 @@
           <count>15</count>
           <WinNumber>1</WinNumber>
           <ItemText>svCount</ItemText>
+        </Ww>
+        <Ww>
+          <count>16</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>dspRcvCount</ItemText>
+        </Ww>
+        <Ww>
+          <count>17</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>readyR01</ItemText>
+        </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>manVec40</ItemText>
+        </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>sensInd</ItemText>
+        </Ww>
+        <Ww>
+          <count>20</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>curManVec40</ItemText>
+        </Ww>
+        <Ww>
+          <count>21</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>ListItem::freeItemList</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -351,8 +381,8 @@
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
-          <SubType>0</SubType>
-          <ItemText>0x60000000</ItemText>
+          <SubType>2</SubType>
+          <ItemText>0x20002424</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>

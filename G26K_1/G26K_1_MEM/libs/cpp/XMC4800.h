@@ -15554,6 +15554,11 @@ namespace T_HW
 #define CCU8_CC8_PSL_PSL22_Pos                (3UL)                     /*!< CCU8_CC8 PSL: PSL22 (Bit 3)                                 */
 #define CCU8_CC8_PSL_PSL22_Msk                (0x8UL)                   /*!< CCU8_CC8 PSL: PSL22 (Bitfield-Mask: 0x01)                   */
 
+#define CC8_PSL11				(0x1UL)                   /*!< CCU8_CC8 PSL: PSL11 (Bitfield-Mask: 0x01)                   */
+#define CC8_PSL12               (0x2UL)                   /*!< CCU8_CC8 PSL: PSL12 (Bitfield-Mask: 0x01)                   */
+#define CC8_PSL21               (0x4UL)                   /*!< CCU8_CC8 PSL: PSL21 (Bitfield-Mask: 0x01)                   */
+#define CC8_PSL22               (0x8UL)                   /*!< CCU8_CC8 PSL: PSL22 (Bitfield-Mask: 0x01)                   */
+
 /* --------------------------------  CCU8_CC8_DIT  -------------------------------- */
 #define CCU8_CC8_DIT_DCV_Pos                  (0UL)                     /*!< CCU8_CC8 DIT: DCV (Bit 0)                                   */
 #define CCU8_CC8_DIT_DCV_Msk                  (0xfUL)                   /*!< CCU8_CC8 DIT: DCV (Bitfield-Mask: 0x0f)                     */

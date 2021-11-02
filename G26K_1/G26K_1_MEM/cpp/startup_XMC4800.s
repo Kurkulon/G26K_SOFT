@@ -171,41 +171,57 @@ Reset_Handler   PROC
 
 
 NMI_Handler			PROC	;2
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 					
 HardFault_Handler   PROC	;3	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 					
 MemManage_Handler   PROC	;4	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 					
 BusFault_Handler	PROC	;5	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 					
 UsageFault_Handler  PROC	;6	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 
 SVC_Handler			PROC	;11	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 
 DebugMon_Handler	PROC	;12	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP
 					
 PendSV_Handler		PROC	;14	
+					LDR		R0,[SP,#0x18]	; R0 = return Address
+					MRS		R1, IPSR		; R1 = Exception number
 					BKPT	#0
 					BX		lr
 					ENDP

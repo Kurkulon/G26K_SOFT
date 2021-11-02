@@ -537,25 +537,25 @@ void Write::Init()
 {
 	wr.SetRawPage(nvv.f.lastPage);
 
-	spare.file = nvv.f.session;  
+	spare.v1.file = nvv.f.session;  
 
-	spare.prev = nvv.prevFilePage;		
+	spare.v1.prev = nvv.prevFilePage;		
 
-	spare.start = nvv.f.startPage;		
-	spare.fpn = 0;	
+	spare.v1.start = nvv.f.startPage;		
+	spare.v1.fpn = 0;	
 
-	spare.vectorCount = 0;
+	spare.v1.vectorCount = 0;
 
-	spare.vecFstOff = -1;
-	spare.vecFstLen = 0;
+	spare.v1.vecFstOff = -1;
+	spare.v1.vecFstLen = 0;
 
-	spare.vecLstOff = -1;
-	spare.vecLstLen = 0;
+	spare.v1.vecLstOff = -1;
+	spare.v1.vecLstLen = 0;
 
-	spare.fbb = 0;		
-	spare.fbp = 0;		
+	spare.v1.fbb = 0;		
+	spare.v1.fbp = 0;		
 
-	spare.chipMask = nandSZ->mask;
+	spare.v1.chipMask = nandSZ->mask;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -564,26 +564,26 @@ void Write::Init(u32 bl, u32 file, u32 prfile)
 {
 	wr.SetRawBlock(bl);
 
-	spare.file = file;  
-//	spare.lpn = wr.GetRawPage();
+	spare.v1.file = file;  
+//	spare.v1.lpn = wr.GetRawPage();
 
-	spare.prev = prfile;		
+	spare.v1.prev = prfile;		
 
-	spare.start = wr.GetRawPage();		
-	spare.fpn = 0;	
+	spare.v1.start = wr.GetRawPage();		
+	spare.v1.fpn = 0;	
 
-	spare.vectorCount = 0;
+	spare.v1.vectorCount = 0;
 
-	spare.vecFstOff = -1;
-	spare.vecFstLen = 0;
+	spare.v1.vecFstOff = -1;
+	spare.v1.vecFstLen = 0;
 
-	spare.vecLstOff = -1;
-	spare.vecLstLen = 0;
+	spare.v1.vecLstOff = -1;
+	spare.v1.vecLstLen = 0;
 
-	spare.fbb = 0;		
-	spare.fbp = 0;		
+	spare.v1.fbb = 0;		
+	spare.v1.fbp = 0;		
 
-	spare.chipMask = nandSZ->mask;
+	spare.v1.chipMask = nandSZ->mask;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -599,7 +599,7 @@ void Write::SaveSession()
 
 	d.crc = GetCRC16(&d.f, sizeof(d.f));
 
-	s.session = spare.file;
+	s.session = spare.v1.file;
 	s.startPage = s.lastPage = wr.GetRawPage();
 	s.size = 0;
 	GetTime(&s.start_rtc);
@@ -614,7 +614,7 @@ void Write::SaveSession()
 
 void Write::Vector_Make(VecData *vd, u16 size)
 {
-	vd->h.session = spare.file;
+	vd->h.session = spare.v1.file;
 //	vd->h.device = 0;
 	GetTime(&vd->h.rtc);
 
@@ -652,16 +652,16 @@ bool Write::Start()
 		wr_data = (byte*)vector;
 		wr_count = vector->h.dataLen + sizeof(vector->h);
 
-		if (spare.vecFstOff == 0xFFFF)
+		if (spare.v1.vecFstOff == 0xFFFF)
 		{
-			spare.vecFstOff = wr.GetCol();
-			spare.vecFstLen = wr_count;
+			spare.v1.vecFstOff = wr.GetCol();
+			spare.v1.vecFstLen = wr_count;
 		};
 
-		spare.vecLstOff = wr.GetCol();
-		spare.vecLstLen = wr_count;
+		spare.v1.vecLstOff = wr.GetCol();
+		spare.v1.vecLstLen = wr_count;
 
-		spare.vectorCount += 1;
+		spare.v1.vectorCount += 1;
 
 		state = WRITE_START;
 
@@ -684,7 +684,7 @@ void Write::Finish()
 	{
 		nvv.f.size += vector->h.dataLen + sizeof(vector->h);
 		nvv.f.stop_rtc = vector->h.rtc;
-		nvv.f.lastPage = spare.rawPage;
+		nvv.f.lastPage = spare.v1.rawPage;
 
 		SaveParams();
 
@@ -797,13 +797,13 @@ bool Write::Update()
 
 			if (NAND_CheckDataComplete())
 			{
-				spare.validPage = -1;
-				spare.validBlock = -1;
-				spare.badPages = -1;
-				spare.rawPage = wr.GetRawPage();
-				spare.chipMask = nandSZ->mask;
+				spare.validPage = ~0;
+				spare.validBlock = ~0;
+				spare.badPages = ~0;
+				spare.v1.rawPage = wr.GetRawPage();
+				spare.v1.chipMask = nandSZ->mask;
 
-				spare.crc = GetCRC16((void*)&spare.file, sizeof(spare) - spare.CRC_SKIP - sizeof(spare.crc));
+				spare.v1.UpdateCRC();
 
 				NAND_WriteDataDMA(&spare, sizeof(spare));
 
@@ -831,7 +831,7 @@ bool Write::Update()
 
 				if ((t & 1) != 0) // program error
 				{
-					spare.fbp += 1;
+					spare.v1.fbp += 1;
 					nvv.pageError[wr.GetChip()] += 1;
 
 					NAND_CmdWritePage(wr.pg, wr.GetBlock(), wr.GetPage());
@@ -910,7 +910,7 @@ bool Write::Update()
 				{
 					verifyFlashErrors += 1;
 
-					spare.fbp += 1;
+					spare.v1.fbp += 1;
 
 					NAND_CmdWritePage(wr.pg, wr.GetBlock(), wr.GetPage());
 
@@ -964,13 +964,13 @@ bool Write::Update()
 
 			wr.NextPage();
 
-			spare.fpn += 1;
+			spare.v1.fpn += 1;
 
-			spare.vecFstOff = -1;
-			spare.vecFstLen = 0;
+			spare.v1.vecFstOff = -1;
+			spare.v1.vecFstLen = 0;
 
-			spare.vecLstOff = -1;
-			spare.vecLstLen = 0;
+			spare.v1.vecLstOff = -1;
+			spare.v1.vecLstLen = 0;
 
 			break;	
 
@@ -980,7 +980,7 @@ bool Write::Update()
 			{
 				wr = eraseBlock.er;
 
-				spare.fbb += eraseBlock.errBlocks;
+				spare.v1.fbb += eraseBlock.errBlocks;
 
 				state = WRITE_PAGE_0;																			
 			};
@@ -1020,9 +1020,9 @@ bool Write::Update()
 
 		case WRITE_CREATE_FILE_1:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			spare.file += 1;  		
+			spare.v1.file += 1;  		
 
-			spare.prev = spare.start;		
+			spare.v1.prev = spare.v1.start;		
 
 			if (wr.GetPage() > 0)
 			{
@@ -1034,17 +1034,17 @@ bool Write::Update()
 				//};
 			};
 
-			spare.start = wr.GetRawPage();		
-			spare.fpn = 0;
-			spare.vectorCount = 0;
+			spare.v1.start = wr.GetRawPage();		
+			spare.v1.fpn = 0;
+			spare.v1.vectorCount = 0;
 
 			//wr_prev_pg = -1;
 			//wr_prev_col = 0;
 
-			spare.fbb = 0;		
-			spare.fbp = 0;		
+			spare.v1.fbb = 0;		
+			spare.v1.fbp = 0;		
 
-			spare.chipMask = nandSZ->mask;	
+			spare.v1.chipMask = nandSZ->mask;	
 
 			SaveSession();
 
@@ -1173,7 +1173,7 @@ bool ReadSpare::Update()
 				}
 				else
 				{
-					spare->crc = GetCRC16((void*)&spare->file, sizeof(*spare) - spare->CRC_SKIP);
+					spare->v1.CheckCRC();
 				
 					state = WAIT;
 
@@ -1371,7 +1371,7 @@ bool Read::Update()
 
 		case FIND_START:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
 
-			if (spare.start == -1 || spare.fpn == -1)
+			if (spare.v1.start == -1 || spare.v1.fpn == -1)
 			{
 				if (findTryCount == 0)
 				{
@@ -1389,7 +1389,7 @@ bool Read::Update()
 					state = FIND_1;
 				};
 			}
-			else if (spare.crc != 0 || spare.vecFstOff == 0xFFFF || spare.vecLstOff == 0xFFFF || rd.GetCol() > spare.vecLstOff)
+			else if (spare.v1.crc != 0 || spare.v1.vecFstOff == 0xFFFF || spare.v1.vecLstOff == 0xFFFF || rd.GetCol() > spare.v1.vecLstOff)
 			{
 				rd.NextPage();
 
@@ -1399,17 +1399,17 @@ bool Read::Update()
 			}
 			else 
 			{
-				if (rd.GetCol() <= spare.vecFstOff)
+				if (rd.GetCol() <= spare.v1.vecFstOff)
 				{
-					rd.SetCol(spare.vecFstOff);
+					rd.SetCol(spare.v1.vecFstOff);
 				}
-				else if (rd.GetCol() <= (spare.vecFstOff+spare.vecFstLen))
+				else if (rd.GetCol() <= (spare.v1.vecFstOff+spare.v1.vecFstLen))
 				{
-					rd.SetCol(spare.vecFstOff+spare.vecFstLen);
+					rd.SetCol(spare.v1.vecFstOff+spare.v1.vecFstLen);
 				}
-				else if (rd.GetCol() <= spare.vecLstOff)
+				else if (rd.GetCol() <= spare.v1.vecLstOff)
 				{
-					rd.SetCol(spare.vecLstOff);
+					rd.SetCol(spare.v1.vecLstOff);
 				};
 
 				rd_data = (byte*)&curRdBuf->hdr;
@@ -1797,14 +1797,14 @@ void NAND_Idle()
 				break;
 			};
 
-			if (write.Start())
-			{
-				nandState = NAND_STATE_WRITE_START;
-			}
-			else if (read.Start())
-			{
-				nandState = NAND_STATE_READ_START;
-			};
+			//if (write.Start())
+			//{
+			//	nandState = NAND_STATE_WRITE_START;
+			//}
+			//else if (read.Start())
+			//{
+			//	nandState = NAND_STATE_READ_START;
+			//};
 
 			if (tm.Check(500)) { TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_NONE); };
 
@@ -1863,11 +1863,11 @@ void NAND_Idle()
 				{
 					flashEmpty = true;
 
-					write.Init(0, 1, -1);
+					write.Init(0, 1, ~0);
 
-					adrLastVector = -1;
+					adrLastVector = ~0;
 
-					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_ERASE);
+					TRAP_MEMORY_SendStatus(~0, FLASH_STATUS_ERASE);
 					nandState = NAND_STATE_WAIT;
 				};
 			};
@@ -1936,7 +1936,7 @@ u32 FLASH_Vectors_Errors_Get()
 
 u32 FLASH_Vectors_Saved_Get()
 {
-	return write.spare.vectorCount;
+	return write.spare.v1.vectorCount;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1957,7 +1957,7 @@ u32 FLASH_Vectors_Rejected_Get()
 
 u32 FLASH_Session_Get()
 {
-	return write.spare.file;
+	return write.spare.v1.file;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
