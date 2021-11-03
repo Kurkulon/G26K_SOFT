@@ -2556,7 +2556,7 @@ static u16 GetTrmBaudRate(byte i)
 {
 	if (i >= ArraySize(manbaud)) { i = ArraySize(manbaud) - 1; };
 
-	return manbaud[i]/2;
+	return (manbaud[i]+1)/2;
 }
 #endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3101,11 +3101,11 @@ bool SendManData2(MTB* mtb)
 	manTB = mtb;
 
 	trmHalfPeriod = GetTrmBaudRate(mtb->baud);
-	trmHalfPeriod2 = trmHalfPeriod * 2;
-	trmHalfPeriod3 = trmHalfPeriod * 3;
-	trmHalfPeriod4 = trmHalfPeriod * 4;
-	trmHalfPeriod6 = trmHalfPeriod * 6;
-	trmHalfPeriod7 = trmHalfPeriod * 7;
+	trmHalfPeriod2 = trmHalfPeriod * 2 - 1;
+	trmHalfPeriod3 = trmHalfPeriod * 3 - 1;
+	trmHalfPeriod4 = trmHalfPeriod * 4 - 1;
+	trmHalfPeriod6 = trmHalfPeriod * 6 - 1;
+	trmHalfPeriod7 = trmHalfPeriod * 7 - 1;
 
 	stateManTrans = 0;
 
