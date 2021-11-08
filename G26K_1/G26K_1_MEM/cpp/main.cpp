@@ -1114,7 +1114,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	
 	//u16 sz = 18 + r01->rsp.CM.sl;
 
-	/*if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
+	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
 		curManVec40 = manVec40[sensInd&1];
 
@@ -1179,7 +1179,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 			mtb->data2 = (u16*)&rsp + data[1]+1;
 			mtb->len2 = len;
 		};
-	};*/
+	};
 
 	return true;
 }

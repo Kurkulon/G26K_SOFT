@@ -2594,7 +2594,6 @@ static u32 rcvManSum12 = 0;
 static u16 rcvManCount12 = 0;
 u16 rcvManQuality = 0;
 
-
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3427,6 +3426,8 @@ void ManRcvUpdate()
 {
 	if (rcvBusy)
 	{
+		__disable_irq();
+
 		if (rcvManLen > 0 && manRcvTime.Timeout(US2RT(200)))
 		{
 			ManRcvEnd(true);
@@ -3435,6 +3436,8 @@ void ManRcvUpdate()
 		{
 			manRB->len = rcvManLen;
 		};
+
+		__enable_irq();
 	};
 }
 
