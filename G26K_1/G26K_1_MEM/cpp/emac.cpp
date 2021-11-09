@@ -20,8 +20,8 @@ static SOCKET	lstnSocket;
 
 //#pragma diag_suppress 546,550,177
 
-//#pragma O3
-//#pragma Otime
+#pragma O3
+#pragma Otime
 
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

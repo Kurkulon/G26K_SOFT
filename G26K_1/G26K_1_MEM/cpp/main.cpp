@@ -313,9 +313,11 @@ void CallBackDspReq01(Ptr<REQ> &q)
 	 
 	if (q->rb.recieved)
 	{
+
 		if (rsp.rw == (dspReqWord|0x40))
 		{
 			q->crcOK = (q->rb.len == (rsp.CM.sl*2 + 10 + sizeof(rsp.CM)-sizeof(rsp.CM.data)));
+			q->rsp->dataLen = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv40++;
@@ -327,6 +329,7 @@ void CallBackDspReq01(Ptr<REQ> &q)
 		else if (rsp.rw == (dspReqWord|0x50))
 		{
 			q->crcOK = (q->rb.len == (rsp.IM.dataLen*4 + 10 + sizeof(rsp.IM)-sizeof(rsp.IM.data)));
+			q->rsp->dataLen = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv50++;
@@ -378,6 +381,8 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 
 	ReqDsp01 &req = *((ReqDsp01*)rq->reqData);
 	RspDsp01 &rsp = *((RspDsp01*)(rq->rsp->GetDataPtr()));
+
+	rq->rsp->dataLen = 0;
 	
 	REQ &q = *rq;
 
@@ -1763,7 +1768,7 @@ static void MainMode()
 			{
 				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
 
-				//RequestFlashWrite(rq->rsp, rsp->rw);
+				RequestFlashWrite(rq->rsp, rsp->rw);
 
 				mainModeState++;
 			};
@@ -2748,6 +2753,7 @@ static void UpdateParams()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
+		CALL( UpdateDSP();		);
 		CALL( MainMode()		);
 		CALL( UpdateMoto()		);
 		CALL( UpdateTemp()		);
@@ -2775,7 +2781,7 @@ static void UpdateMisc()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateDSP();		);
+		CALL( UpdateEMAC();		);
 		CALL( UpdateParams();	);
 	};
 
@@ -2789,10 +2795,11 @@ static void UpdateMisc()
 static void Update()
 {
 	NAND_Idle();	
-	UpdateEMAC();
+	//UpdateEMAC();
 
 	if (EmacIsConnected())
 	{
+		UpdateEMAC();
 		UpdateTraps();
 
 #ifndef WIN32

@@ -346,6 +346,40 @@ extern void DisableDSP();
 extern void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
 extern bool DSP_CheckDataComplete();
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__forceinline u32 Push_IRQ()
+{
+	register u32 t;
+
+#ifndef WIN32
+
+	register u32 primask __asm("primask");
+
+	t = primask;
+
+	__disable_irq();
+
+#endif
+
+	return t;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__forceinline void Pop_IRQ(u32 t)
+{
+#ifndef WIN32
+
+	register u32 primask __asm("primask");
+
+	primask = t;
+
+#endif
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifdef WIN32
 
 extern void I2C_Destroy();

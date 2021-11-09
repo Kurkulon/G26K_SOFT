@@ -2066,6 +2066,8 @@ static void NAND_Init()
 				FLADR::CHIP_OFF			= id.blockSize + 16;
 				FLADR::PAGE_BITS		= FLADR::CHIP_OFF - FLADR::PAGE_OFF;
 				FLADR::BLOCK_BITS		= (id.planeSize + 23 + id.planeNumber) - FLADR::CHIP_OFF;
+
+				nandSize.ch = 1ULL << (FLADR::COL_BITS+FLADR::PAGE_BITS+FLADR::BLOCK_BITS);
 			};
 			
 			nandSize.fl += nandSize.ch;
@@ -3426,7 +3428,7 @@ void ManRcvUpdate()
 {
 	if (rcvBusy)
 	{
-		__disable_irq();
+		u32 irq = Push_IRQ();
 
 		if (rcvManLen > 0 && manRcvTime.Timeout(US2RT(200)))
 		{
@@ -3437,7 +3439,7 @@ void ManRcvUpdate()
 			manRB->len = rcvManLen;
 		};
 
-		__enable_irq();
+		Pop_IRQ(irq);
 	};
 }
 
@@ -5406,7 +5408,7 @@ bool SPI_AddRequest(DSCSPI *d)
 	d->next = 0;
 	d->ready = false;
 
-	__disable_irq();
+	u32 t = __disable_irq();
 
 	if (spi_lastDsc == 0)
 	{

@@ -107,18 +107,18 @@ protected:
 
 public:
 
-	Ptr() : ptr(0) {}
-	Ptr(T* p) : ptr(p) { if (ptr != 0) ptr->count++; }
-	Ptr(const Ptr& p) : ptr(p.ptr) { if (ptr != 0) ptr->count++; }
+	Ptr() : ptr(0)					{}
+	Ptr(T* p) : ptr(p)				{ if (ptr != 0) ptr->count++; }
+	Ptr(const Ptr& p) : ptr(p.ptr)	{ if (ptr != 0) ptr->count++; }
 
-	Ptr& operator=(const Ptr& p) { if (ptr != p.ptr) { ptr->Free(); ptr = p.ptr; if (ptr != 0) ptr->count++; }; return *this; }
-	~Ptr() { ptr->Free(); }
-	bool Valid() const { return ptr != 0; }
-	void Alloc() { ptr->Free(); ptr = T::Alloc(); }
-	void Free() { ptr->Free(); ptr = 0; }
+	Ptr& operator=(const Ptr& p)	{ if (ptr != p.ptr) { if (ptr != 0) ptr->Free(); ptr = p.ptr; if (ptr != 0) ptr->count++; }; return *this; }
+	~Ptr()							{ if (ptr != 0) ptr->Free(); }
+	bool Valid() const				{ return ptr != 0; }
+	void Alloc()					{ if (ptr != 0) ptr->Free(); ptr = T::Alloc(); }
+	void Free()						{ if (ptr != 0) ptr->Free(), ptr = 0; }
 
-	T* operator->() { return ptr; }
-	T& operator*() { return *ptr; }
+	T* operator->()					{ return ptr; }
+	T& operator*()					{ return *ptr; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -270,7 +270,7 @@ template <class T> bool ListRef<T>::Add(const Ptr<T>& r)
 	};
 
 	r.ptr->count++;
-	r.ptr->next = 0;
+	item->next = 0;
 
 	return true;
 }
@@ -294,7 +294,7 @@ protected:
 	static	T*		Alloc()	{ T* p = (T*)_freeList.Get(); if (p != 0) p->count = 1; return p; };
 
 	virtual	void	_FreeCallBack() {}
-			void	Free()	{ if (this != 0 && count != 0) { count--; if (count == 0) _FreeCallBack(), _freeList.Add(this); }; }
+			void	Free()	{ if (count != 0) { count--; if (count == 0) _FreeCallBack(), _freeList.Add(this); }; }
 
 public:
 

@@ -83,7 +83,6 @@ static ListRef<UNIBUF> writeFlBuf;
 static List<FLRB> freeFlRdBuf;
 static List<FLRB> readFlBuf;
 
-static Ptr<UNIBUF> curWrBuf;
 static FLRB *curRdBuf = 0;
 
 //static SpareArea spareRead;
@@ -496,6 +495,8 @@ struct Write
 	u32		rcvVec ;
 	u32		rejVec ;
 	u32		errVec ;
+
+	Ptr<UNIBUF> curWrBuf;
 
 	SpareArea spare;
 
@@ -1797,14 +1798,14 @@ void NAND_Idle()
 				break;
 			};
 
-			//if (write.Start())
-			//{
-			//	nandState = NAND_STATE_WRITE_START;
-			//}
-			//else if (read.Start())
-			//{
-			//	nandState = NAND_STATE_READ_START;
-			//};
+			if (write.Start())
+			{
+				nandState = NAND_STATE_WRITE_START;
+			}
+			else if (read.Start())
+			{
+				nandState = NAND_STATE_READ_START;
+			};
 
 			if (tm.Check(500)) { TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_NONE); };
 
@@ -2244,7 +2245,7 @@ bool RequestFlashWrite(Ptr<UNIBUF> &fwb, u16 devID)
 	{
 		if (fwb->dataLen > 0 && fwb->dataOffset >= sizeof(VecData::Hdr))
 		{
-			VecData* vd = (VecData*)(curWrBuf->data + fwb->dataOffset - sizeof(VecData::Hdr));
+			VecData* vd = (VecData*)(fwb->data + fwb->dataOffset - sizeof(VecData::Hdr));
 
 			DataPointer p(vd->data);
 
