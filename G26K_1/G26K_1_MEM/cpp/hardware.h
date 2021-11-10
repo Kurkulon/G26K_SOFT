@@ -222,6 +222,7 @@ extern void NAND_Chip_Select(byte chip);
 extern void NAND_Chip_Disable();
 extern void NAND_WRITE(byte data);
 extern void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
+extern bool NAND_CheckCopyComplete();
 
 extern void NAND_CmdEraseBlock(u32 bl);
 extern void NAND_CmdRandomRead(u16 col);
@@ -343,8 +344,8 @@ extern void Set_Sync_Rot(u16 RPS, u16 samplePerRound);
 
 extern void EnableDSP();	
 extern void DisableDSP();	
-extern void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
-extern bool DSP_CheckDataComplete();
+//extern void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len);
+//extern bool DSP_CheckDataComplete();
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

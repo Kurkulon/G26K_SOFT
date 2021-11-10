@@ -11,20 +11,11 @@
 #include "CRC16.h"
 
 
-#define FLWB_LEN (8192+32)
-#define FLRB_LEN 1536
+//#define FLWB_LEN (3072)
+//#define FLRB_LEN 1536
 
-#define UNIBUF_LEN (8192+32)
+#define UNIBUF_LEN (3072)
 
-//#define NAND_MAX_CHIP		8
-//#define NAND_CHIP_MASK		7
-//#define NAND_CHIP_BITS		3
-//#define NAND_COL_BITS		11
-//#define NAND_BLOCK_BITS		13
-//#define NAND_PAGE_BITS		6
-//#define NAND_RAWPAGE_MASK	((1 << (NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
-//#define NAND_RAWBLOCK_MASK	((1 << (NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
-//#define NAND_RAWADR_MASK	(((u64)1 << (NAND_COL_BITS + NAND_PAGE_BITS + NAND_CHIP_BITS + NAND_BLOCK_BITS)) - 1)
 
 enum  
 {
@@ -70,7 +61,7 @@ __packed struct VecData
 		u16			crc;		// CRC16 всей этой хрени
 	} h;
 
-	byte		data[FLWB_LEN]; // Последние 2 байта CRC16
+	byte		data[/*FLWB_LEN*/]; // Последние 2 байта CRC16
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

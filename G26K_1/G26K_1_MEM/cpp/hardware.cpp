@@ -344,6 +344,11 @@ static void I2C_Init();
 	#define	SPI_DLR					(1)
 	#define	SPI_DLR_LNEN			(1<<SPI_DLR)
 
+	#define	NAND_MEMCOPY_DMA		HW::GPDMA0
+	#define	NAND_MEMCOPY_DMACH		HW::GPDMA0_CH4
+	#define	NAND_MEMCOPY_DMA_CHEN	(0x101<<4)
+	#define	NAND_MEMCOPY_DMA_CHST	(1<<4)
+
 	#define	CRC_DMA					HW::GPDMA1
 	#define	CRC_DMACH				HW::GPDMA1_CH2
 	#define	CRC_DMA_CHEN			(0x101<<2)
@@ -2497,17 +2502,17 @@ void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 //		register u32 t __asm("r0");
 
-		NAND_DMA->DMACFGREG = 1;
+		NAND_MEMCOPY_DMA->DMACFGREG = 1;
 
-		NAND_DMACH->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(0)|SRC_MSIZE(0);
-		NAND_DMACH->CTLH = BLOCK_TS(len);
+		NAND_MEMCOPY_DMACH->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(0)|SRC_MSIZE(0);
+		NAND_MEMCOPY_DMACH->CTLH = BLOCK_TS(len);
 
-		NAND_DMACH->SAR = (u32)src;
-		NAND_DMACH->DAR = (u32)dst;
-		NAND_DMACH->CFGL = 0;
-		NAND_DMACH->CFGH = PROTCTL(1);
+		NAND_MEMCOPY_DMACH->SAR = (u32)src;
+		NAND_MEMCOPY_DMACH->DAR = (u32)dst;
+		NAND_MEMCOPY_DMACH->CFGL = 0;
+		NAND_MEMCOPY_DMACH->CFGH = PROTCTL(1);
 
-		NAND_DMA->CHENREG = NAND_DMA_CHEN;
+		NAND_MEMCOPY_DMA->CHENREG = NAND_MEMCOPY_DMA_CHEN;
 
 	#endif
 
@@ -2523,6 +2528,21 @@ void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool NAND_CheckCopyComplete()
+{
+	#ifdef CPU_SAME53
+
+		return (HW::DMAC->CH[NAND_MEMCOPY_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[NAND_MEMCOPY_DMACH].INTFLAG & DMCH_TCMPL);
+	
+	#elif defined(CPU_XMC48)
+
+		return (NAND_MEMCOPY_DMA->CHENREG & NAND_MEMCOPY_DMA_CHST) == 0;
+
+	#endif
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #ifndef WIN32
 
