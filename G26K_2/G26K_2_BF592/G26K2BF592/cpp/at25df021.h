@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-#define FLASH_START_ADR 0 	
+#define FLASH_START_ADR 0x10000 	
 
 enum ERROR_CODE
 {

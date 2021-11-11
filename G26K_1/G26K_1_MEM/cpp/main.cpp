@@ -529,7 +529,7 @@ Ptr<REQ> CreateDspReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data
 	REQ &q = *rq;
 
 	q.CallBack = CallBackDspReq06;
-	q.preTimeOut = MS2RT(10);
+	q.preTimeOut = MS2RT(500);
 	q.postTimeOut = US2RT(100);
 	//q.rb = &rb;
 	//q.wb = &wb;
@@ -2325,8 +2325,15 @@ static const u32 dspFlashPages[] = {
 #include "G26K1BF592.LDR.H"
 };
 
-u16 dspFlashLen = 0;
-u16 dspFlashCRC = 0;
+//u16 dspFlashLen = 0;
+//u16 dspFlashCRC = 0;
+
+static const u32 dspBootFlashPages[] = {
+#include "G26K_2_BOOT_BF592.LDR.H"
+};
+
+//u16 dspBootFlashLen = 0;
+//u16 dspBootFlashCRC = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2335,9 +2342,6 @@ static void FlashDSP()
 	TM32 tm;
 
 	Ptr<REQ> req;
-
-	dspFlashLen = sizeof(dspFlashPages);
-	dspFlashCRC = GetCRC16(dspFlashPages, dspFlashLen);
 
 	tm.Reset();
 
@@ -2351,20 +2355,63 @@ static void FlashDSP()
 	{
 		RspDsp05 *rsp = (RspDsp05*)req->rb.data;
 
-		//dspFlashLen = rsp->flashLen;
-		//dspFlashCRC = rsp->flashCRC;
+		u16 flen;
+		const u32 *fpages;
+		u16 flashCRC;
+		u16 flashLen;
+		u32 startAdr;
 
-		if (rsp->flashCRC != dspFlashCRC || rsp->flashLen != dspFlashLen)
+		if (req->rb.len < sizeof(RspDsp05))
 		{
-			u16 count = dspFlashLen;
+			startAdr = 0; flashLen = rsp->v1.flashLen; flashCRC = rsp->v1.flashCRC;
+		}
+		else
+		{
+			startAdr = rsp->v2.startAdr; flashLen = rsp->v2.flashLen; flashCRC = rsp->v2.flashCRC;
+		};
+
+		if (startAdr > 0)
+		{
+			flen = sizeof(dspFlashPages);
+			fpages = dspFlashPages;
+		}
+		else
+		{
+			flen = sizeof(dspBootFlashPages);
+			fpages = dspBootFlashPages;
+		};
+
+		u16 fcrc = GetCRC16(fpages, flen);
+
+		if (flashCRC != fcrc || flashLen != flen)
+		{
+			u16 count = flen+2;
 			u16 adr = 0;
-			byte *p = (byte*)dspFlashPages;
+			byte *p = (byte*)fpages;
 
 			while (count > 0)
 			{
-				u16 len = (count > 256) ? 256 : count;
+				u16 len;
+				
+				if (count > 256)
+				{
+					len = 256;
 
-				req = CreateDspReq06(adr, len, p, 0, 0, 2);
+					req = CreateDspReq06(adr, len, p, 0, 0, 2);
+				}
+				else
+				{
+					len = count;
+
+					if (len > 2)
+					{
+						req = CreateDspReq06(adr, len-2, p, sizeof(fcrc), &fcrc, 2);
+					}
+					else
+					{
+						req = CreateDspReq06(adr, sizeof(fcrc), &fcrc, 0, 0, 2);
+					};
+				};
 
 				qdsp.Add(req); while(!req->ready) { qdsp.Update(); HW::WDT->Update(); };
 
@@ -2373,21 +2420,21 @@ static void FlashDSP()
 				adr += len;
 			};
 
-			//req = CreateDspReq07();
+			req = CreateDspReq07();
 
-			//qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
+			qdsp.Add(req); while(!req->ready) { qdsp.Update();	};
 
-			DisableDSP();
+			//DisableDSP();
+			//
+			//tm.Reset();
+
+			//while (!tm.Check(1)) HW::WDT->Update();
+
+			//EnableDSP();
 			
-			tm.Reset();
+			//tm.Reset();
 
-			while (!tm.Check(1)) HW::WDT->Update();
-
-			EnableDSP();
-			
-			tm.Reset();
-
-			while (!tm.Check(100)) HW::WDT->Update();
+			//while (!tm.Check(100)) HW::WDT->Update();
 		};
 	};
 }
@@ -2878,9 +2925,11 @@ int main()
 
 	EnableDSP();
 
-//	FlashMoto();
+	//__breakpoint(0);
 
-//	FlashDSP();
+	FlashMoto();
+
+	FlashDSP();
 
 #endif
 

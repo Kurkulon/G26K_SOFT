@@ -193,11 +193,9 @@ static void WriteSyncDMA(const byte *data, u16 count)
 	*pDMA5_CONFIG |= DMAEN;
 	*pSPI0_CTL |= SPE;
 
-//	while (*pDMA5_IRQ_STATUS & DMA_RUN);
-
 	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0) { *pWDOG_STAT = 0; };
 
-//	while ((*pDMA5_IRQ_STATUS & (DMA_RUN|DMA_DONE)) != DMA_DONE);
+	asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");
 
 	while ((*pSPI0_STAT & SPIF) == 0 || (*pSPI0_STAT & TXS)) { *pWDOG_STAT = 0; };
 
@@ -982,9 +980,9 @@ ERROR_CODE EraseBlock(int nBlock)
 	// send the write enable instruction
 	WriteFlash(SPI_WREN );
 
-	SPI_OFF();
+	//SPI_OFF();
 
-	SetupSPI();
+	//SetupSPI();
 
 	//send the erase block command to the flash
 	WriteFlash(SPI_SE );

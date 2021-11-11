@@ -152,18 +152,50 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>1728</LineNumber>
+          <LineNumber>2423</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134292114</Address>
+          <Address>134316464</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\flash.cpp</Filename>
+          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\main.cpp</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\G26K_XMC48\cpp/flash.cpp\1728</Expression>
+          <Expression>\\G26K_XMC48\cpp/main.cpp\2423</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>2386</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134316108</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\main.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26K_XMC48\cpp/main.cpp\2386</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>2354</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134316016</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>d:\Work\G26K_SOFT\G26K_1\G26K_1_MEM\cpp\main.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\G26K_XMC48\cpp/main.cpp\2354</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -181,6 +213,11 @@
           <count>2</count>
           <WinNumber>1</WinNumber>
           <ItemText>nandSize</ItemText>
+        </Ww>
+        <Ww>
+          <count>3</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>fps,0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -304,7 +341,7 @@
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>0x50014000</ItemText>
+          <ItemText>0x20003041</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>

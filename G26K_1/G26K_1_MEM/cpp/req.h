@@ -140,9 +140,12 @@ __packed struct  ReqDsp05	// запрос контрольной суммы и длины программы во флэш-
 __packed struct  RspDsp05	// запрос контрольной суммы и длины программы во флэш-памяти
 { 
 	u16		rw; 
-	u16		flashLen; 
-	u16		flashCRC;
-	u16 	crc; 
+
+	__packed union
+	{
+		__packed struct { u16 flashLen; u16 flashCRC; u16 crc; } v1;
+		__packed struct { u16 flashLen; u32 startAdr; u16 flashCRC; u16 crc; } v2;
+	};
 };  
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
