@@ -1151,30 +1151,6 @@ NandMemSize nandSize;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct NandID
-{
- 	byte maker;
- 	byte device;
-	byte data0;
-
-	__packed union
-	{
-		__packed struct 
-		{
-			u16 pageSize			: 2;
-			u16 z_reserved1			: 2;
-			u16 blockSize			: 2;
-			u16 z_reserved2			: 4;
-			u16 planeNumber			: 2;
-			u16 planeSize			: 3;
-		};
-
-	 	byte data[2];
-	};
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 __packed struct NandParamPage
 {
  	char	signature[4];
@@ -1598,6 +1574,15 @@ bool NAND_CheckDataComplete_old()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef CPU_XMC48	
+
+static byte *nandWriteDataSrc = 0;
+static byte *nandReadDataDst = 0;
+static u16	nandWriteDataLen = 0;
+static u16	nandReadDataLen = 0;
+
+#endif
+
 bool NAND_CheckDataComplete()
 {
 	#ifdef CPU_SAME53
@@ -1618,7 +1603,23 @@ bool NAND_CheckDataComplete()
 	
 	#elif defined(CPU_XMC48)
 
-		return (NAND_DMA->CHENREG & NAND_DMA_CHST) == 0;
+		if ((NAND_DMA->CHENREG & NAND_DMA_CHST) == 0)
+		{
+			if (nandWriteDataLen > 0) 
+			{
+				NAND_WriteDataDMA(nandWriteDataSrc, nandWriteDataLen);
+			}
+			else if (nandReadDataLen > 0) 
+			{
+				NAND_ReadDataDMA(nandReadDataDst, nandReadDataLen);
+			}
+			else
+			{
+				return true;
+			};
+		};
+
+		return false;
 
 	#elif defined(WIN32)
 
@@ -2041,7 +2042,6 @@ static void NAND_Init()
 	{
 		NAND_Chip_Select(chip);
 		ResetNand();
-		NandID id = {0};
 
 		for (byte i = 0; i < ArraySize(checkBuf); i++)
 		{
@@ -2061,6 +2061,8 @@ static void NAND_Init()
 
 		nandSize.chipDataBusMask[chip] = ~bitMask;
 	
+		NandID &id = nandSize.id[chip];
+
 		NAND_Read_ID(&id);
 
 		if((id.maker == 0xEC) && (id.device == 0xD3))
@@ -2078,6 +2080,8 @@ static void NAND_Init()
 			nandSize.fl += nandSize.ch;
 		
 			if (bitMask == 0) { nandSize.mask |= (1 << chip); };
+
+			nandSize.integrityCRC[chip] = 0;
 		}
 		else if((id.maker == 0x2C) && (id.device == 0x68))
 		{
@@ -2092,6 +2096,8 @@ static void NAND_Init()
 			NAND_Read_PARAM(&np);
 
 			u16 crc = GetCRC16_8005_refl(&np, sizeof(np)-2, 0x4F4E);
+
+			nandSize.integrityCRC[chip] = crc;
 
 			if (np.integrityCRC == crc/* || np.integrityCRC == 0xA61F*/)
 			{
@@ -2275,6 +2281,19 @@ void NAND_WriteDataDMA(volatile void *src, u16 len)
 
 	#elif defined(CPU_XMC48)
 
+		if (len > BLOCK_TS(~0))
+		{
+			nandWriteDataSrc = ((byte*)src) + BLOCK_TS(~0);
+			nandWriteDataLen = len - BLOCK_TS(~0);
+			len = BLOCK_TS(~0);
+		}
+		else
+		{
+			nandWriteDataLen = 0;
+		};
+
+		nandReadDataLen = 0;
+
 		NAND_DMA->DMACFGREG = 1;
 
 		NAND_DMACH->CTLL = DST_NOCHANGE|SRC_INC|TT_FC_M2M_GPDMA|DEST_MSIZE_8|SRC_MSIZE_8;
@@ -2376,6 +2395,10 @@ void NAND_WriteDataPIO(volatile void *src, u16 len)
 #endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef CPU_XMC48	
+
+
+#endif
 
 void NAND_ReadDataDMA(volatile void *dst, u16 len)
 {
@@ -2424,6 +2447,19 @@ void NAND_ReadDataDMA(volatile void *dst, u16 len)
 	//	DMAC->SWTRIGCTRL = 1;
 
 	#elif defined(CPU_XMC48)
+
+		if (len > BLOCK_TS(~0))
+		{
+			nandReadDataDst = ((byte*)dst) + BLOCK_TS(~0);
+			nandReadDataLen = len - BLOCK_TS(~0);
+			len = BLOCK_TS(~0);
+		}
+		else
+		{
+			nandReadDataLen = 0;
+		};
+
+		nandWriteDataLen = 0;
 
 		NAND_DMA->DMACFGREG = 1;
 
@@ -2478,6 +2514,13 @@ void NAND_ReadDataPIO(volatile void *dst, u16 len)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef CPU_XMC48	
+
+static byte *nandCopyDataSrc = 0;
+static byte *nandCopyDataDst = 0;
+static u16	nandCopyDataLen = 0;
+
+#endif
 
 void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 {
@@ -2501,6 +2544,18 @@ void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 	#elif defined(CPU_XMC48)
 
 //		register u32 t __asm("r0");
+
+		if (len > BLOCK_TS(~0))
+		{
+			nandCopyDataSrc = ((byte*)src) + BLOCK_TS(~0);
+			nandCopyDataDst = ((byte*)dst) + BLOCK_TS(~0);
+			nandCopyDataLen = len - BLOCK_TS(~0);
+			len = BLOCK_TS(~0);
+		}
+		else
+		{
+			nandCopyDataLen = 0;
+		};
 
 		NAND_MEMCOPY_DMA->DMACFGREG = 1;
 
@@ -2537,7 +2592,19 @@ bool NAND_CheckCopyComplete()
 	
 	#elif defined(CPU_XMC48)
 
-		return (NAND_MEMCOPY_DMA->CHENREG & NAND_MEMCOPY_DMA_CHST) == 0;
+		if ((NAND_MEMCOPY_DMA->CHENREG & NAND_MEMCOPY_DMA_CHST) == 0)
+		{
+			if (nandCopyDataLen > 0) 
+			{
+				NAND_CopyDataDMA(nandCopyDataSrc, nandCopyDataDst, nandCopyDataLen);
+			}
+			else
+			{
+				return true;;
+			};
+		};
+
+		return false;
 
 	#endif
 }

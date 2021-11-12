@@ -76,6 +76,30 @@
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+__packed struct NandID
+{
+ 	byte maker;
+ 	byte device;
+	byte data0;
+
+	__packed union
+	{
+		__packed struct 
+		{
+			u16 pageSize			: 2;
+			u16 z_reserved1			: 2;
+			u16 blockSize			: 2;
+			u16 z_reserved2			: 4;
+			u16 planeNumber			: 2;
+			u16 planeSize			: 3;
+		};
+
+	 	byte data[2];
+	};
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 struct NandMemSize
 {
  	u64 ch;	// chip
@@ -106,6 +130,10 @@ struct NandMemSize
 	//u32		chipOffsetPrev[NAND_MAX_CHIP]; // ≈сли чип битый, то по индексу находитс€ смещение адреса на предыдущий хороший чип
 
 	byte	chipDataBusMask[NAND_MAX_CHIP]; // ≈сли проблема по линии данных, то соответствующи бит равен 0
+
+	NandID	id[NAND_MAX_CHIP];
+	u16		integrityCRC[NAND_MAX_CHIP];
+
 
 };
 
