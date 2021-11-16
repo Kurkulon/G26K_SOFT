@@ -14,9 +14,11 @@ static u16 manReqMask = 0xFF00;
 //static u16 verDevice = 0x101;
 
 static u32 manCounter = 0;
+static u32 err06 = 0;
 
 
 static u32 timeOut = MS2RT(500);
+static bool runMainApp = false;
 
 static u16 flashCRC = 0;
 static u32 flashLen = 0;
@@ -29,22 +31,24 @@ static RTM32 tm32;
 
 static void CheckFlash();
 
+static byte buf[SECTOR_SIZE];
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void RunMainApp()
 {
-	if (!flashChecked) CheckFlash();
+	//if (!flashChecked) CheckFlash();
 
-	if (flashOK && flashCRCOK) bfrom_SpiBoot(FLASH_START_ADR, BFLAG_PERIPHERAL | BFLAG_NOAUTO | BFLAG_FASTREAD | BFLAG_TYPE3 | BAUD_RATE_DIVISOR, 0, 0);
-	
-	tm32.Reset(); timeOut = MS2RT(1000);
+	//if (flashOK && flashCRCOK) bfrom_SpiBoot(FLASH_START_ADR, BFLAG_PERIPHERAL | BFLAG_NOAUTO | BFLAG_FASTREAD | BFLAG_TYPE3 | BAUD_RATE_DIVISOR, 0, 0);
+	//
+	//tm32.Reset(); timeOut = MS2RT(1000);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestFunc_05(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestFunc_05(Req *r, u16 len, ComPort::WriteBuffer *wb)
 {
-	const ReqDsp05 *req = (ReqDsp05*)data;
+	const ReqDsp05 *req = (ReqDsp05*)(&r->req);
 	static RspDsp05 rsp;
 
 	if (len < sizeof(ReqDsp05)/2) return  false;
@@ -59,38 +63,25 @@ static bool RequestFunc_05(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	wb->data = &rsp;
 	wb->len = sizeof(rsp);
 
+	FreeReq(r);
+
 	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestFunc_06(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestFunc_06(Req *r, u16 len, ComPort::WriteBuffer *wb)
 {
-	const ReqDsp06 *req = (ReqDsp06*)data;
+	const ReqDsp06 *req = (ReqDsp06*)(&r->req);
 	static RspDsp06 rsp;
-
-	ERROR_CODE Result = NO_ERR;
 
 	u16 xl = req->len + sizeof(ReqDsp06) - sizeof(req->data);
 
 	if (len < xl/2) return  false;
 
-	u32 stAdr = FLASH_START_ADR + req->stAdr;
+	FlashWriteReq(r);
 
-	u16 block = stAdr/4096;
-
-	if (lastErasedBlock != block)
-	{
-		Result = EraseBlock(block);
-		lastErasedBlock = block;
-	};
-
-	if (Result == NO_ERR)
-	{
-		Result = at25df021_Write(req->data, stAdr, req->len, true);
-	};
-
-	rsp.res = Result;
+	rsp.res = GetLastError();
 
 	rsp.rw = req->rw;
 
@@ -106,36 +97,25 @@ static bool RequestFunc_06(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestFunc_07(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
+static bool RequestFunc(Req *r, u16 len, ComPort::WriteBuffer *wb)
 {
-	RunMainApp();
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestFunc(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
-{
-	u16 *p = (u16*)rb->data;
 	bool result = false;
 
-	u16 t = p[0];
+	u16 t = r->req.rw;
 
-	if ((t & manReqMask) != manReqWord || rb->len < 2)
+	if ((t & manReqMask) != manReqWord || len < 2)
 	{
-//		bfERC++; 
 		return false;
 	};
 
 	manCounter += 1;
 
-	u16 len = (rb->len)>>1;
-
 	t &= 0xFF;
 
 	switch (t)
 	{
-		case 5: 	result = RequestFunc_05(p, len, wb); break;
-		case 6: 	result = RequestFunc_06(p, len, wb); break;
+		case 5: 	result = RequestFunc_05(r, len, wb); break;
+		case 6: 	result = RequestFunc_06(r, len, wb); break;
 
 		case 7: 		
 		default:	RunMainApp(); break;
@@ -153,7 +133,8 @@ static void UpdateBlackFin()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static u16 buf[256];
+	
+	static Req *req = 0;
 
 	ResetWDT();
 
@@ -161,10 +142,15 @@ static void UpdateBlackFin()
 	{
 		case 0:
 
-			rb.data = buf;
-			rb.maxLen = sizeof(buf);
-			com.Read(&rb, ~0, US2CCLK(100));
-			i++;
+			req = AllocReq();
+
+			if (req != 0)
+			{
+				rb.data = &req->req;
+				rb.maxLen = sizeof(req->req);
+				com.Read(&rb, ~0, US2CCLK(500));
+				i++;
+			};
 
 			break;
 
@@ -176,18 +162,26 @@ static void UpdateBlackFin()
 				{
 					tm32.Reset();
 
-					if (RequestFunc(&wb, &rb))
+					if (RequestFunc(req, rb.len, &wb))
 					{
 						com.Write(&wb);
 						i++;
 					}
 					else
 					{
+						FreeReq(req);
+
+						req = 0;
+
 						i = 0;
 					};
 				}
 				else
 				{
+					FreeReq(req);
+
+					req = 0;
+
 					i = 0;
 				};
 			};
@@ -217,6 +211,8 @@ static void CheckFlash()
 	u32 adr = 0;
 	
 	flashOK = flashChecked = flashCRCOK = false;
+
+	at25df021_Read(buf, FLASH_START_ADR, sizeof(buf));
 
 	while (1)
 	{
@@ -274,6 +270,8 @@ int main( void )
 
 	InitHardware();
 
+	FlashInit();
+
 	com.Connect(6250000, 2);
 
 	CheckFlash();
@@ -285,8 +283,9 @@ int main( void )
 		*pPORTFIO_SET = 1<<7;
 		
 		UpdateBlackFin();
+		FlashUpdate();
 
-		if (tm32.Check(timeOut)) RunMainApp();
+		//if (runMainApp || tm32.Check(timeOut)) RunMainApp();
 
 		*pPORTFIO_CLEAR = 1<<7;
 

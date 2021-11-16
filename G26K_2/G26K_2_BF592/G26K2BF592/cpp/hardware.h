@@ -112,7 +112,7 @@ struct RspIM	// 0xAD50
 
 //#pragma pack(1)
 
-struct ReqDsp01	// чтение вектора
+struct ReqDsp01_old	// чтение вектора
 {
 	u16 	rw;
 	u16 	mode; 
@@ -145,18 +145,52 @@ struct ReqDsp01	// чтение вектора
 
 //#pragma pack(1)
 
-/*struct RspDsp01	// чтение вектора
+struct ReqDsp01	// чтение вектора
 {
-	u16 rw; 
-	u32 time; 
-	u32 hallTime; 
+	enum { VERSION = 1 };
 
-	union
-	{
-		struct { u16 motoCount; u16 headCount; u16 ax; u16 ay; u16 az; u16 at; u16 sensType; u16 angle; u16 gain; u16 st; u16 sl; u16 sd; u16 pakType; u16 pakLen; u16 data[2048]; } CM;
-		struct { u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 dataLen; u16 data[2048];} IM;
-	};
-};*/
+	u16 	rw;
+	u16		len;				// Длина структуры
+	u16		version;			// Версия структуры
+
+	u16 	mode;				// 0 - Режим цементомера; !=0 - режим имиджера
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+
+	SENS	mainSens;			// измерительный датчик
+	SENS	refSens;			// опорный датчик
+
+	u16		vavesPerRoundCM;	// Количество волновых картин на оборот головки в режиме цементомера
+	u16		vavesPerRoundIM;	// Количество точек на оборот головки в режиме имиджера
+
+	u16		filtrType;			// Фильтр
+	u16		packType;			// Упаковка
+
+	u16		fireVoltage;		// Напряжение излучателя (В)
+
+	u16 	crc;  
+};
+
+//#pragma pack()
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//#pragma pack(1)
+
+struct RspDsp01	// чтение вектора
+{
+	enum { VERSION = 1 };
+
+	u16		rw; 
+	u16		len;				// Длина структуры
+	u16		version;			// Версия структуры
+
+	u16		fireVoltage;		// Напряжение излучателя (В)
+	u16		motoVoltage;		// Напряжение двигателя (В)
+	u16 	crc;  
+};
 
 //pragma pack()
 
@@ -169,6 +203,23 @@ struct  RspDsp05 { u16 rw; u16 flashLen; u16 flashCRC; u16 crc; };					// запрос
 struct  RspDsp06 { u16 rw; u16 res; u16 crc; };									// запись страницы во флэш
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct DSCTWI
+{
+	DSCTWI*			next;
+	void*			wdata;
+	void*			rdata;
+	void*			wdata2;
+	u16				wlen;
+	u16				wlen2;
+	u16				rlen;
+	u16				readedLen;
+	byte			adr;
+	volatile bool	ready;
+	volatile bool	ack;
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 extern void InitHardware();
 extern void UpdateHardware();
@@ -188,6 +239,10 @@ extern void WriteTWI(void *src, u16 len);
 extern void ReadTWI(void *dst, u16 len);
 
 extern void SetGain(byte v);
+
+extern void SetFireVoltage(u16 v);
+extern u16	GetFireVoltage();
+extern u16	GetMotoVoltage();
 
 #define MS2RT(x) ((x)*10)
 #define US2RT(x) ((x)/100)

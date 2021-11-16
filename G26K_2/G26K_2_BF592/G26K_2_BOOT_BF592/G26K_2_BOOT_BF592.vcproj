@@ -87,6 +87,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\list.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\main.cpp"
 				>
 			</File>
@@ -118,6 +122,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\hardware.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\list.h"
 				>
 			</File>
 			<File

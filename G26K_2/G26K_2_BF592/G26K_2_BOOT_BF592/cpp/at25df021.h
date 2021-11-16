@@ -2,8 +2,12 @@
 #define AT25DF021_H__14_09_2016__08_29
 
 #include "types.h"
+#include "hardware.h"
 
 #define FLASH_START_ADR 0x10000 	
+
+#define NUM_SECTORS 	64			/* number of sectors in the flash device */
+#define SECTOR_SIZE		4096
 
 enum ERROR_CODE
 {
@@ -18,7 +22,10 @@ enum ERROR_CODE
 	DRV_NOTAT_BREAK,		/* The drive was not at AFP_BreakReady */
 	BUFFER_IS_NULL,			/* Could not allocate storage for the buffer */
 	NO_ACCESS_SECTOR,		/* Cannot access the sector( could be locked or something is stored there that should not be touched ) */
-	NUM_ERROR_CODES
+	NUM_ERROR_CODES,
+	ERROR_ERASE,
+	ERROR_PROGRAM,
+	NOT_WRITE_ENABLED
 };
 
 
@@ -70,7 +77,12 @@ extern ERROR_CODE EraseBlock(int nBlock);
 //extern ERROR_CODE ResetFlash();
 //extern u32 GetNumSectors();
 //extern u32 GetSectorSize();
-
+extern void FlashUpdate();
+extern void FlashInit();
+extern Req* AllocReq();
+extern void FreeReq(Req *req);
+extern void FlashWriteReq(Req *req);
+extern ERROR_CODE GetLastError();
 
 
 #endif // AT25DF021_H__14_09_2016__08_29 

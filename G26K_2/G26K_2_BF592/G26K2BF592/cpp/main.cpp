@@ -66,7 +66,7 @@ static u16 lastErasedBlock = ~0;
 
 static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
-	static u16 rsp[6];
+	static RspDsp01 rsp;
 
 	ReqDsp01 *req = (ReqDsp01*)data;
 
@@ -102,10 +102,15 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	if (curDsc == 0)
 	{
-		rsp[0] = data[0];
+		rsp.rw = data[0];
+		rsp.len = sizeof(rsp);
+		rsp.version = rsp.VERSION;
+		rsp.fireVoltage = GetFireVoltage();
+		rsp.motoVoltage = GetMotoVoltage();
+		rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
 
-		wb->data = rsp;			 
-		wb->len = 1*2;	 
+		wb->data = &rsp;			 
+		wb->len = sizeof(rsp);	 
 	}
 	else
 	{
@@ -233,7 +238,7 @@ static void UpdateBlackFin()
 
 			rb.data = buf;
 			rb.maxLen = sizeof(buf);
-			com.Read(&rb, ~0, US2CCLK(100));
+			com.Read(&rb, ~0, US2CCLK(25));
 			i++;
 
 			break;
@@ -291,8 +296,8 @@ static void Update()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-//		CALL( UpdateFire()		);
 		CALL( UpdateBlackFin()	);
+		CALL( UpdateHardware()	);
 	};
 
 	i &= 1; // i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -855,7 +860,7 @@ static void UpdateMode()
 	}
 	else
 	{
-		UpdateBlackFin();
+		Update();
 	};
 }
 

@@ -24,18 +24,50 @@
 #include "at25df021.h"
 
 #include "types.h"
-#include "core.h"
+#include "hardware.h"
 #include "CRC16.h"
+#include "list.h"
 
-#pragma optimize_for_speed
+//#pragma optimize_for_speed
 
-#define NUM_SECTORS 	64			/* number of sectors in the flash device */
-#define SECTOR_SIZE		4096
 
-static char 	*pFlashDesc =		"Atmel AT25DF021";
-static char 	*pDeviceCompany	=	"Atmel Corporation";
+static char 		*pFlashDesc =		"Atmel AT25DF021";
+static char 		*pDeviceCompany	=	"Atmel Corporation";
 
-static int		gNumSectors = NUM_SECTORS;
+static int			gNumSectors = NUM_SECTORS;
+
+static u32			bufsect[(SECTOR_SIZE+3)/4];
+static u16			lastErasedBlock = ~0;
+
+static byte*		flashWritePtr = 0;
+static u16			flashWriteLen = 0;
+static u32			flashWriteAdr = 0;
+
+#pragma instantiate List<Req>
+static List<Req>	freeReq;
+static List<Req>	readyReq;
+
+static Req			_req[64];
+
+
+static ERROR_CODE	lastError = NO_ERR;
+
+enum FlashState 
+{ 
+	FLASH_STATE_WAIT = 0, 
+	FLASH_STATE_ERASE_START, 
+	FLASH_STATE_ERASE_WAIT,
+	FLASH_STATE_ERASE_WAIT_2,
+	FLASH_STATE_ERASE_CHECK,
+	FLASH_STATE_WRITE_START, 
+	FLASH_STATE_WRITE_PAGE, 
+	FLASH_STATE_WRITE_PAGE_2, 
+	FLASH_STATE_WRITE_PAGE_3, 
+	FLASH_STATE_WRITE_PAGE_4, 
+	FLASH_STATE_VERIFY_PAGE
+};
+
+static FlashState flashState = FLASH_STATE_WAIT;
 
 #undef TIMEOUT
 #undef DELAY
@@ -51,8 +83,13 @@ static int		gNumSectors = NUM_SECTORS;
 #define SPI_PP              (0x02)  //Program Data into memory
 #define SPI_SE              (0x20)  //Erase one sector in memory
 #define SPI_BE              (0xC7)  //Erase all memory
-#define WIP					(0x1)	//Check the write in progress bit of the SPI status register
+#define RDY_BSY 			(0x1)	//Check the write in progress bit of the SPI status register
 #define WEL					(0x2)	//Check the write enable bit of the SPI status register
+#define SWP					(0xC)	//Software Protection Status
+#define WPP					(0x10)	//Write Protect (WP) Pin Status
+#define EPE					(0x20)	//Erase/Program Error
+#define SPRL				(0x80)	//Sector Protection Registers Locked
+
 #define SPI_UPS				(0x39)  //Unprotect Sector 
 #define SPI_PRS				(0x36)  //Protect Sector 
 
@@ -80,16 +117,64 @@ static ERROR_CODE Wait_For_WEL(void);
 byte ReadStatusRegister(void);
 extern void SetupSPI();
 extern void SPI_OFF(void);
-void SendSingleCommand( const int iCommand );
+void __SendSingleCommand( const int iCommand );
 //unsigned long DataFlashAddress (unsigned long address);
 
 static ERROR_CODE PollToggleBit(void);
 static byte ReadFlash();
-static void WriteFlash(byte usValue);
+static void __WriteFlash(byte usValue);
 static unsigned long GetFlashStartAddress( unsigned long ulAddr);
 static void GlobalUnProtect();
 static ERROR_CODE GetSectorStartEnd( unsigned long *ulStartOff, unsigned long *ulEndOff, int nSector );
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ERROR_CODE GetLastError()
+{
+	return lastError;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+static void CmdWriteEnable()
+{
+	__SendSingleCommand(SPI_WREN);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CmdWriteDisable()
+{
+	__SendSingleCommand(SPI_WRDI);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CmdEraseSector(u32 sec)
+{
+	SetupSPI();
+
+	__WriteFlash(SPI_SE);
+
+	__WriteFlash(sec >> 16);
+	__WriteFlash(sec >> 8);
+	__WriteFlash(sec);
+
+	SPI_OFF();
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CmdWriteStatusReg(byte stat)
+{
+	SetupSPI();
+
+	__WriteFlash(SPI_WRSR);
+	__WriteFlash(stat);
+
+	SPI_OFF();
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -194,6 +279,8 @@ static void WriteSyncDMA(void *data, u16 count)
 	*pDMA5_CONFIG |= DMAEN;
 	*pSPI0_CTL |= SPE;
 
+	asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");
+
 	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0) { *pWDOG_STAT = 0; };
 
 	asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");
@@ -201,6 +288,43 @@ static void WriteSyncDMA(void *data, u16 count)
 	while ((*pSPI0_STAT & SPIF) == 0 || (*pSPI0_STAT & TXS)) { *pWDOG_STAT = 0; };
 
 	*pDMA5_IRQ_STATUS = 1;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void WriteAsyncDMA(void *data, u16 count)
+{
+	*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|3;	
+
+	*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8/*|SYNC*/;
+	*pDMA5_START_ADDR = (void*)data;
+	*pDMA5_X_COUNT = count;
+	*pDMA5_X_MODIFY = 1;
+
+	*pDMA5_IRQ_STATUS = DMA_DONE;
+
+	*pDMA5_CONFIG |= DMAEN;
+	*pSPI0_CTL |= SPE;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CheckWriteAsyncDMA()
+{
+	if ((*pDMA5_IRQ_STATUS & DMA_DONE) && (*pSPI0_STAT & SPIF) && (*pSPI0_STAT & TXS) == 0)
+	{
+		*pSPI0_CTL = 0;
+
+		*pDMA5_CONFIG = 0;
+
+		SPI_OFF();
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -217,9 +341,57 @@ static void ReadSyncDMA(void *data, u16 count)
 	*pDMA5_CONFIG |= DMAEN;
 	*pSPI0_CTL |= SPE;
 
+	asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");asm("nop;");
+
 	while ((*pDMA5_IRQ_STATUS & DMA_DONE) == 0) { *pWDOG_STAT = 0; };
 
 	*pDMA5_IRQ_STATUS = 1;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void ReadAsyncDMA(void *data, u32 stAdr, u16 count)
+{
+	SetupSPI();
+
+	__WriteFlash(SPI_FAST_READ );
+
+	__WriteFlash(stAdr >> 16);
+	__WriteFlash(stAdr >> 8);
+	__WriteFlash(stAdr);
+	__WriteFlash(0);
+
+	*pSPI0_CTL = COMMON_SPI_DMA_SETTINGS|2;
+	*pDMA5_CONFIG = FLOW_STOP|DI_EN|WDSIZE_8|WNR|SYNC;
+
+	*pDMA5_START_ADDR = data;
+	*pDMA5_X_COUNT = count;
+	*pDMA5_X_MODIFY = 1;
+
+	*pDMA5_IRQ_STATUS = 1;
+
+	*pDMA5_CONFIG |= DMAEN;
+	*pSPI0_CTL |= SPE;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool CheckReadAsyncDMA()
+{
+	if (*pDMA5_IRQ_STATUS & DMA_DONE)
+	{
+		*pSPI0_CTL = 0;
+
+		*pDMA5_CONFIG = 0;
+
+		SPI_OFF();
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -632,11 +804,11 @@ static ERROR_CODE WritePage(void *data, u32 stAdr, u16 count )
 		return INVALID_BLOCK;
 	};
 
-    SendSingleCommand(SPI_WREN);
+	CmdWriteEnable();
 
-    Result = Wait_For_WEL();
+	Result = Wait_For_WEL();
 
-    if( POLL_TIMEOUT == Result )
+    if(Result != NO_ERR)
 	{
 		return Result;
 	}
@@ -660,7 +832,22 @@ static ERROR_CODE WritePage(void *data, u32 stAdr, u16 count )
 		SPI_OFF();
     };
 
-	return Wait_For_Status(WIP);
+	return Wait_For_Status(RDY_BSY);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void WritePageAsync(void *data, u32 stAdr, u16 count )
+{
+	SetupSPI();
+
+	__WriteFlash(SPI_PP );
+
+	__WriteFlash(stAdr >> 16);
+	__WriteFlash(stAdr >> 8);
+	__WriteFlash(stAdr);
+
+	WriteAsyncDMA(data, count);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -766,11 +953,11 @@ static ERROR_CODE VerifyPage(const byte *data, u32 stAdr, u16 count )
 	SetupSPI();
 
         /* send the bulk erase command to the flash */
-    WriteFlash(SPI_FAST_READ);
-    WriteFlash((stAdr) >> 16);
-    WriteFlash((stAdr) >> 8);
-    WriteFlash(stAdr);
-    WriteFlash(0);
+    __WriteFlash(SPI_FAST_READ);
+    __WriteFlash((stAdr) >> 16);
+    __WriteFlash((stAdr) >> 8);
+    __WriteFlash(stAdr);
+    __WriteFlash(0);
 
 	for ( ; count > 0; count--)
 	{
@@ -855,20 +1042,9 @@ ERROR_CODE at25df021_Write(const byte *data, u32 stAdr, u32 count, bool verify)
 
 static void GlobalUnProtect()
 {
-	ERROR_CODE 	  ErrorCode   = NO_ERR;	
+	CmdWriteEnable();
 
-	SetupSPI();
-
-	WriteFlash(SPI_WREN );
-
-	SPI_OFF();
-
-	SetupSPI();
-
-	WriteFlash(SPI_WRSR);
-	WriteFlash(0);
-
-	SPI_OFF();
+	CmdWriteStatusReg(0);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -923,28 +1099,23 @@ static void GlobalUnProtect()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static ERROR_CODE UnProtectBlock(u32 adr)
-{
-	ERROR_CODE 	  ErrorCode   = NO_ERR;		//tells us if there was an error erasing flash
-
-	SetupSPI();
-
-	// send the write enable instruction
-	WriteFlash(SPI_WREN );
-
-	SPI_OFF();
-
-	SetupSPI();
-
-	WriteFlash(SPI_WRSR);
-	WriteFlash(0);
-
-	SPI_OFF();
-
-	// Poll the status register to check the Write in Progress bit
-	// Sector erase takes time
-	return ErrorCode;
-}
+//static ERROR_CODE UnProtectBlock(u32 adr)
+//{
+//	ERROR_CODE 	  ErrorCode   = NO_ERR;		//tells us if there was an error erasing flash
+//
+//	SendSingleCommand(SPI_WREN );
+//
+//	SetupSPI();
+//
+//	WriteFlash(SPI_WRSR);
+//	WriteFlash(0);
+//
+//	SPI_OFF();
+//
+//	// Poll the status register to check the Write in Progress bit
+//	// Sector erase takes time
+//	return ErrorCode;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -976,27 +1147,24 @@ ERROR_CODE EraseBlock(int nBlock)
 	GlobalUnProtect();
 	GlobalUnProtect();
 
-	SetupSPI();
+	CmdWriteEnable();
 
-	// send the write enable instruction
-	WriteFlash(SPI_WREN );
+	CmdEraseSector(ulSectStart);
 
-//	SPI_OFF();
+	ErrorCode = Wait_For_Status(RDY_BSY);
 
-//	SetupSPI();
+	if (ErrorCode == NO_ERR)
+	{
+		ErrorCode == at25df021_Read(bufsect, ulSectStart, sizeof(bufsect));
 
-	//send the erase block command to the flash
-	WriteFlash(SPI_SE );
-
-	WriteFlash(GB(&ulSectStart, 2));
-	WriteFlash(GB(&ulSectStart, 1));
-	WriteFlash(GB(&ulSectStart, 0));
-
-	SPI_OFF();
-
-	// Poll the status register to check the Write in Progress bit
-	// Sector erase takes time
-	ErrorCode = Wait_For_Status(WIP);
+		if (ErrorCode == NO_ERR)
+		{
+			for (u32 i = ArraySize(bufsect); i > 0; i--)
+			{
+				if (bufsect[i] != ~0) { ErrorCode = VERIFY_WRITE; break; };
+			};
+		};
+	};
 
  	// block erase should be complete
 	return ErrorCode;
@@ -1227,7 +1395,7 @@ static byte ReadFlash()
 //  	ERROR_CODE - value if any error occurs
 //  	NO_ERR     - otherwise
 
-static void WriteFlash(byte usValue )
+static void __WriteFlash(byte usValue )
 {
 	*pSPI0_TDBR = usValue;
 	
@@ -1251,7 +1419,7 @@ static byte ReadStatusRegister(void)
 {
 	SetupSPI(); // Turn on the SPI
 
-	WriteFlash(SPI_RDSR);
+	__WriteFlash(SPI_RDSR);
 
 	byte usStatus = ReadFlash();
 
@@ -1350,19 +1518,14 @@ static ERROR_CODE Wait_For_Status( char Statusbit )
 // returns- none
 //
 //////////////////////////////////////////////////////////////
-static void SendSingleCommand( const int iCommand )
+static void __SendSingleCommand( const int iCommand )
 {
 	volatile int n;
 
 	//turns on the SPI in single write mode
 	SetupSPI();
 
-	//sends the actual command to the SPI TX register
-
-	*pSPI0_TDBR = iCommand;
-
-	//The SPI status register will be polled to check the SPIF bit
-	Wait_For_SPIF();
+	__WriteFlash(iCommand);
 
 	//The SPI will be turned off
 	SPI_OFF();
@@ -1440,57 +1603,252 @@ static void SPI_OFF(void)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+void FlashUpdate()
+{
+	static RTM32 tm;
 
-//////////////////////////////////////////////////////////////
-// Wait_For_nStatus(void)
-//
-// Polls the WEL (Write Enable Latch) bit of the Flash's status
-// register.
-// Inputs - none
-// returns- none
-//
-//////////////////////////////////////////////////////////////
-//static ERROR_CODE Wait_For_nStatus(void)
-//{
-//	volatile int i;
-//	char status_register = 0;
-//	ERROR_CODE ErrorCode = NO_ERR;	// tells us if there was an error erasing flash
-//
-//	for(i = 0; i < 500; i++)
-//	{
-//		status_register = ReadStatusRegister();
-//		if( (status_register & WEL) )
-//		{
-//			ErrorCode = NO_ERR;
-//			return ErrorCode;
-//		}
-//		ErrorCode = POLL_TIMEOUT;	// Time out error
-//	}
-//
-//	return ErrorCode;
-//}
+	//static u32 timeout = 0;
+
+	static Req *request = 0;
+
+	switch (flashState)
+	{
+		case FLASH_STATE_WAIT:
+
+			if (request != 0)
+			{
+				FreeReq(request);
+			};
+
+			request = readyReq.Get();
+
+			if (request != 0)
+			{
+				flashState = FLASH_STATE_WRITE_START;
+			};
+
+			break;
+
+		case FLASH_STATE_ERASE_START:
+
+			GlobalUnProtect();
+			GlobalUnProtect();
+
+			CmdWriteEnable();
+
+			tm.Reset();
+
+			flashState = FLASH_STATE_ERASE_WAIT;
+
+			break;
+
+		case FLASH_STATE_ERASE_WAIT:
+		{ 
+			byte st = ReadStatusRegister();
+
+			if ((st & RDY_BSY) == 0 && (st & WEL) != 0)
+			{
+				lastError = NO_ERR;
+
+				CmdEraseSector(lastErasedBlock);
+
+				tm.Reset();
+
+				flashState = FLASH_STATE_ERASE_WAIT_2;
+			}
+			else if (tm.Check(MS2RT(10)))
+			{
+				lastError = POLL_TIMEOUT;
+				flashState = FLASH_STATE_WAIT;
+			}; 
+
+			break;
+		};
+
+		case FLASH_STATE_ERASE_WAIT_2:
+		{
+			byte st = ReadStatusRegister();
+
+			if ((st & RDY_BSY) == 0)
+			{
+				if (st & EPE)
+				{
+					lastError = ERROR_ERASE;
+					flashState = FLASH_STATE_WAIT;
+				}
+				else
+				{
+					lastError = NO_ERR;
+
+					ReadAsyncDMA(bufsect, (u32)lastErasedBlock*SECTOR_SIZE, sizeof(bufsect));
+
+					flashState = FLASH_STATE_ERASE_CHECK;
+				};
+			}
+			else if (tm.Check(MS2RT(1000)))
+			{
+				lastError = POLL_TIMEOUT;
+				flashState = FLASH_STATE_WAIT;
+			};
+
+			break;
+		};
+
+		case FLASH_STATE_ERASE_CHECK:
+
+			if (CheckReadAsyncDMA())
+			{
+				bool c = false;
+
+				for (u32 i = 0; i < ArraySize(bufsect); i++)
+				{
+					if (bufsect[i] != ~0)
+					{
+						c = true; break;
+					};
+				};
+
+				if (c)
+				{
+					lastError = ERROR_ERASE;
+					flashState = FLASH_STATE_WAIT;
+				}
+				else
+				{
+					flashState = (flashWritePtr != 0 && flashWriteLen != 0) ? FLASH_STATE_WRITE_PAGE : FLASH_STATE_ERASE_WAIT;
+				};
+			};
+
+			break;
+
+		case FLASH_STATE_WRITE_START:
+		{
+			ReqDsp06 &req = request->req;
+
+			flashWriteAdr = FLASH_START_ADR + req.stAdr;
+			flashWritePtr = req.data;
+			flashWriteLen = req.len;
+
+			u16 block = flashWriteAdr/SECTOR_SIZE;
+
+			if (lastErasedBlock != block)
+			{
+				lastErasedBlock = block;
+
+				flashState = FLASH_STATE_ERASE_START;
+
+				break;
+			};
+		};
+
+		case FLASH_STATE_WRITE_PAGE:
+
+			CmdWriteEnable();
+
+			tm.Reset();
+
+			flashState = FLASH_STATE_WRITE_PAGE_2;
+
+			break;
+
+		case FLASH_STATE_WRITE_PAGE_2:
+		{ 
+			byte st = ReadStatusRegister();
+
+			if ((st & RDY_BSY) == 0 && (st & WEL) != 0)
+			{
+				lastError = NO_ERR;
+
+				WritePageAsync(flashWritePtr, flashWriteAdr, flashWriteLen);
+
+				flashState = FLASH_STATE_WRITE_PAGE_3;
+			}
+			else if (tm.Check(MS2RT(10)))
+			{
+				lastError = POLL_TIMEOUT;
+				flashState = FLASH_STATE_WAIT;
+			}; 
+
+			break;
+		};
+
+		case FLASH_STATE_WRITE_PAGE_3:
+
+			if (CheckWriteAsyncDMA())
+			{
+				tm.Reset();
+
+				flashState = FLASH_STATE_WRITE_PAGE_4;
+			};
+
+			break;
+
+		case FLASH_STATE_WRITE_PAGE_4:
+		{ 
+			byte st = ReadStatusRegister();
+
+			if ((st & RDY_BSY) == 0)
+			{
+				if (st & EPE)
+				{
+					lastError = ERROR_PROGRAM;
+					flashState = FLASH_STATE_WAIT;
+				}
+				else
+				{
+					lastError = NO_ERR;
+
+					flashState = FLASH_STATE_WAIT;
+				};
+			}
+			else if (tm.Check(MS2RT(10)))
+			{
+				lastError = POLL_TIMEOUT;
+				flashState = FLASH_STATE_WAIT;
+			}; 
+
+			break;
+		};
+
+		case FLASH_STATE_VERIFY_PAGE:
+
+
+
+			break;
+
+
+	};
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-/////////////////////////////////////////////////////////////////
-// unsigned long DataFlashAddress()
-//
-// Translates a binary address into the appropriate dataflash address.
-//
-// Inputs: unsigned long address - The binary address supplied
-/////////////////////////////////////////////////////////////////
-//unsigned long DataFlashAddress (unsigned long address)
-//{
-//	// Determine the page that it is on
-//	unsigned long pageAddress = address / SPI_PAGE_SIZE;
-//
-//	// Determine the byte offset within the page
-//	unsigned long bitAddress = address % SPI_PAGE_SIZE;
-//
-//	// Shift the page address the correct number of bits
-//	pageAddress = pageAddress << PAGE_BITS;
-//
-//	// Return the combined Page and Byte offset address
-//	return (pageAddress | bitAddress);
-//}
-//
+void FlashInit()
+{
+	for (u32 i = 0; i < ArraySize(_req); i++)
+	{
+		freeReq.Add(_req+i);
+	};
+
+}
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Req* AllocReq()
+{
+	return freeReq.Get();
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void FreeReq(Req *req)
+{
+	freeReq.Add(req);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void FlashWriteReq(Req *req)
+{
+	readyReq.Add(req);
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

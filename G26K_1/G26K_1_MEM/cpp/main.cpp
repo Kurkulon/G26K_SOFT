@@ -21,7 +21,7 @@
 
 #endif
 
-#define VERSION			0x102
+enum  { VERSION = 0x102 };
 
 //#pragma O3
 //#pragma Otime
@@ -204,7 +204,8 @@ static u16 dspRcvCount = 0;
 
 //static u32 crcErr02 = 0;
 //static u32 crcErr03 = 0;
-static u32 crcErr04 = 0;
+static u32 crcErr06 = 0;
+static u32 wrtErr06 = 0;
 
 static u32 notRcv02 = 0;
 //static u32 lenErr02 = 0;
@@ -405,8 +406,9 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	q.rb.recieved = false;
 	
 	req.rw				= dspReqWord|1;
+	req.len				= sizeof(req);
+	req.version			= req.VERSION;
 	req.mode 			= mode;
-	req.motoCount		= motoCounter;
 	req.ax				= ax;
 	req.ay				= ay;
 	req.az				= az;
@@ -429,9 +431,52 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	req.vavesPerRoundIM = mv.imSPR;
 	req.filtrType		= mv.filtrType;
 	req.packType		= mv.packType;
+	req.fireVoltage		= mv.fireVoltage;
 
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
 
+	return rq;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Ptr<UNIBUF> CreateTestDspReq01()
+{
+	Ptr<UNIBUF> rq;
+	
+	rq.Alloc();
+
+	if (!rq.Valid()) { return rq; };
+
+	RspDsp01 &rsp = *((RspDsp01*)(rq->GetDataPtr()));
+
+	rsp.rw = manReqWord|0x40;
+	rsp.time += 1;
+	rsp.hallTime += 1;
+	rsp.CM.motoCount += 1;
+	rsp.CM.headCount += 1;
+	rsp.CM.ax += 1;
+	rsp.CM.ay += 1;
+	rsp.CM.az += 1;
+	rsp.CM.at += 1;
+	rsp.CM.sensType = 0;
+	rsp.CM.angle += 1;
+	rsp.CM.maxAmp += 1;
+	rsp.CM.fi_amp += 1;
+	rsp.CM.fi_time += 1;
+	rsp.CM.gain += 1;
+	rsp.CM.st = 1;
+	rsp.CM.sl = 4;
+	rsp.CM.sd = 0;
+	rsp.CM.pakType = 0;
+	rsp.CM.pakLen = 0;
+	rsp.CM.data[0] += 1;
+	rsp.CM.data[1] += 1;
+	rsp.CM.data[2] += 1;
+	rsp.CM.data[3] += 1;
+
+	rq->dataLen = (22+4)*2;
+	
 	return rq;
 }
 
@@ -442,8 +487,6 @@ void CallBackDspReq05(Ptr<REQ> &q)
 {
 	if (!q->crcOK) 
 	{
-		crcErr04++;
-
 		if (q->tryCount > 0)
 		{
 			q->tryCount--;
@@ -497,16 +540,27 @@ Ptr<REQ> CreateDspReq05(u16 tryCount)
 
 void CallBackDspReq06(Ptr<REQ> &q)
 {
+	bool retry = false;
+
 	if (!q->crcOK) 
 	{
-		crcErr04++;
+		crcErr06++;
 
-		if (q->tryCount > 0)
-		{
-			q->tryCount--;
-			qdsp.Add(q);
-		};
+		retry = true;
+	}
+	else
+	{
+		RspDsp06 &rsp = *((RspDsp06*)q->rb.data);
+
+		if (rsp.res != 0) wrtErr06++, retry = true;
 	};
+
+	if (retry && q->tryCount > 0)
+	{
+		q->tryCount--;
+		qdsp.Add(q);
+	};
+
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2319,6 +2373,29 @@ static void UpdateDSP()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void UpdateTestFlashWrite()
+{
+	static Ptr<UNIBUF> ptr;
+	static u16 pt = 0;
+
+	//u16 t = GetMillisecondsLow();
+
+	//if (t != pt)
+	{
+//		pt = t;
+
+		ptr = CreateTestDspReq01();
+
+		if (ptr.Valid())
+		{
+			RspDsp01 *rsp = (RspDsp01*)(ptr->GetDataPtr());
+			RequestFlashWrite(ptr, rsp->rw);
+		};
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #ifndef WIN32
 
 static const u32 dspFlashPages[] = {
@@ -2397,7 +2474,7 @@ static void FlashDSP()
 				{
 					len = 256;
 
-					req = CreateDspReq06(adr, len, p, 0, 0, 2);
+					req = CreateDspReq06(adr, len, p, 0, 0, 10);
 				}
 				else
 				{
@@ -2405,11 +2482,11 @@ static void FlashDSP()
 
 					if (len > 2)
 					{
-						req = CreateDspReq06(adr, len-2, p, sizeof(fcrc), &fcrc, 2);
+						req = CreateDspReq06(adr, len-2, p, sizeof(fcrc), &fcrc, 10);
 					}
 					else
 					{
-						req = CreateDspReq06(adr, sizeof(fcrc), &fcrc, 0, 0, 2);
+						req = CreateDspReq06(adr, sizeof(fcrc), &fcrc, 0, 0, 10);
 					};
 				};
 
@@ -2800,16 +2877,15 @@ static void UpdateParams()
 	enum C { S = (__LINE__+3) };
 	switch(i++)
 	{
-		CALL( UpdateDSP();		);
-		CALL( MainMode()		);
-		CALL( UpdateMoto()		);
-		CALL( UpdateTemp()		);
-		CALL( UpdateMan(); 		);
-		CALL( FLASH_Update();	);
-		CALL( UpdateHardware();	);
-		CALL( UpdateAccel();	);
-		CALL( UpdateI2C();		);
-		CALL( SaveVars();		);
+		CALL( MainMode()				);
+		CALL( UpdateMoto()				);
+		CALL( UpdateTemp()				);
+		CALL( UpdateMan(); 				);
+		CALL( FLASH_Update();			);
+		CALL( UpdateHardware();			);
+		CALL( UpdateAccel();			);
+		CALL( UpdateI2C();				);
+		CALL( SaveVars();				);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -2829,6 +2905,7 @@ static void UpdateMisc()
 	switch(i++)
 	{
 		CALL( UpdateEMAC();		);
+		CALL( UpdateDSP();		);
 		CALL( UpdateParams();	);
 	};
 
@@ -2899,7 +2976,7 @@ int main()
 
 #ifndef WIN32
 
-	DisableDSP();
+	EnableDSP();
 
 #endif
 
@@ -2927,7 +3004,7 @@ int main()
 
 	//__breakpoint(0);
 
-	FlashMoto();
+	//FlashMoto();
 
 	FlashDSP();
 

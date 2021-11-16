@@ -76,7 +76,7 @@ struct RspBootMoto
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqDsp01	// чтение вектора
+__packed struct ReqDsp01_old	// чтение вектора
 {
 	u16 	rw;
 	u16 	mode; 
@@ -108,6 +108,44 @@ __packed struct ReqDsp01	// чтение вектора
 	u16		vavesPerRoundIM;
 	u16		filtrType;
 	u16		packType;
+
+	u16 	crc;  
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct ReqDsp01	// чтение вектора
+{
+	enum { VERSION = 1 };
+
+	u16 	rw;
+	u16		len;				// Длина структуры
+	u16		version;			// Версия структуры
+
+	u16 	mode; 
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16 	gain; 
+	u16 	st;	 
+	u16 	sl; 
+	u16 	sd; 
+	u16		thr;
+	u16		descr;
+	u16		freq;
+	u16 	refgain; 
+	u16 	refst;	 
+	u16 	refsl; 
+	u16 	refsd; 
+	u16		refthr;
+	u16		refdescr;
+	u16		refFreq;
+	u16		vavesPerRoundCM;
+	u16		vavesPerRoundIM;
+	u16		filtrType;
+	u16		packType;
+	u16		fireVoltage;		// Напряжение излучателя (В)
 
 	u16 	crc;  
 };
