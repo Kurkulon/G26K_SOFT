@@ -173,7 +173,7 @@ struct PPI
 static PPI mainPPI;
 static PPI refPPI;
 
-u16 dstFireVoltage = 0;
+u16 dstFireVoltage = 250;
 u16 curFireVoltage = 0;
 u16 curMotoVoltage = 0;
 
@@ -638,14 +638,13 @@ EX_INTERRUPT_HANDLER(TWI_ISR)
 	{
 		if (twiReadCount > 0)
 		{
-			*twiReadData++ = *pTWI_RCV_DATA16;
+			*twiReadData++ = *pTWI_RCV_DATA8;
 			twiReadCount--;
+		};
 
-			if (twiReadCount == 0) *pTWI_MASTER_CTL |= STOP;
-			*pTWI_FIFO_CTL = XMTFLUSH|RCVFLUSH;
-		}
-		else
+		if (twiReadCount == 0)
 		{
+			//*pTWI_INT_MASK = MERR|MCOMP;
 			*pTWI_MASTER_CTL |= STOP;
 			*pTWI_FIFO_CTL = XMTFLUSH|RCVFLUSH;
 		};
@@ -653,23 +652,24 @@ EX_INTERRUPT_HANDLER(TWI_ISR)
 	
 	if (stat & XMTSERV)
 	{
+		if (twiWriteCount == 0 && twi_dsc->wlen2 != 0)
+		{
+			twiWriteData = (byte*)twi_dsc->wdata2;
+			twiWriteCount = twi_dsc->wlen2;
+			twi_dsc->wlen2 = 0;
+		};
+
 		if (twiWriteCount > 0)
 		{
 			*pTWI_XMT_DATA8 = *twiWriteData++;
 			twiWriteCount--;
 
-			if (twiWriteCount == 0 && twi_dsc->wlen2 != 0)
-			{
-				twiWriteData = (byte*)twi_dsc->wdata2;
-				twiWriteCount = twi_dsc->wlen2;
-				twi_dsc->wlen2 = 0;
-			};
-		}
-		else if (twiReadCount > 0)
-		{
-			*pTWI_INT_MASK = MERR|MCOMP;
-			*pTWI_MASTER_CTL |= RSTART|MDIR;
-		}
+		};
+		//else if (twiReadCount > 0)
+		//{
+		//	*pTWI_INT_MASK = MERR|MCOMP;
+		//	*pTWI_MASTER_CTL |= RSTART|MDIR;
+		//}
 	};
 	
 	//if (stat & MERR)
@@ -677,18 +677,20 @@ EX_INTERRUPT_HANDLER(TWI_ISR)
 	//	*pTWI_INT_STAT = MERR;
 	//};
 
-	if (stat & MCOMP)
+	if (stat & (MCOMP|MERR))
 	{
-		if (twiReadCount > 0)
+		twi_dsc->ack = ((stat & MERR) == 0);
+
+		if (twi_dsc->ack && twiReadCount > 0)
 		{
 			*pTWI_INT_MASK = RCVSERV|MERR|MCOMP;
 			*pTWI_MASTER_CTL = ((twiReadCount<<6)&DCNT)|MDIR|FAST|MEN;
 		}
 		else
 		{
-			twi_dsc->ack = (*pTWI_MASTER_STAT & ANAK) == 0;
 			twi_dsc->ready = true;
 			twi_dsc->readedLen = twi_dsc->rlen - twiReadCount;
+			twi_dsc->master_stat = *pTWI_MASTER_STAT;
 
 			DSCTWI *ndsc = twi_dsc->next;
 
@@ -717,9 +719,9 @@ EX_INTERRUPT_HANDLER(TWI_ISR)
 
 				if (len != 0)
 				{
-					//*pTWI_XMT_DATA8 = *twiWriteData++; twiWriteCount--;
+					*pTWI_XMT_DATA8 = *twiWriteData++; twiWriteCount--;
 					*pTWI_INT_MASK = XMTSERV|MERR|MCOMP;
-					*pTWI_MASTER_CTL = ((len<<6)&DCNT)|FAST|MEN;
+					*pTWI_MASTER_CTL = ((len<<6)&DCNT)|FAST|MEN|((twiReadCount>0) ? RSTART : 0);
 				}
 				else
 				{
@@ -749,7 +751,7 @@ EX_INTERRUPT_HANDLER(TWI_ISR)
 static void InitTWI()
 {
 	*pTWI_CONTROL = TWI_ENA | 10;
-	*pTWI_CLKDIV = (8<<8)|12;
+	*pTWI_CLKDIV = (15<<8)|15;
 	*pTWI_INT_MASK = 0;
 	*pTWI_MASTER_ADDR = 0;
 
@@ -821,9 +823,9 @@ bool TWI_Write(DSCTWI *d)
 
 	if (len != 0)
 	{
-		//*pTWI_XMT_DATA8 = *twiWriteData++; twiWriteCount--;
+		*pTWI_XMT_DATA8 = *twiWriteData++; twiWriteCount--;
 		*pTWI_INT_MASK = XMTSERV|MERR|MCOMP;
-		*pTWI_MASTER_CTL = ((len<<6)&DCNT)|FAST|MEN;
+		*pTWI_MASTER_CTL = ((len<<6)&DCNT)|FAST|MEN|((twiReadCount>0) ? RSTART : 0);
 	}
 	else
 	{
@@ -941,21 +943,150 @@ void InitHardware()
 void UpdateHardware()
 {
 	static byte i = 0;
+	static DSCTWI dsc;
+	static byte wbuf[4];
+	static byte rbuf[4];
+	static RTM32 tm;
+	static CTM32 ctm;
+
+	if (!ctm.Check(US2CCLK(10))) return;
 
 	switch (i)
 	{
 		case 0:
 
+			if (tm.Check(MS2RT(100)))
+			{
+				wbuf[0] = 2;
+				wbuf[1] = 0;
+				wbuf[2] = 0;
+
+				dsc.adr = 0x48;
+				dsc.wdata = wbuf;
+				dsc.wlen = 3;
+				dsc.rdata = 0;
+				dsc.rlen = 0;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				TWI_AddRequest(&dsc);
+
+				i++;
+			};
 
 			break;
-
 
 		case 1:
 
+			if (dsc.ready)
+			{
+				wbuf[0] = 3;	
+				wbuf[1] = 1;	
+				wbuf[2] = 0;	
+
+				dsc.adr = 0x48;
+				dsc.wdata = wbuf;
+				dsc.wlen = 3;
+				dsc.rdata = 0;
+				dsc.rlen = 0;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				TWI_AddRequest(&dsc);
+
+				i++;
+			};
+
 
 			break;
 
+		case 2:
 
+			if (dsc.ready)
+			{
+				wbuf[0] = 4;	
+				wbuf[1] = 1;	
+				wbuf[2] = 1;	
+
+				dsc.adr = 0x48;
+				dsc.wdata = wbuf;
+				dsc.wlen = 3;
+				dsc.rdata = 0;
+				dsc.rlen = 0;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				TWI_AddRequest(&dsc);
+
+				i++;
+			};
+
+
+			break;
+
+		case 3:
+
+			if (dsc.ready)
+			{
+				wbuf[0] = 5;	
+				wbuf[1] = 0;	
+				wbuf[2] = 0;	
+
+				dsc.adr = 0x48;
+				dsc.wdata = wbuf;
+				dsc.wlen = 3;
+				dsc.rdata = 0;
+				dsc.rlen = 0;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				TWI_AddRequest(&dsc);
+
+				i++;
+			};
+
+
+			break;
+
+		case 4:
+
+			if (dsc.ready)
+			{
+				curFireVoltage = dstFireVoltage;
+
+				u16 t = dstFireVoltage+10;
+
+				if (t > 500) t = 500;
+
+				t = ~(((u32)t * (65535*16384/500)) / 16384); 
+
+				wbuf[0] = 8;	
+				wbuf[1] = t>>8;
+				wbuf[2] = t;
+
+				dsc.adr = 0x48;
+				dsc.wdata = wbuf;
+				dsc.wlen = 3;
+				dsc.rdata = rbuf;
+				dsc.rlen = 0;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				TWI_AddRequest(&dsc);
+
+				i++;
+			};
+
+			break;
+
+		case 5:
+
+			if (dsc.ready)
+			{
+				i = 0;
+			};
+
+			break;
 
 	};
 }

@@ -68,6 +68,13 @@
 
 #endif
 
+
+#define NAND_SR_FAIL				0x01	// 0 = Pass, 1 = Fail
+#define NAND_SR_FAILC				0x02	// 0 = Pass, 1 = Fail
+#define NAND_SR_ARDY				0x20	// 0 = Busy, 1 = Ready
+#define NAND_SR_RDY					0x40	// 0 = Busy, 1 = Ready
+#define NAND_SR_WP					0x80	// 0 = Protected, 1 = Not Protected
+
 #define FRAM_SPI_MAINVARS_ADR 0
 #define FRAM_SPI_SESSIONS_ADR 0x200
 

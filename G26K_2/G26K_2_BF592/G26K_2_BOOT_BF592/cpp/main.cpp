@@ -18,7 +18,7 @@ static u32 err06 = 0;
 
 
 static u32 timeOut = MS2RT(500);
-static bool runMainApp = false;
+//static bool runMainApp = false;
 
 static u16 flashCRC = 0;
 static u32 flashLen = 0;
@@ -37,11 +37,11 @@ static byte buf[SECTOR_SIZE];
 
 static void RunMainApp()
 {
-	//if (!flashChecked) CheckFlash();
+	if (!flashChecked) CheckFlash();
 
-	//if (flashOK && flashCRCOK) bfrom_SpiBoot(FLASH_START_ADR, BFLAG_PERIPHERAL | BFLAG_NOAUTO | BFLAG_FASTREAD | BFLAG_TYPE3 | BAUD_RATE_DIVISOR, 0, 0);
-	//
-	//tm32.Reset(); timeOut = MS2RT(1000);
+	if (flashOK && flashCRCOK) bfrom_SpiBoot(FLASH_START_ADR, BFLAG_PERIPHERAL | BFLAG_NOAUTO | BFLAG_FASTREAD | BFLAG_TYPE3 | 7, 0, 0);
+	
+	tm32.Reset(); timeOut = MS2RT(1000);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -206,6 +206,8 @@ static void CheckFlash()
 	static ADI_BOOT_HEADER bh;
 	static u16 crc = 0;
 
+	if (FlashBusy()) return;
+
 	u32 *p = (u32*)&bh;
 
 	u32 adr = 0;
@@ -285,7 +287,7 @@ int main( void )
 		UpdateBlackFin();
 		FlashUpdate();
 
-		//if (runMainApp || tm32.Check(timeOut)) RunMainApp();
+		if (tm32.Check(timeOut)) RunMainApp();
 
 		*pPORTFIO_CLEAR = 1<<7;
 

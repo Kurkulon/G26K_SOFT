@@ -1,6 +1,6 @@
 #include "types.h"
 #include "core.h"
-#include "at25df021.h"
+//#include "at25df021.h"
 
 #include <bfrom.h>
 #include <ccblkfn.h>
@@ -24,8 +24,8 @@ void initcode(ADI_BOOT_DATA* pBS)
 	bfrom_SysControl( SYSCTRL_WRITE | SYSCTRL_PLLCTL | SYSCTRL_PLLDIV, &sysctrl, 0);
 
 	pBS->dFlags |= BFLAG_FASTREAD;
-	*pSPI0_BAUD = BAUD_RATE_DIVISOR;
-	pBS->dClock = BAUD_RATE_DIVISOR; /* required to keep dClock in pBS (-> ADI_BOOT_DATA) consistent */
+	*pSPI0_BAUD = 5;
+	pBS->dClock = 5; /* required to keep dClock in pBS (-> ADI_BOOT_DATA) consistent */
 
     *pSIC_IWR0 = IWR0_ENABLE_ALL;
 

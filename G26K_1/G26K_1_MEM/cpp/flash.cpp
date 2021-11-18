@@ -116,7 +116,8 @@ static bool flashEmpty = false;
 
 static bool testWriteFlash = false;
 
-static const bool verifyWritePage = false; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+static const bool verifyWritePage = true; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+static const bool forceEraseWrite = true;
 
 static SessionInfo lastSessionInfo;
 
@@ -441,8 +442,10 @@ bool EraseBlock::Update()
 		case ERASE_2:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++				
 																																
 			if(!NAND_BUSY())																									
-			{																													
-				if ((NAND_CmdReadStatus() & 1) != 0 && check) // erase error																	
+			{					
+				byte status = NAND_CmdReadStatus();
+
+				if ((status & (NAND_SR_FAIL|NAND_SR_RDY)) != NAND_SR_RDY && check) // erase error																	
 				{																												
 					errBlocks += 1;	
 					nvv.badBlocks[er.GetChip()] += 1;
@@ -514,7 +517,7 @@ struct Write
 
 	SpareArea spare;
 
-//	SpareArea rspare;
+	SpareArea rspare;
 
 	byte state;
 
@@ -523,8 +526,7 @@ struct Write
 	EraseBlock eraseBlock;
 
 	u32	wrBuf[NAND_PAGE_SIZE/4];
-	u32	rdBuf[(NAND_PAGE_SIZE+NAND_SPARE_SIZE)/4];
-
+	//u32	rdBuf[(NAND_PAGE_SIZE+NAND_SPARE_SIZE)/4];
 
 	bool Start();
 	bool Update();
@@ -789,7 +791,7 @@ bool Write::Update()
 			{
 				wr_pg_error = 0;
 
-				eraseBlock.Start(wr, false, true);
+				eraseBlock.Start(wr, forceEraseWrite, true);
 
 	            state = ERASE;
 
@@ -842,9 +844,9 @@ bool Write::Update()
 
 			if(!NAND_BUSY())
 			{
-				byte t = NAND_CmdReadStatus();
+				byte status = NAND_CmdReadStatus();
 
-				if ((t & 1) != 0) // program error
+				if ((status & (NAND_SR_FAIL|NAND_SR_RDY)) != NAND_SR_RDY) // program error
 				{
 					spare.v1.fbp += 1;
 					nvv.pageError[wr.GetChip()] += 1;
@@ -859,7 +861,7 @@ bool Write::Update()
 				}
 				else if (verifyWritePage)
 				{
-					NAND_CmdReadPage(0, wr.GetBlock(), wr.GetPage());
+					NAND_CmdReadPage(wr.pg, wr.GetBlock(), wr.GetPage());
 					
 					state = WRITE_PAGE_6;
 				}
@@ -910,7 +912,7 @@ bool Write::Update()
 
 			if(!NAND_BUSY())
 			{
-				NAND_ReadDataDMA(&rdBuf, sizeof(rdBuf));
+				NAND_ReadDataDMA(&rspare, sizeof(rspare));
 
 				state = WRITE_PAGE_7;
 			};
@@ -921,7 +923,7 @@ bool Write::Update()
 
 			if (NAND_CheckDataComplete())
 			{
-				if (!__memcmp(wr_ptr, rdBuf, wr.pg) || !__memcmp(&spare, rdBuf+wr.pg/4, sizeof(spare)))
+				if (!__memcmp(&spare, &rspare, sizeof(spare)))
 				{
 					verifyFlashErrors += 1;
 
@@ -937,27 +939,6 @@ bool Write::Update()
 				}
 				else
 				{
-					//if (wr_count == 0)
-					//{
-					//	Finish();
-
-					//	state = (createFile) ? WRITE_CREATE_FILE_1 : WAIT;
-					//}
-					//else
-					//{
-					//	state = WRITE_START;
-					//};
-
-					//wr.NextPage();
-
-					//spare.fpn += 1;
-
-					//spare.vecFstOff = -1;
-					//spare.vecFstLen = 0;
-
-					//spare.vecLstOff = -1;
-					//spare.vecLstLen = 0;
-
 					state = WRITE_PAGE_8;
 				};
 			};

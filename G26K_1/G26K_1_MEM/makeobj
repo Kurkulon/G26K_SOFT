@@ -50,7 +50,7 @@ cpu_scatter = SAME53.sct
 !else ifeq targetcpu XMC48
 
 cpu_compiler_options = --cpu=CORTEX-M4.fp.sp --thumb
-cpu_asm_options = --cpu CORTEX-M4.fp.sp --apcs /interwork	--pd "__PROGNAME__ SETS \"KAPCAP G26K.1(AS76C_UPR)-2.1\""
+cpu_asm_options = --cpu CORTEX-M4.fp.sp --apcs /interwork	--pd "__PROGNAME__ SETS \"KAPCAP G26K.1(AS76C_UPR)-2.3\""
 cpu_link_options = --cpu CORTEX-M4.fp.sp
 cpu_obj = $(objdir)\startup_XMC4800.o
 cpu_scatter = XMC48.sct

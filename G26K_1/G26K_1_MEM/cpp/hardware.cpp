@@ -1145,6 +1145,8 @@ extern "C" void SystemInit()
 #define NAND_CMD_SET_FEATURES		0xEF
 #define NAND_CMD_GET_FEATURES		0xEE
 
+
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 NandMemSize nandSize;
@@ -1508,7 +1510,7 @@ byte NAND_CmdReadStatus()
 
 bool NAND_CmdBusy()
 {
-	return NAND_BUSY() || ((NAND_CmdReadStatus() & (1<<6)) == 0);
+	return NAND_BUSY() || ((NAND_CmdReadStatus() & NAND_SR_RDY) == 0);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

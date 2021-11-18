@@ -1,8 +1,14 @@
 #include "hardware.h"
 #include "ComPort.h"
 #include "CRC16.h"
-#include "at25df021.h"
+//#include "at25df021.h"
 #include "list.h"
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static byte build_date[512] = "\n" "G26K2BF592" "\n" __DATE__ "\n" __TIME__ "\n";
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static ComPort com;
 
@@ -89,6 +95,8 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	filtrType = req->filtrType;
 	packType = req->packType;
 
+	SetFireVoltage(req->fireVoltage);
+
 	if (wb == 0) return false;
 
 	if (curDsc != 0)
@@ -122,65 +130,65 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static bool RequestFunc_05(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	const ReqDsp05 *req = (ReqDsp05*)data;
-	static RspDsp05 rsp;
-
-	if (len < sizeof(ReqDsp05)/2) return  false;
-
-	rsp.rw = req->rw;
-	rsp.flashLen = flashLen;
-	rsp.flashCRC = flashCRC;
-
-	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
+//
+//static bool RequestFunc_05(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
+//{
+//	const ReqDsp05 *req = (ReqDsp05*)data;
+//	static RspDsp05 rsp;
+//
+//	if (len < sizeof(ReqDsp05)/2) return  false;
+//
+//	rsp.rw = req->rw;
+//	rsp.flashLen = flashLen;
+//	rsp.flashCRC = flashCRC;
+//
+//	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+//
+//	wb->data = &rsp;
+//	wb->len = sizeof(rsp);
+//
+//	return true;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool RequestFunc_06(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
-{
-	const ReqDsp06 *req = (ReqDsp06*)data;
-	static RspDsp06 rsp;
-
-	ERROR_CODE Result = NO_ERR;
-
-	u16 xl = req->len + sizeof(ReqDsp06) - sizeof(req->data);
-
-	if (len < xl/2) return  false;
-
-	u32 stAdr = FLASH_START_ADR + req->stAdr;
-
-	u16 block = stAdr/4096;
-
-	if (lastErasedBlock != block)
-	{
-		Result = EraseBlock(block);
-		lastErasedBlock = block;
-	};
-
-	if (Result == NO_ERR)
-	{
-		Result = at25df021_Write(req->data, stAdr, req->len, true);
-	};
-
-	rsp.res = Result;
-
-	rsp.rw = req->rw;
-
-	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-
-	wb->data = &rsp;
-	wb->len = sizeof(rsp);
-
-	return true;
-}
+//static bool RequestFunc_06(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
+//{
+//	const ReqDsp06 *req = (ReqDsp06*)data;
+//	static RspDsp06 rsp;
+//
+//	ERROR_CODE Result = NO_ERR;
+//
+//	u16 xl = req->len + sizeof(ReqDsp06) - sizeof(req->data);
+//
+//	if (len < xl/2) return  false;
+//
+//	u32 stAdr = FLASH_START_ADR + req->stAdr;
+//
+//	u16 block = stAdr/4096;
+//
+//	if (lastErasedBlock != block)
+//	{
+//		Result = EraseBlock(block);
+//		lastErasedBlock = block;
+//	};
+//
+//	if (Result == NO_ERR)
+//	{
+//		Result = at25df021_Write(req->data, stAdr, req->len, true);
+//	};
+//
+//	rsp.res = Result;
+//
+//	rsp.rw = req->rw;
+//
+//	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+//
+//	wb->data = &rsp;
+//	wb->len = sizeof(rsp);
+//
+//	return true;
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -213,8 +221,8 @@ static bool RequestFunc(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 	switch (t)
 	{
 		case 1: 	r = RequestFunc_01(p, len, wb); break;
-		case 5: 	r = RequestFunc_05(p, len, wb); break;
-		case 6: 	r = RequestFunc_06(p, len, wb); break;
+//		case 5: 	r = RequestFunc_05(p, len, wb); break;
+//		case 6: 	r = RequestFunc_06(p, len, wb); break;
 		case 7: 		RequestFunc_07(p, len, wb); break;
 	};
 
@@ -228,7 +236,7 @@ static void UpdateBlackFin()
 	static byte i = 0;
 	static ComPort::WriteBuffer wb;
 	static ComPort::ReadBuffer rb;
-	static u16 buf[256];
+	//static u16 buf[256];
 
 	ResetWDT();
 
@@ -236,8 +244,8 @@ static void UpdateBlackFin()
 	{
 		case 0:
 
-			rb.data = buf;
-			rb.maxLen = sizeof(buf);
+			rb.data = build_date;
+			rb.maxLen = sizeof(build_date);
 			com.Read(&rb, ~0, US2CCLK(25));
 			i++;
 
@@ -866,40 +874,40 @@ static void UpdateMode()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void CheckFlash()
-{
-	static BOOT_HEADER bh;
-
-	byte *p = (byte*)&bh;
-
-//	u32 stAdr = 0x8000;
-	u32 adr = 0;
-
-//	bool ready = false;
-
-	while (1)
-	{
-		at25df021_Read(p, FLASH_START_ADR + adr, sizeof(bh));
-
-//		while(!ready) {};
-
-		adr += sizeof(bh);
-
-		if ((bh.blockCode & BFLAG_FILL) == 0)
-		{
-			adr += bh.byteCount;	
-		};
-
-		if (bh.blockCode & BFLAG_FINAL)
-		{
-			break;
-		};
-	};
-
-	flashLen = adr;
-
-	flashCRC = at25df021_GetCRC16(FLASH_START_ADR, flashLen);
-}
+//static void CheckFlash()
+//{
+//	static BOOT_HEADER bh;
+//
+//	byte *p = (byte*)&bh;
+//
+////	u32 stAdr = 0x8000;
+//	u32 adr = 0;
+//
+////	bool ready = false;
+//
+//	while (1)
+//	{
+//		at25df021_Read(p, FLASH_START_ADR + adr, sizeof(bh));
+//
+////		while(!ready) {};
+//
+//		adr += sizeof(bh);
+//
+//		if ((bh.blockCode & BFLAG_FILL) == 0)
+//		{
+//			adr += bh.byteCount;	
+//		};
+//
+//		if (bh.blockCode & BFLAG_FINAL)
+//		{
+//			break;
+//		};
+//	};
+//
+//	flashLen = adr;
+//
+//	flashCRC = at25df021_GetCRC16(FLASH_START_ADR, flashLen);
+//}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -918,7 +926,7 @@ int main( void )
 
 	com.Connect(6250000, 2);
 
-	CheckFlash();
+	//CheckFlash();
 
 	while (1)
 	{

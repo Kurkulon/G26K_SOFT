@@ -20,6 +20,8 @@ inline void __enable_irq() {}
 
 #endif 
 
+#define __breakpoint() //asm("EMUEXCPT;")
+
 typedef unsigned char byte, u8;
 typedef unsigned short int word, u16;
 typedef unsigned long int dword, u32;

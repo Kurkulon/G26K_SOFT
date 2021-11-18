@@ -83,6 +83,7 @@ extern Req* AllocReq();
 extern void FreeReq(Req *req);
 extern void FlashWriteReq(Req *req);
 extern ERROR_CODE GetLastError();
+extern bool FlashBusy();
 
 
 #endif // AT25DF021_H__14_09_2016__08_29 

@@ -214,6 +214,7 @@ struct DSCTWI
 	u16				wlen2;
 	u16				rlen;
 	u16				readedLen;
+	u16				master_stat;
 	byte			adr;
 	volatile bool	ready;
 	volatile bool	ack;
@@ -249,14 +250,18 @@ extern u16	GetMotoVoltage();
 
 inline u32 GetRTT() { extern u32 mmsec; return mmsec; }
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 struct RTM32
 {
 	u32 pt;
 
 	RTM32() : pt(0) {}
-	bool Check(u32 v) { if ((GetRTT() - pt) >= v) { pt = GetRTT(); return true; } else { return false; }; }
+	bool Check(u32 v) { u32 t = GetRTT(); if ((t - pt) >= v) { pt = t; return true; } else { return false; }; }
 	void Reset() { pt = GetRTT(); }
 };
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 inline u64 GetCycles64()
 {
@@ -284,5 +289,15 @@ inline u32 GetCycles32()
 	return sysreg_read(reg_CYCLES); 
 }
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct CTM32
+{
+	u32 pt;
+
+	CTM32() : pt(0) {}
+	bool Check(u32 v) { u32 t = GetCycles32(); if ((t - pt) >= v) { pt = t; return true; } else { return false; }; }
+	void Reset() { pt = GetCycles32(); }
+};
 
 #endif // HARDWARE_H__15_05_2009__14_35

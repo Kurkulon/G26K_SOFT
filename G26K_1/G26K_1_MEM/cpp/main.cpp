@@ -21,7 +21,7 @@
 
 #endif
 
-enum  { VERSION = 0x102 };
+enum { VERSION = 0x102 };
 
 //#pragma O3
 //#pragma Otime
@@ -314,34 +314,42 @@ void CallBackDspReq01(Ptr<REQ> &q)
 	 
 	if (q->rb.recieved)
 	{
-
 		if (rsp.rw == (dspReqWord|0x40))
 		{
-			q->crcOK = (q->rb.len == (rsp.CM.sl*2 + 10 + sizeof(rsp.CM)-sizeof(rsp.CM.data)));
+			q->crcOK = (q->rb.len == (rsp.CM.sl*2 + 2 + sizeof(rsp.CM)-sizeof(rsp.CM.data)));
 			q->rsp->dataLen = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv40++;
 			dspRcvCount++;
 			
-			dspMMSEC = rsp.time;
-			shaftMMSEC = rsp.hallTime;
+			dspMMSEC = rsp.CM.time;
+			shaftMMSEC = rsp.CM.hallTime;
 		}
 		else if (rsp.rw == (dspReqWord|0x50))
 		{
-			q->crcOK = (q->rb.len == (rsp.IM.dataLen*4 + 10 + sizeof(rsp.IM)-sizeof(rsp.IM.data)));
+			q->crcOK = (q->rb.len == (rsp.IM.dataLen*4 + 2 + sizeof(rsp.IM)-sizeof(rsp.IM.data)));
 			q->rsp->dataLen = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv50++;
 			dspRcvCount++;
 
-			dspMMSEC = rsp.time;
-			shaftMMSEC = rsp.hallTime;
+			dspMMSEC = rsp.IM.time;
+			shaftMMSEC = rsp.IM.hallTime;
 		}
 		else
 		{
-			q->crcOK = false;
+			q->crcOK = GetCRC16(q->rb.data, q->rb.len) == 0;
+
+			if (q->crcOK && rsp.rw == (dspReqWord|1))
+			{
+				curFireVoltage = rsp.v01.fireVoltage;
+				motoVoltage = rsp.v01.motoVoltage;
+				
+				dspStatus |= 1;
+				dspRcvCount++;
+			};
 		};
 	}
 	else
@@ -451,8 +459,8 @@ Ptr<UNIBUF> CreateTestDspReq01()
 	RspDsp01 &rsp = *((RspDsp01*)(rq->GetDataPtr()));
 
 	rsp.rw = manReqWord|0x40;
-	rsp.time += 1;
-	rsp.hallTime += 1;
+	rsp.CM.time += 1;
+	rsp.CM.hallTime += 1;
 	rsp.CM.motoCount += 1;
 	rsp.CM.headCount += 1;
 	rsp.CM.ax += 1;
@@ -2976,7 +2984,7 @@ int main()
 
 #ifndef WIN32
 
-	EnableDSP();
+	DisableDSP();
 
 #endif
 
@@ -3004,7 +3012,7 @@ int main()
 
 	//__breakpoint(0);
 
-	//FlashMoto();
+	FlashMoto();
 
 	FlashDSP();
 
