@@ -1043,6 +1043,183 @@ static bool UpdateSendVector()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static bool UpdateSendVector_Dlya_Vova()
+{
+	static byte i = 0;
+//	static FLRB flrb;
+
+	static SmallTx *t = 0;
+//	static VecData::Hdr h;
+
+	static u32 vecCount = 0;
+//	static u32 fragLen = 0;
+//	static u32 fragOff = 0;
+	static u16 ipID = 0;
+//	static u16 crc = 0;
+
+	static TM32 tm;
+
+	static u16 ses = 0;
+	//static u64 adr = 0;
+	static u32 size = 0;
+	//static bool useadr = false;
+
+	static RTC_type rtc;
+
+	//static FileDsc *si = 0;
+
+	__packed struct TRP { EthUdp eu; TrapVector tv; byte data[IP_MTU - sizeof(UdpHdr) - sizeof(TrapVector)]; };
+	//__packed struct FR  { EthIp  ei; byte data[IP_MTU]; };
+
+
+	switch (i)
+	{
+		case 0:
+
+			if (startSendVector)
+			{
+				startSendVector = false;
+				//adr = startAdr;
+				ses = startSession;
+				//useadr = true;
+
+				//si = GetSessionInfo(ses, adr);
+
+				size = 20000000;
+
+				vecCount = 0;
+
+				GetTime(&rtc);
+
+				i++;
+			}
+			else
+			{
+				return false;
+			};
+
+			break;
+
+		case 1:
+
+			if (tm.Check(200))
+			{
+				TRAP_MEMORY_SendStatus((u64)vecCount*(1<<22)/(size>>10), FLASH_STATUS_READ_VECTOR_IDLE);
+			};
+
+			if (vecCount >= size)
+			{
+				TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
+
+				stop = false;
+				pause = false;
+
+				i = 0;
+			}
+			else if (stop)
+			{
+				stop = false;
+
+				i = 0;
+			}
+			else if (!pause)
+			{
+				t = GetSmallTxBuffer();
+
+				if (t != 0)
+				{
+					TRP &et = *((TRP*)&t->eth);
+
+					TrapVector &trap = et.tv;
+
+					MakePacketHeaders(&trap.hdr, TRAP_PACKET_NO_NEED_ASK, TRAP_PACKET_NO_ASK, TRAP_MEMORY_DEVICE);
+
+					trap.hdr.cmd = TRAP_MEMORY_COMMAND_VECTOR;
+					trap.session = ses;
+					trap.device = 0xAD00;
+					trap.rtc = rtc;
+					trap.flags = 0;
+					
+					if (rtc.msec < 999)
+					{
+						rtc.msec += 1;
+					}
+					else
+					{
+						rtc.msec = 0;
+
+						if (rtc.sec < 59)
+						{
+							rtc.sec += 1;
+						}
+						else
+						{
+							rtc.sec = 0;
+
+							if (rtc.min < 59)
+							{
+								rtc.min += 1;
+							}
+							else
+							{
+								rtc.min = 0;
+
+								if (rtc.hour < 23)
+								{
+									rtc.hour += 1;
+								}
+								else
+								{
+									rtc.hour = 0;
+
+									byte day = 30;
+
+									if (rtc.day < day)
+									{
+										rtc.day += 1;
+									}
+									else
+									{
+										rtc.day = 1;
+
+										if (rtc.mon < 12)
+										{
+											rtc.mon += 1;
+										}
+										else
+										{
+											rtc.mon = 1;
+
+											rtc.year += 1;
+										};
+									};
+								};
+							};
+						};
+					};
+
+					vecCount += 2;
+
+					t->iph.off = 0;
+
+					et.data[0] = 0x40;
+					et.data[1] = 0xAD;
+
+					t->len = sizeof(et.eu) + sizeof(et.tv) + 2;
+
+					SendTrap(t);
+
+					//i++;
+				};
+			};
+
+			break;
+	};
+
+	return true;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void TRAP_Init()
 {
@@ -1056,6 +1233,7 @@ void TRAP_Init()
 void TRAP_Idle()
 {
 	UpdateSendVector();
+	//UpdateSendVector_Dlya_Vova();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

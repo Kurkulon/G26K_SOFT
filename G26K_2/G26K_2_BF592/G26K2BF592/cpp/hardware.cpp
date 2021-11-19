@@ -279,6 +279,8 @@ EX_INTERRUPT_HANDLER(RTT_ISR)
 		//*pPORTGIO_TOGGLE = 1<<6;
 
 		mmsec++;
+
+		ssync();
 	};
 }
 
@@ -447,6 +449,8 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 		{
 			ReadPPI(mainPPI);
 		};
+
+		ssync();
 	};
 }
 
@@ -468,21 +472,19 @@ EX_INTERRUPT_HANDLER(TIMER_PPI_ISR)
 {
 	StartPPI();
 	*pTCNTL = 0;
+	ssync();
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 EX_INTERRUPT_HANDLER(SYNC_ISR)
 {
-//	*pPORTGIO_SET = 1<<7;
 	*pPORTFIO_CLEAR = BM_SYNC;
 
 	Fire();
 
 	fireSyncCount += 1;
 
-	//if (fireSyncCount >= firesPerRound) fireSyncCount = 0;
-
-//	*pPORTGIO_CLEAR = 1<<7;
+	ssync();
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -571,6 +573,8 @@ EX_INTERRUPT_HANDLER(SHAFT_ISR)
 	fireSyncCount = 0;
 
 	if ((mmsec - rotMMSEC) <= (rotDeltaMMSEC/4)) rotCount = 0;
+	
+	ssync();
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -605,6 +609,8 @@ EX_INTERRUPT_HANDLER(ROT_ISR)
 	rotMMSEC = mmsec;
 
 	*pPORTGIO_CLEAR = 1<<6;
+
+	ssync();
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -630,7 +636,7 @@ static byte *twiReadData = 0;
 static DSCTWI* twi_dsc = 0;
 static DSCTWI* twi_lastDsc = 0;
 
-EX_INTERRUPT_HANDLER(TWI_ISR)
+EX_REENTRANT_HANDLER(TWI_ISR)
 {
 	u16 stat = *pTWI_INT_STAT;
 
@@ -744,6 +750,8 @@ EX_INTERRUPT_HANDLER(TWI_ISR)
 	};
 
 	*pTWI_INT_STAT = stat;
+
+	ssync();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

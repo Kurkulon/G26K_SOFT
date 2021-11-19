@@ -483,7 +483,7 @@ Ptr<UNIBUF> CreateTestDspReq01()
 	rsp.CM.data[2] += 1;
 	rsp.CM.data[3] += 1;
 
-	rq->dataLen = (22+4)*2;
+	rq->dataLen = (22+1024)*2;
 	
 	return rq;
 }
