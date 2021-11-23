@@ -956,14 +956,91 @@ void UpdateHardware()
 	static byte rbuf[4];
 	static RTM32 tm;
 	static CTM32 ctm;
+	static i32 filtFV = 0;
+	static i32 filtMV = 0;
+	static u16 correction = 0x200;
+	static u16 dstFV = 0;
 
-	if (!ctm.Check(US2CCLK(10))) return;
+	if (!ctm.Check(US2CCLK(50))) return;
 
 	switch (i)
 	{
 		case 0:
 
-			if (tm.Check(MS2RT(100)))
+			if (tm.Check(MS2RT(10)))
+			{
+				wbuf[0] = 0x60;	
+
+				dsc.adr = 0x28;
+				dsc.wdata = wbuf;
+				dsc.wlen = 1;
+				dsc.rdata = rbuf;
+				dsc.rlen = 4;
+				dsc.wdata2 = 0;
+				dsc.wlen2 = 0;
+
+				TWI_AddRequest(&dsc);
+
+				i++;
+			};
+
+			break;
+
+		case 1:
+
+			if (dsc.ready)
+			{
+				if (dsc.ack)
+				{
+					byte *p = rbuf;
+
+					for (u32 i = dsc.readedLen; i > 0; i -= 2, p += 2)
+					{
+						byte ch = (p[0] >> 4) & 3;
+
+						i32 res = ((p[0]<<8)|p[1]) & 0xFFF;
+
+						if (ch == 1)
+						{
+							filtFV += (res * 16 - filtFV + 8) / 16;
+
+							curFireVoltage = (filtFV * 674 + 32768) / 65536; //51869
+
+							u16 t = dstFireVoltage;
+
+							if (t > curFireVoltage)
+							{
+								if (correction < 0x3FF)
+								{
+									correction += 1;
+								};
+							}
+							else if (t < curFireVoltage)
+							{
+								if (correction > 0)
+								{
+									correction -= 1;
+								};
+							};
+						}
+						else if (ch == 2)
+						{
+							filtMV += (res * 16 - filtMV + 8) / 16;
+
+							curMotoVoltage = (filtMV * 105 + 32768) / 65536; //51869
+						};
+
+					};
+				};
+
+				i++;
+			};
+
+			break;
+
+		case 2:
+
+			if (dsc.ready)
 			{
 				wbuf[0] = 2;
 				wbuf[1] = 0;
@@ -984,7 +1061,7 @@ void UpdateHardware()
 
 			break;
 
-		case 1:
+		case 3:
 
 			if (dsc.ready)
 			{
@@ -1005,10 +1082,9 @@ void UpdateHardware()
 				i++;
 			};
 
-
 			break;
 
-		case 2:
+		case 4:
 
 			if (dsc.ready)
 			{
@@ -1029,10 +1105,9 @@ void UpdateHardware()
 				i++;
 			};
 
-
 			break;
 
-		case 3:
+		case 5:
 
 			if (dsc.ready)
 			{
@@ -1053,16 +1128,19 @@ void UpdateHardware()
 				i++;
 			};
 
-
 			break;
 
-		case 4:
+		case 6:
 
 			if (dsc.ready)
 			{
-				curFireVoltage = dstFireVoltage;
+				dstFV += (i16)dstFireVoltage - (dstFV+4)/8;
 
-				u16 t = dstFireVoltage+10;
+				u16 t = (dstFV+4)/8+10;
+
+				u32 k = (0x1E00 + correction) >> 3;
+
+				t = (k*t+128) >> 10;
 
 				if (t > 500) t = 500;
 
@@ -1087,7 +1165,7 @@ void UpdateHardware()
 
 			break;
 
-		case 5:
+		case 7:
 
 			if (dsc.ready)
 			{
@@ -1095,6 +1173,7 @@ void UpdateHardware()
 			};
 
 			break;
+
 
 	};
 }
