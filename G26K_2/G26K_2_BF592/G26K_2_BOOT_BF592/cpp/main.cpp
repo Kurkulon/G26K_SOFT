@@ -31,6 +31,8 @@ static RTM32 tm32;
 
 static void CheckFlash();
 
+static u32 curWriteReqAdr = 0;
+
 static byte buf[SECTOR_SIZE];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -79,7 +81,12 @@ static bool RequestFunc_06(Req *r, u16 len, ComPort::WriteBuffer *wb)
 
 	if (len < xl/2) return  false;
 
-	FlashWriteReq(r);
+	if (req->stAdr >= curWriteReqAdr)
+	{
+		curWriteReqAdr = req->stAdr + req->len;
+
+		FlashWriteReq(r);
+	};
 
 	rsp.res = GetLastError();
 
@@ -90,7 +97,7 @@ static bool RequestFunc_06(Req *r, u16 len, ComPort::WriteBuffer *wb)
 	wb->data = &rsp;
 	wb->len = sizeof(rsp);
 
-	flashChecked = false;
+	flashChecked = flashOK = flashCRCOK = false;
 
 	return true;
 }

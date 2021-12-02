@@ -48,6 +48,7 @@
 #define IVG_PPI_DMA0		10
 #define IVG_PORTG_ROT		11
 #define IVG_TWI				12
+#define IVG_FIRE			13
 //#define IVG_GPTIMER0_FIRE	10
 
 #define PPI_BUF_NUM 6
@@ -81,11 +82,11 @@
 #define GAIN_M7		(GAIN_EN|GAIN_2|GAIN_1)	
 #define GAIN_M8		(GAIN_EN|GAIN_2|GAIN_1|GAIN_0)
 
-#define StartPPI()	{ *pTIMER_ENABLE = TIMEN1; }
+#define StartPPI()	{ *pTIMER_ENABLE = TIMEN1;  }
 #define StopPPI()	{ *pTIMER_DISABLE = TIMDIS1; }
 
 #define StartFire()	{ *pTIMER_ENABLE = TIMEN0; }
-#define StopFire()	{ *pTIMER_DISABLE = TIMDIS0; }
+//#define StopFire()	{ *pTIMER_DISABLE = TIMDIS0; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -357,7 +358,7 @@ static void ReadPPI(PPI &ppi)
 		//*pTIMER0_PERIOD = ppi.fireDiv*2;
 		*pTIMER0_WIDTH = ppi.fireDiv;
 
-		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
+		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|PULSE_HI;
 		*pTIMER1_PERIOD = curDscPPI->ppiclkdiv = ppi.clkDiv;
 		*pTIMER1_WIDTH = curDscPPI->ppiclkdiv>>1;
 
@@ -365,8 +366,12 @@ static void ReadPPI(PPI &ppi)
 		*pDMA0_X_COUNT = ppi.len + 10; curDscPPI->len = ppi.len;
 		*pDMA0_X_MODIFY = 2;
 
+		*pPPI_COUNT = 0;//*pDMA0_X_COUNT - 1;
+		*pPPI_DELAY = 0;
 		*pDMA0_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
-		*pPPI_CONTROL = FLD_SEL|PORT_CFG|POLC|DLEN_12|XFR_TYPE|PORT_EN;
+		*pPPI_CONTROL = FLD_SEL|PORT_CFG|DLEN_12|XFR_TYPE|PORT_EN;
+		
+		ssync();
 	};
 }
 
@@ -456,22 +461,11 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//EX_INTERRUPT_HANDLER(FIRE_PPI_ISR)
-//{
-//	if (*pTIMER_STATUS & TIMIL0)
-//	{
-//		*pTIMER_STATUS = TIMIL0; 
-//
-//		//if (curDscPPI != 0 && !curDscPPI->ready) { *pTIMER_ENABLE = TIMEN1; };
-//	};
-//}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 EX_INTERRUPT_HANDLER(TIMER_PPI_ISR)
 {
 	StartPPI();
 	*pTCNTL = 0;
+
 	ssync();
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -488,24 +482,15 @@ EX_INTERRUPT_HANDLER(SYNC_ISR)
 }
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static void InitPPI()
-//{
-//	*pTIMER_DISABLE = TIMDIS1;
-//	*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT;
-//	*pTIMER1_PERIOD = 5;
-//	*pTIMER1_WIDTH = 2;
-//
-//	*pPPI_CONTROL = 0;
-//	*pDMA0_CONFIG = 0;
-//
-//	*pEVT8 = (void*)PPI_ISR;
-//	*pIMASK |= EVT_IVG8; 
-//	*pSIC_IMASK |= 1<<PID_DMA0_PPI;
-//
-//	//InitIVG(0, 0, PPI_ISR);
-//	//*pEVT6 = (void*)TIMER_PPI_ISR;
-//	//*pIMASK |= EVT_IVTMR; 
-//}
+EX_INTERRUPT_HANDLER(FIRE_ISR)
+{
+	if (*pTIMER_STATUS & TIMIL0)
+	{
+		*pTIMER_STATUS = TIMIL0; 
+
+		ssync();
+	};
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -550,10 +535,11 @@ static void InitFire()
 
 	//InitIVG(IVG_GPTIMER0_FIRE, PID_GP_Timer_0, FIRE_PPI_ISR);
 
-	*pTIMER0_CONFIG = /*PERIOD_CNT|*/PWM_OUT|PULSE_HI/*|IRQ_ENA*/;
-	*pTIMER0_PERIOD = MS2CLK(1000) / 500 / 4;
+	*pTIMER0_CONFIG = PWM_OUT|PULSE_HI/*|IRQ_ENA*/;
+	*pTIMER0_PERIOD = ~0;//MS2CLK(1000) / 500 / 4;
 	*pTIMER0_WIDTH = US2CLK(1);
 	*pTIMER_ENABLE = TIMEN0; 
+	//InitIVG(IVG_FIRE, PID_GP_Timer_0, FIRE_ISR);
 	
 	InitIVG(IVG_CORETIMER, 0, TIMER_PPI_ISR);
 }
