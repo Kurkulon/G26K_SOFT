@@ -631,7 +631,32 @@ namespace T_HW
 	#define	VREF_SEL_2V4       (0x6<<16)   		/**< \brief (SUPC_VREF) 2.4V voltage reference typical value */
 	#define	VREF_SEL_2V5       (0x7<<16)   		/**< \brief (SUPC_VREF) 2.5V voltage reference typical value */
 
+	#define BOD33_ENABLE           	(1<<1)               /**< (SUPC_BOD33) Enable Position */
+	#define BOD33_ACTION_NONE      	(0x0<<2)             /**< (SUPC_BOD33) No action  */
+	#define BOD33_ACTION_RESET     	(0x1<<2)             /**< (SUPC_BOD33) The BOD33 generates a reset  */
+	#define BOD33_ACTION_INT       	(0x2<<2)             /**< (SUPC_BOD33) The BOD33 generates an interrupt  */
+	#define BOD33_ACTION_BKUP      	(0x3<<2)             /**< (SUPC_BOD33) The BOD33 puts the device in backup sleep mode  */
+	#define BOD33_STDBYCFG          (1<<4)               /**< (SUPC_BOD33) Configuration in Standby mode Position */
+	#define BOD33_RUNSTDBY          (1<<5)               /**< (SUPC_BOD33) Run in Standby mode Position */
+	#define BOD33_RUNHIB            (1<<6)               /**< (SUPC_BOD33) Run in Hibernate mode Position */
+	#define BOD33_RUNBKUP           (1<<7)               /**< (SUPC_BOD33) Run in Backup mode Position */
+	#define BOD33_HYST(value)       (((value)&15)<<8)
+	#define BOD33_PSEL_NODIV        (0x0<<12)             /**< (SUPC_BOD33) Not divided  */
+	#define BOD33_PSEL_DIV4         (0x1<<12)             /**< (SUPC_BOD33) Divide clock by 4  */
+	#define BOD33_PSEL_DIV8         (0x2<<12)             /**< (SUPC_BOD33) Divide clock by 8  */
+	#define BOD33_PSEL_DIV16        (0x3<<12)             /**< (SUPC_BOD33) Divide clock by 16  */
+	#define BOD33_PSEL_DIV32        (0x4<<12)             /**< (SUPC_BOD33) Divide clock by 32  */
+	#define BOD33_PSEL_DIV64        (0x5<<12)             /**< (SUPC_BOD33) Divide clock by 64  */
+	#define BOD33_PSEL_DIV128       (0x6<<12)             /**< (SUPC_BOD33) Divide clock by 128  */
+	#define BOD33_PSEL_DIV256       (0x7<<12)             /**< (SUPC_BOD33) Divide clock by 256  */
+	#define BOD33_LEVEL(value)    	(((value)&0xFF)<<16)
+	#define BOD33_VBATLEVEL(value)	(((value)&0xFF)<<24) 
 
+	#define SUPC_BOD33RDY  			(1<<0)                                               /**< (SUPC_STATUS) BOD33 Ready Position */
+	#define SUPC_BOD33DET  			(1<<1)                                               /**< (SUPC_STATUS) BOD33 Detection Position */
+	#define SUPC_B33SRDY   			(1<<2)                                               /**< (SUPC_STATUS) BOD33 Synchronization Ready Position */
+	#define SUPC_VREGRDY   			(1<<8)                                               /**< (SUPC_STATUS) Voltage Regulator Ready Position */
+	#define SUPC_VCORERDY  			(1<<10)                                              /**< (SUPC_STATUS) VDDCORE Ready Position */
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -708,6 +733,20 @@ namespace T_HW
 	#define	PORT_PULLEN       	(1<<18)
 	#define	PORT_DRVSTR       	(1<<22)
 	#define PORT_PMUX(value)	(((value)&15)<<24)
+	#define PORT_PMUX_A			(0<<24)
+	#define PORT_PMUX_B			(1<<24)
+	#define PORT_PMUX_C			(2<<24)
+	#define PORT_PMUX_D			(3<<24)
+	#define PORT_PMUX_E			(4<<24)
+	#define PORT_PMUX_F			(5<<24)
+	#define PORT_PMUX_G			(6<<24)
+	#define PORT_PMUX_H			(7<<24)
+	#define PORT_PMUX_I			(8<<24)
+	#define PORT_PMUX_J			(9<<24)
+	#define PORT_PMUX_K			(10<<24)
+	#define PORT_PMUX_L			(11<<24)
+	#define PORT_PMUX_M			(12<<24)
+	#define PORT_PMUX_N			(13<<24)
 	#define	PORT_WRPMUX       	(1<<28)
 	#define	PORT_WRPINCFG      	(1<<30)
 	#define	PORT_HWSEL_LO      	(0<<31)
@@ -808,28 +847,30 @@ namespace T_HW
 	{
 		RW16    CTRLA;			/**< \brief Offset: 0x00 (R/W 16) Control A */
 
-		RO8     z__Reserved1[0x2];
+		RO8		z__Reserved1[0x2];
 
-		RW32    CTRLB;       	/**< \brief Offset: 0x04 (R/W 32) Control B */
-		RW32    PARAM;       	/**< \brief Offset: 0x08 (R/W 32) NVM Parameter */
-		RW8		INTENCLR;    	/**< \brief Offset: 0x0C (R/W  8) Interrupt Enable Clear */
+		RW16    CTRLB;			/**< \brief Offset: 0x04 ( /W 16) Control B */
 
-		RO8     z__Reserved2[0x3];
+		RO8     z__Reserved2[0x2];
 
-		RW8		INTENSET;		/**< \brief Offset: 0x10 (R/W  8) Interrupt Enable Set */
+		RO32    PARAM;			/**< \brief Offset: 0x08 (R/  32) NVM Parameter */
+		RW16    INTENCLR;		/**< \brief Offset: 0x0C (R/W 16) Interrupt Enable Clear */
+		RW16    INTENSET;		/**< \brief Offset: 0x0E (R/W 16) Interrupt Enable Set */
+		RW16    INTFLAG;		/**< \brief Offset: 0x10 (R/W 16) Interrupt Flag Status and Clear */
+		RO16    STATUS;			/**< \brief Offset: 0x12 (R/  16) Status */
+		RW32    ADDR;			/**< \brief Offset: 0x14 (R/W 32) Address */
+		RO32    RUNLOCK;		/**< \brief Offset: 0x18 (R/  32) Lock Section */
+		RO32    PBLDATA[2];		/**< \brief Offset: 0x1C (R/  32) Page Buffer Load Data x */
+		RO32    ECCERR;			/**< \brief Offset: 0x24 (R/  32) ECC Error Status Register */
+		RW8     DBGCTRL;		/**< \brief Offset: 0x28 (R/W  8) Debug Control */
 
-		RO8     z__Reserved3[0x3];
+		RO8   	z__Reserved3[0x1];
 
-		RW8		INTFLAG;		/**< \brief Offset: 0x14 (R/W  8) Interrupt Flag Status and Clear */
-		
-		RO8     z__Reserved4[0x3];
+		RW8   	SEECFG;			/**< \brief Offset: 0x2A (R/W  8) SmartEEPROM Configuration Register */
 
-		RW16	STATUS;			/**< \brief Offset: 0x18 (R/W 16) Status */
+		RO8   	z__Reserved4[0x1];
 
-		RO8     z__Reserved5[0x2];
-
-		RW32    ADDR;        	/**< \brief Offset: 0x1C (R/W 32) Address */
-		RW16	LOCK;        	/**< \brief Offset: 0x20 (R/W 16) Lock Section */
+		RO32  	SEESTAT;		/**< \brief Offset: 0x2C (R/  32) SmartEEPROM Status Register */
 	};
 
 	#define NVMCTRL_RWS(value)  				(((value)&0xF) << 1)	/**< \brief (NVMCTRL_CTRLB) NVM Read Wait States */
@@ -847,6 +888,52 @@ namespace T_HW
 	#define NVMCTRL_READMODE_DETERMINISTIC		(2 << 16)
 	#define NVMCTRL_CACHEDIS					(1<<18)					/**< \brief (NVMCTRL_CTRLB) Cache Disable */
 
+	#define NVMCTRL_READY    					(1 << 0)            	/**< \brief (NVMCTRL_STATUS) Ready to accept a command */
+	#define NVMCTRL_PRM      					(1 << 1)            	/**< \brief (NVMCTRL_STATUS) Power Reduction Mode */
+	#define NVMCTRL_LOAD     					(1 << 2)            	/**< \brief (NVMCTRL_STATUS) NVM Page Buffer Active Loading */
+	#define NVMCTRL_SUSP     					(1 << 3)            	/**< \brief (NVMCTRL_STATUS) NVM Write Or Erase Operation Is Suspended */
+	#define NVMCTRL_AFIRST   					(1 << 4)            	/**< \brief (NVMCTRL_STATUS) BANKA First */
+	#define NVMCTRL_BPDIS    					(1 << 5)            	/**< \brief (NVMCTRL_STATUS) Boot Loader Protection Disable */
+
+	#define NVMCTRL_CMDEX_KEY					(0xA5<<8)				/**< \brief (NVMCTRL_CTRLB) Execution Key */
+
+	#define   NVMCTRL_CMD_EP        	(NVMCTRL_CMDEX_KEY|0x0)   		/**< \brief (NVMCTRL_CTRLB) Erase Page - Only supported in the USER and AUX pages. */
+	#define   NVMCTRL_CMD_EB        	(NVMCTRL_CMDEX_KEY|0x1)   		/**< \brief (NVMCTRL_CTRLB) Erase Block - Erases the block addressed by the ADDR register, not supported in the user page */
+	#define   NVMCTRL_CMD_WP        	(NVMCTRL_CMDEX_KEY|0x3)   		/**< \brief (NVMCTRL_CTRLB) Write Page - Writes the contents of the page buffer to the page addressed by the ADDR register, not supported in the user page */
+	#define   NVMCTRL_CMD_WQW       	(NVMCTRL_CMDEX_KEY|0x4)   		/**< \brief (NVMCTRL_CTRLB) Write Quad Word - Writes a 128-bit word at the location addressed by the ADDR register. */
+	#define   NVMCTRL_CMD_SWRST     	(NVMCTRL_CMDEX_KEY|0x10)   		/**< \brief (NVMCTRL_CTRLB) Software Reset - Power-Cycle the NVM memory and replay the device automatic calibration procedure and resets the module configuration registers */
+	#define   NVMCTRL_CMD_LR        	(NVMCTRL_CMDEX_KEY|0x11)   		/**< \brief (NVMCTRL_CTRLB) Lock Region - Locks the region containing the address location in the ADDR register. */
+	#define   NVMCTRL_CMD_UR        	(NVMCTRL_CMDEX_KEY|0x12)   		/**< \brief (NVMCTRL_CTRLB) Unlock Region - Unlocks the region containing the address location in the ADDR register. */
+	#define   NVMCTRL_CMD_SPRM      	(NVMCTRL_CMDEX_KEY|0x13)   		/**< \brief (NVMCTRL_CTRLB) Sets the power reduction mode. */
+	#define   NVMCTRL_CMD_CPRM      	(NVMCTRL_CMDEX_KEY|0x14)   		/**< \brief (NVMCTRL_CTRLB) Clears the power reduction mode. */
+	#define   NVMCTRL_CMD_PBC       	(NVMCTRL_CMDEX_KEY|0x15)   		/**< \brief (NVMCTRL_CTRLB) Page Buffer Clear - Clears the page buffer. */
+	#define   NVMCTRL_CMD_SSB       	(NVMCTRL_CMDEX_KEY|0x16)   		/**< \brief (NVMCTRL_CTRLB) Set Security Bit */
+	#define   NVMCTRL_CMD_BKSWRST   	(NVMCTRL_CMDEX_KEY|0x17)   		/**< \brief (NVMCTRL_CTRLB) Bank swap and system reset, if SMEE is used also reallocate SMEE data into the opposite BANK */
+	#define   NVMCTRL_CMD_CELCK     	(NVMCTRL_CMDEX_KEY|0x18)   		/**< \brief (NVMCTRL_CTRLB) Chip Erase Lock - DSU.CE command is not available */
+	#define   NVMCTRL_CMD_CEULCK    	(NVMCTRL_CMDEX_KEY|0x19)   		/**< \brief (NVMCTRL_CTRLB) Chip Erase Unlock - DSU.CE command is available */
+	#define   NVMCTRL_CMD_SBPDIS    	(NVMCTRL_CMDEX_KEY|0x1A)   		/**< \brief (NVMCTRL_CTRLB) Sets STATUS.BPDIS, Boot loader protection is discarded until CBPDIS is issued or next start-up sequence */
+	#define   NVMCTRL_CMD_CBPDIS    	(NVMCTRL_CMDEX_KEY|0x1B)   		/**< \brief (NVMCTRL_CTRLB) Clears STATUS.BPDIS, Boot loader protection is not discarded */
+	#define   NVMCTRL_CMD_ASEES0    	(NVMCTRL_CMDEX_KEY|0x30)   		/**< \brief (NVMCTRL_CTRLB) Activate SmartEEPROM Sector 0, deactivate Sector 1 */
+	#define   NVMCTRL_CMD_ASEES1    	(NVMCTRL_CMDEX_KEY|0x31)   		/**< \brief (NVMCTRL_CTRLB) Activate SmartEEPROM Sector 1, deactivate Sector 0 */
+	#define   NVMCTRL_CMD_SEERALOC  	(NVMCTRL_CMDEX_KEY|0x32)   		/**< \brief (NVMCTRL_CTRLB) Starts SmartEEPROM sector reallocation algorithm */
+	#define   NVMCTRL_CMD_SEEFLUSH  	(NVMCTRL_CMDEX_KEY|0x33)   		/**< \brief (NVMCTRL_CTRLB) Flush SMEE data when in buffered mode */
+	#define   NVMCTRL_CMD_LSEE      	(NVMCTRL_CMDEX_KEY|0x34)   		/**< \brief (NVMCTRL_CTRLB) Lock access to SmartEEPROM data from any mean */
+	#define   NVMCTRL_CMD_USEE      	(NVMCTRL_CMDEX_KEY|0x35)   		/**< \brief (NVMCTRL_CTRLB) Unlock access to SmartEEPROM data */
+	#define   NVMCTRL_CMD_LSEER     	(NVMCTRL_CMDEX_KEY|0x36)   		/**< \brief (NVMCTRL_CTRLB) Lock access to the SmartEEPROM Register Address Space (above 64KB) */
+	#define   NVMCTRL_CMD_USEER     	(NVMCTRL_CMDEX_KEY|0x37)   		/**< \brief (NVMCTRL_CTRLB) Unlock access to the SmartEEPROM Register Address Space (above 64KB) */
+
+	#define NVMCTRL_INTFLAG_DONE    	(1 << 0)    					/**< \brief (NVMCTRL_INTFLAG) Command Done */
+	#define NVMCTRL_INTFLAG_ADDRE   	(1 << 1)    					/**< \brief (NVMCTRL_INTFLAG) Address Error */
+	#define NVMCTRL_INTFLAG_PROGE   	(1 << 2)    					/**< \brief (NVMCTRL_INTFLAG) Programming Error */
+	#define NVMCTRL_INTFLAG_LOCKE   	(1 << 3)    					/**< \brief (NVMCTRL_INTFLAG) Lock Error */
+	#define NVMCTRL_INTFLAG_ECCSE   	(1 << 4)    					/**< \brief (NVMCTRL_INTFLAG) ECC Single Error */
+	#define NVMCTRL_INTFLAG_ECCDE   	(1 << 5)    					/**< \brief (NVMCTRL_INTFLAG) ECC Dual Error */
+	#define NVMCTRL_INTFLAG_NVME    	(1 << 6)       					/**< \brief (NVMCTRL_INTFLAG) NVM Error */
+	#define NVMCTRL_INTFLAG_SUSP    	(1 << 7)       					/**< \brief (NVMCTRL_INTFLAG) Suspended Write Or Erase Operation */
+	#define NVMCTRL_INTFLAG_SEESFULL	(1 << 8)       					/**< \brief (NVMCTRL_INTFLAG) Active SEES Full */
+	#define NVMCTRL_INTFLAG_SEESOVF		(1 << 9)       					/**< \brief (NVMCTRL_INTFLAG) Active SEES Overflow */
+	#define NVMCTRL_INTFLAG_SEEWRC		(1 << 10)						/**< \brief (NVMCTRL_INTFLAG) SEE Write Completed */
+											 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	struct S_RTC
@@ -1159,35 +1246,34 @@ namespace T_HW
 
 	struct S_TCC
 	{
-		RW32        CTRLA;       		/**< \brief Offset: 0x00 (R/W 32) Control A */
-		RW8         CTRLBCLR;    		/**< \brief Offset: 0x04 (R/W  8) Control B Clear */
-		RW8         CTRLBSET;    		/**< \brief Offset: 0x05 (R/W  8) Control B Set */
-		RO8         z__Reserved1[0x2];
-		RO32        SYNCBUSY;    		/**< \brief Offset: 0x08 (R/  32) Synchronization Busy */
-		RW32       	FCTRLA;      		/**< \brief Offset: 0x0C (R/W 32) Recoverable Fault A Configuration */
-		RW32       	FCTRLB;      		/**< \brief Offset: 0x10 (R/W 32) Recoverable Fault B Configuration */
-		RW32        WEXCTRL;     		/**< \brief Offset: 0x14 (R/W 32) Waveform Extension Configuration */
-		RW32        DRVCTRL;     		/**< \brief Offset: 0x18 (R/W 32) Driver Control */
-		RO8         z__Reserved2[0x2];
-		RW8         DBGCTRL;			/**< \brief Offset: 0x1E (R/W  8) Debug Control */
-		RO8         z__Reserved3[0x1];
-		RW32        EVCTRL;      		/**< \brief Offset: 0x20 (R/W 32) Event Control */
-		RW32      	INTENCLR;    		/**< \brief Offset: 0x24 (R/W 32) Interrupt Enable Clear */
-		RW32      	INTENSET;    		/**< \brief Offset: 0x28 (R/W 32) Interrupt Enable Set */
-		RW32		INTFLAG;     		/**< \brief Offset: 0x2C (R/W 32) Interrupt Flag Status and Clear */
-		RW32        STATUS;      		/**< \brief Offset: 0x30 (R/W 32) Status */
-		RW32        COUNT;       		/**< \brief Offset: 0x34 (R/W 32) Count */
-		RW16        PATT;        		/**< \brief Offset: 0x38 (R/W 16) Pattern */
-		RO8         z__Reserved4[0x2];
-		RW32        WAVE;        		/**< \brief Offset: 0x3C (R/W 32) Waveform Control */
-		RW32        PER;         		/**< \brief Offset: 0x40 (R/W 32) Period */
-		RW32        CC[4];       		/**< \brief Offset: 0x44 (R/W 32) Compare and Capture */
-		RO8         z__Reserved5[0x10];	
-		RW16        PATTB;				/**< \brief Offset: 0x64 (R/W 16) Pattern Buffer */
-		RO8         z__Reserved6[0x2];
-		RW32        WAVEB;       		/**< \brief Offset: 0x68 (R/W 32) Waveform Control Buffer */
-		RW32		PERB;        		/**< \brief Offset: 0x6C (R/W 32) Period Buffer */
-		RW32        CCB[4];      		/**< \brief Offset: 0x70 (R/W 32) Compare and Capture Buffer */
+		RW32	CTRLA;       		/**< \brief Offset: 0x00 (R/W 32) Control A */
+		RW8     CTRLBCLR;    		/**< \brief Offset: 0x04 (R/W  8) Control B Clear */
+		RW8     CTRLBSET;    		/**< \brief Offset: 0x05 (R/W  8) Control B Set */
+		RO8     z__Reserved1[0x2];
+		RO32    SYNCBUSY;    		/**< \brief Offset: 0x08 (R/  32) Synchronization Busy */
+		RW32    FCTRLA;      		/**< \brief Offset: 0x0C (R/W 32) Recoverable Fault A Configuration */
+		RW32    FCTRLB;      		/**< \brief Offset: 0x10 (R/W 32) Recoverable Fault B Configuration */
+		RW32    WEXCTRL;     		/**< \brief Offset: 0x14 (R/W 32) Waveform Extension Configuration */
+		RW32    DRVCTRL;     		/**< \brief Offset: 0x18 (R/W 32) Driver Control */
+		RO8     z__Reserved2[0x2];
+		RW8     DBGCTRL;			/**< \brief Offset: 0x1E (R/W  8) Debug Control */
+		RO8     z__Reserved3[0x1];
+		RW32	EVCTRL;      		/**< \brief Offset: 0x20 (R/W 32) Event Control */
+		RW32	INTENCLR;    		/**< \brief Offset: 0x24 (R/W 32) Interrupt Enable Clear */
+		RW32	INTENSET;    		/**< \brief Offset: 0x28 (R/W 32) Interrupt Enable Set */
+		RW32	INTFLAG;     		/**< \brief Offset: 0x2C (R/W 32) Interrupt Flag Status and Clear */
+		RW32	STATUS;      		/**< \brief Offset: 0x30 (R/W 32) Status */
+		RW32    COUNT;       		/**< \brief Offset: 0x34 (R/W 32) Count */
+		RW16	PATT;        		/**< \brief Offset: 0x38 (R/W 16) Pattern */
+		RO8		z__Reserved4[0x2];
+		RW32	WAVE;        		/**< \brief Offset: 0x3C (R/W 32) Waveform Control */
+		RW32	PER;         		/**< \brief Offset: 0x40 (R/W 32) Period */
+		RW32	CC[6];       		/**< \brief Offset: 0x44 (R/W 32) Compare and Capture */
+		RO8     z__Reserved5[0x8];
+		RW16    PATTBUF;			/**< \brief Offset: 0x64 (R/W 16) Pattern Buffer */
+		RO8     z__Reserved6[0x6];
+		RW32	PERBUF;      		/**< \brief Offset: 0x6C (R/W 32) Period Buffer */
+		RW32	CCBUF[6];    		/**< \brief Offset: 0x70 (R/W 32) Compare and Capture Buffer */
 	};
 
 	typedef S_TCC S_TCC0, S_TCC1, S_TCC2, S_TCC3, S_TCC4;
