@@ -72,8 +72,8 @@ static ListItem listItems[128];
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //List<UNIBUF> UNIBUF::freeBufList;
-static UNIBUF flashWriteBuffer[4];
-static FLRB flashReadBuffer[4];
+static UNIBUF flashWriteBuffer[8];
+static FLRB flashReadBuffer[8];
 
 //List<PtrFLWB> PtrFLWB::freePtrList;
 

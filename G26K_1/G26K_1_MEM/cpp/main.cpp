@@ -399,7 +399,7 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	//q.rb = &rb;
 	//q.wb = &wb;
 	q.preTimeOut = MS2RT(1);
-	q.postTimeOut = 1;
+	q.postTimeOut = US2RT(100);
 	q.ready = false;
 	q.tryCount = tryCount;
 	//q.ptr = &r;

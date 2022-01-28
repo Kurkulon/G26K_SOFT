@@ -2608,6 +2608,10 @@ bool NAND_CheckCopyComplete()
 
 		return false;
 
+	#elif defined(WIN32)
+
+		return true;
+
 	#endif
 }
 
