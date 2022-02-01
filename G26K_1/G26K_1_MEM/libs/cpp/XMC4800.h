@@ -7205,6 +7205,11 @@ namespace T_HW
 #define SCU_HIBERNATE_OSCULCTRL_MODE_Pos      (4UL)                     /*!< SCU_HIBERNATE OSCULCTRL: MODE (Bit 4)                       */
 #define SCU_HIBERNATE_OSCULCTRL_MODE_Msk      (0x30UL)                  /*!< SCU_HIBERNATE OSCULCTRL: MODE (Bitfield-Mask: 0x03)         */
 
+#define OSCULCTRL_MODE_ENABLED				(0 << SCU_HIBERNATE_OSCULCTRL_MODE_Pos)
+#define OSCULCTRL_MODE_BYPASS				(1 << SCU_HIBERNATE_OSCULCTRL_MODE_Pos)
+#define OSCULCTRL_MODE_PWRDWN				(2 << SCU_HIBERNATE_OSCULCTRL_MODE_Pos)
+#define OSCULCTRL_MODE_PWRDWN_GPI			(3 << SCU_HIBERNATE_OSCULCTRL_MODE_Pos)
+
 
 /* ================================================================================ */
 /* ================       struct 'SCU_POWER' Position & Mask       ================ */

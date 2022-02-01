@@ -517,6 +517,7 @@ static void I2C_Init();
 	#define SPI_IRQ					USIC1_5_IRQn
 	#define SPI_PID					PID_USIC1
 
+	#define CLOCK_IRQ				SCU_0_IRQn
 
 	/*******************************************************************************
 	 * MACROS
@@ -941,6 +942,19 @@ extern "C" void SystemInit()
 
 		/* Enable selected clocks */
 		SCU_CLK->CLKSET = __CLKSET;
+
+		SCU_POWER->PWRSET = SCU_POWER_PWRSET_HIB_Msk;	while((SCU_POWER->PWRSTAT & SCU_POWER_PWRSTAT_HIBEN_Msk) == 0);
+		SCU_RESET->RSTCLR = SCU_RESET_RSTCLR_HIBRS_Msk;	while((SCU_RESET->RSTSTAT & SCU_RESET_RSTSTAT_HIBRS_Msk) != 0);
+
+		if (SCU_HIBERNATE->OSCULCTRL != OSCULCTRL_MODE_BYPASS)
+		{
+			while (SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_OSCULCTRL_Msk);	SCU_HIBERNATE->OSCULCTRL = OSCULCTRL_MODE_BYPASS;
+			while (SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCR_Msk);		SCU_HIBERNATE->HDCR |= SCU_HIBERNATE_HDCR_ULPWDGEN_Msk;
+			while (SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCLR_Msk);		SCU_HIBERNATE->HDCLR = SCU_HIBERNATE_HDCLR_ULPWDG_Msk;
+		};
+
+		while (SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCR_Msk);	SCU_HIBERNATE->HDCR |= SCU_HIBERNATE_HDCR_RCS_Msk | SCU_HIBERNATE_HDCR_STDBYSEL_Msk;
+
 
 		//P2->ModePin10(	G_PP	);
 		//P2->BSET(10);
@@ -4345,6 +4359,22 @@ void SetClock(const RTC &t)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static __irq void Clock_IRQ()
+{
+	if (HW::SCU_HIBERNATE->HDSTAT & SCU_HIBERNATE_HDSTAT_ULPWDG_Msk)
+	{
+		if ((HW::SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCLR_Msk) == 0)	HW::SCU_HIBERNATE->HDCLR = SCU_HIBERNATE_HDCLR_ULPWDG_Msk;
+	}
+	else
+	{
+		timeBDC.msec = (timeBDC.msec < 500) ? 0 : 999;
+	};
+
+	HW::SCU_GCU->SRCLR = SCU_INTERRUPT_SRCLR_PI_Msk;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void InitClock()
 {
 	DSCI2C dsc;
@@ -4374,6 +4404,17 @@ static void InitClock()
 	t.year	= (buf[6]&0xF) + ((buf[6]>>4)*10) + 2000;
 
 	SetTime(t);
+
+	VectorTableExt[CLOCK_IRQ] = Clock_IRQ;
+	CM4::NVIC->CLR_PR(CLOCK_IRQ);
+	CM4::NVIC->SET_ER(CLOCK_IRQ);	
+
+	HW::RTC->CTR = (0x7FFFUL << RTC_CTR_DIV_Pos) | RTC_CTR_ENB_Msk;
+
+	while (HW::SCU_GCU->MIRRSTS & SCU_GENERAL_MIRRSTS_RTC_MSKSR_Msk);
+
+	HW::RTC->MSKSR = RTC_MSKSR_MPSE_Msk;
+	HW::SCU_GCU->SRMSK = SCU_INTERRUPT_SRMSK_PI_Msk;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

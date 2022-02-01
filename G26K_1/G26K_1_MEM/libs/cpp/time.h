@@ -50,6 +50,8 @@ extern void RTT_Init();
 extern bool SetTime(const RTC &t);
 extern void GetTime(RTC *t);
 
+extern RTC timeBDC;
+
 //extern const u32 msec;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
