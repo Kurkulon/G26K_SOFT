@@ -640,7 +640,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						stop = true;
 
-						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_STOP);
+						FLASH_SendStatus(-1, FLASH_STATUS_STOP);
 
 //						Mode_Ethernet_Flash_Stop();
 						break;
@@ -651,7 +651,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						pause = true;
 
-						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_PAUSE);
+						FLASH_SendStatus(-1, FLASH_STATUS_PAUSE);
 
 						break;
 
@@ -661,7 +661,7 @@ void TRAP_HandleRxData(Trap *t, u32 size)
 
 						pause = false;
 
-						TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_RESUME);
+						FLASH_SendStatus(-1, FLASH_STATUS_RESUME);
 
 						break;
 
@@ -847,6 +847,8 @@ static bool UpdateSendVector()
 
 				vecCount = 0;
 
+				FLASH_SendStatus(0, FLASH_STATUS_READ_VECTOR_IDLE);
+
 				i++;
 			}
 			else
@@ -860,7 +862,7 @@ static bool UpdateSendVector()
 
 			if (tm.Check(200))
 			{
-				TRAP_MEMORY_SendStatus(vecCount * (1<<22) / (size/1024), FLASH_STATUS_READ_VECTOR_IDLE);
+				FLASH_SendStatus(vecCount * (1<<22) / (size/1024), FLASH_STATUS_READ_VECTOR_IDLE);
 			}
 			//else
 			//{
@@ -905,7 +907,7 @@ static bool UpdateSendVector()
 				{
 					t->len = 0;
 
-					TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
+					FLASH_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
 
 					stop = false;
 					pause = false;
@@ -1104,12 +1106,12 @@ static bool UpdateSendVector_Dlya_Vova()
 
 			if (tm.Check(200))
 			{
-				TRAP_MEMORY_SendStatus((u64)vecCount*(1<<22)/(size>>10), FLASH_STATUS_READ_VECTOR_IDLE);
+				FLASH_SendStatus((u64)vecCount*(1<<22)/(size>>10), FLASH_STATUS_READ_VECTOR_IDLE);
 			};
 
 			if (vecCount >= size)
 			{
-				TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
+				FLASH_SendStatus(-1, FLASH_STATUS_READ_VECTOR_READY);
 
 				stop = false;
 				pause = false;

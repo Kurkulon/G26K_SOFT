@@ -21,7 +21,7 @@
 
 #endif
 
-enum { VERSION = 0x102 };
+enum { VERSION = 0x103 };
 
 //#pragma O3
 //#pragma Otime
@@ -61,8 +61,9 @@ __packed struct MainVars // NonVolatileVars
 	u16 cmSPR;
 	u16 imSPR;
 	u16 fireVoltage;
+	u16 motoLimCur;
+	u16 motoMaxCur;
 };
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -152,14 +153,14 @@ static u16 mode = 0;
 static TM32 imModeTimeout;
 
 //static u16 motoEnable = 0;		// двигатель включить или выключить
-static u16 motoTargetRPS = 0;	// заданные обороты двигателя
-static u16 motoRPS = 0;			// обороты двигателя, об/сек
-static u16 motoCur = 0;			// ток двигателя, мА
-//static u16 motoStat = 0;		// статус двигателя: 0 - выкл, 1 - вкл
-static u16 motoCounter = 0;		// счётчик оборотов двигателя 1/6 оборота
+static u16 motoTargetRPS = 0;		// заданные обороты двигателя
+static u16 motoRPS = 0;				// обороты двигателя, об/сек
+static u16 motoCur = 0;				// ток двигателя, мА
+//static u16 motoStat = 0;			// статус двигателя: 0 - выкл, 1 - вкл
+static u16 motoCounter = 0;			// счётчик оборотов двигателя 1/6 оборота
 //static u16 cmSPR = 32;			// Количество волновых картин на оборот головки в режиме цементомера
 //static u16 imSPR = 100;			// Количество точек на оборот головки в режиме имиджера
-//static u16 *curSPR = &cmSPR;	// Количество импульсов излучателя на оборот в текущем режиме
+//static u16 *curSPR = &cmSPR;		// Количество импульсов излучателя на оборот в текущем режиме
 static u16 motoVoltage = 90;
 static u16 motoRcvCount = 0;
 
@@ -765,6 +766,8 @@ static Ptr<REQ> CreateMotoReq()
 	req.rw = 0x101;
 	req.enableMotor	= 1;
 	req.tRPM = motoTargetRPS;
+	req.limCurrent = mv.motoLimCur;
+	req.maxCurrent = mv.motoMaxCur;
 	req.crc	= GetCRC16(&req, sizeof(req)-2);
 
 	return &q;
@@ -1033,6 +1036,8 @@ static u32 InitRspMan_10(__packed u16 *data)
 	*(data++)	= mv.cmSPR;								//	18. Количество волновых картин на оборот головки в режиме цементомера
 	*(data++)	= mv.imSPR;								//	19. Количество точек на оборот головки в режиме имиджера
 	*(data++)	= mv.fireVoltage;						//	20. Напряжение излучателя(В)
+	*(data++)	= mv.motoLimCur;						//	21. Ограничение тока двигателя (мА)
+	*(data++)	= mv.motoMaxCur;						//	22. Аварийный ток двигателя (мА)
 
 	return data - start;
 }
@@ -1426,10 +1431,12 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		case 0x20:	mv.filtrType		= data[2];			break;
 		case 0x21:	mv.packType			= data[2];			break;
 
-		case 0x30:	mv.cmSPR = data[2]; Update_RPS_SPR();	break;
-		case 0x31:	mv.imSPR = data[2]; Update_RPS_SPR();	break;
+		case 0x30:	mv.cmSPR 			= data[2]; Update_RPS_SPR();	break;
+		case 0x31:	mv.imSPR 			= data[2]; Update_RPS_SPR();	break;
 
 		case 0x40:	mv.fireVoltage		= data[2];			break;
+		case 0x41:	mv.motoLimCur		= data[2];			break;
+		case 0x42:	mv.motoMaxCur		= data[2];			break;
 
 		default:
 
@@ -2661,6 +2668,8 @@ static void InitMainVars()
 	mv.cmSPR			= 36;
 	mv.imSPR			= 180;
 	mv.fireVoltage		= 500;
+	mv.motoLimCur		= 1000;
+	mv.motoMaxCur		= 2000;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

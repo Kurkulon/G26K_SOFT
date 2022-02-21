@@ -33,7 +33,9 @@ __packed struct ReqMoto
 {
 	u16 	rw;
 	u16 	enableMotor; 
-	u32		tRPM; // время 1/6 оборота двигателя в мкс
+	u32		tRPM;		// время 1/6 оборота двигателя в мкс
+	u16		limCurrent; // Ограничение тока двигателя (мА)
+	u16		maxCurrent; // Аварийный ток двигателя (мА)
 	u16 	crc;  
 };
 
@@ -75,7 +77,11 @@ static bool RequestMan_10(u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	if (wb == 0 || len < 2) return false;
 
-	SetTargetRPM(data[2]);
+	ReqMoto *req = (ReqMoto*)data;
+
+	SetTargetRPM(req->tRPM);
+	SetLimCurrent(req->limCurrent);
+	SetMaxCurrent(req->maxCurrent);
 
 	rsp.rw = manReqWord|1;	// 	1. ответное слово
 	rsp.mororStatus = 1;

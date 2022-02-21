@@ -327,6 +327,9 @@ extern u64 FLASH_Full_Size_Get();
 extern u16 FLASH_Chip_Mask_Get();
 extern u64 FLASH_Used_Size_Get();
 
+extern bool FLASH_SendStatus(u32 progress, byte status);
+
+
 //extern i64 FLASH_Empty_Size_Get();
 
 

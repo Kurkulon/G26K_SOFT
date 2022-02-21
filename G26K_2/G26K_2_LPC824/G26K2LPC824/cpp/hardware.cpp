@@ -11,6 +11,7 @@
 
 #define GEAR_RATIO	12.25
 #define CUR_LIM		3000
+#define CUR_MAX		3000
 #define CUR_MIN		100
 #define IMP_CUR_LIM	13000
 #define POWER_LIM	30000
@@ -46,6 +47,9 @@ u32 targetRPM = 0;
 u32 tachoLim = 0;
 u32 tachoStep = 1;
 u32 tachoStamp = 0;
+
+u16 limCur = CUR_LIM;
+u16 maxCur = CUR_MAX;
 
 u32 rpmCounter = 0;
 u32 rpmPrevTime = 0;
@@ -314,6 +318,20 @@ void SetTargetRPM(u32 v)
 
 		motorState = 1;
 	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetLimCurrent(u16 v)
+{ 
+	limCur = (v < CUR_LIM) ? v : CUR_LIM;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void SetMaxCurrent(u16 v)
+{ 
+	maxCur = (v < CUR_MAX) ? v : CUR_MAX;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1345,7 +1363,7 @@ static void UpdateMotor()
 
 		//power = avrCurADC * voltage;
 
-		if (avrCurADC > (CUR_LIM+100) || impCur > (IMP_CUR_LIM+1000))
+		if (avrCurADC > (limCur+100) || impCur > (IMP_CUR_LIM+1000))
 		{
 			if (limDuty > 2) limDuty -= 2; else limDuty = 0;
 
@@ -1355,7 +1373,7 @@ static void UpdateMotor()
 
 			//motorState = 3;
 		}
-		else if ((avrCurADC < CUR_MIN) || ((avrCurADC < CUR_LIM) && (impCur < IMP_CUR_LIM)))
+		else if ((avrCurADC < CUR_MIN) || ((avrCurADC < limCur) && (impCur < IMP_CUR_LIM)))
 		{
 			if (limDuty < maxDuty) limDuty += 1;
 
@@ -1463,7 +1481,7 @@ static void UpdateMotor()
 
 			case 4: // Разгон
 
-				if ((GetMilliseconds()-tachoStamp) > 2000)
+				if ((GetMilliseconds()-tachoStamp) > 2000 || avrCurADC > maxCur)
 				{	
 					motorState = 6;
 				}
@@ -1486,7 +1504,7 @@ static void UpdateMotor()
 
 			case 5: // Стабилизация оборотов
 
-				if ((GetMilliseconds()-tachoStamp) > 1000)
+				if ((GetMilliseconds()-tachoStamp) > 1000 || avrCurADC > maxCur)
 				{	
 					motorState++;
 				};

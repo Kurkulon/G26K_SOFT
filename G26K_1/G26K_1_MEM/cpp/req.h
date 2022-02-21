@@ -25,7 +25,9 @@ __packed struct ReqMoto
 {
 	u16 	rw;
 	u16 	enableMotor; 
-	u32		tRPM; // время 1/6 оборота двигателя в мкс
+	u32		tRPM;		// время 1/6 оборота двигателя в мкс
+	u16		limCurrent; // Ограничение тока двигателя (мА)
+	u16		maxCurrent; // Аварийный ток двигателя (мА)
 	u16 	crc;  
 };
 

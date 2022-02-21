@@ -12,6 +12,7 @@
 #include "trap.h"
 //#include "twi.h"
 #include "PointerCRC.h"
+#include "xtrap.h"
 
 
 #pragma diag_suppress 550,177
@@ -220,6 +221,8 @@ static NandState nandState = NAND_STATE_WAIT;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static byte lastFlashStatus = FLASH_STATUS_NONE;
+static u32 lastFlashProgress = -1;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -227,11 +230,23 @@ static const NandMemSize *nandSZ;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static u32		invalidBlocks = 0;
+static u32 invalidBlocks = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //static ComPort com1;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+bool FLASH_SendStatus(u32 progress, byte status)
+{
+	lastFlashProgress = progress;
+	lastFlashStatus = status;
+	
+	//TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+
+	return true;
+}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1946,6 +1961,84 @@ static void InitSessions()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void InitSessionsNew()
+{
+	//__breakpoint(0);
+
+	SpareArea spare;
+	ReadSpare rdspr;
+
+	write.Init();
+
+	if (nvv.f.size > 0)
+	{
+		write.CreateNextFile();
+
+		while (write.Update()) ;
+	};
+
+	FLADR firstSessionAdr = write.wr;
+
+	u16 firstSessionNum = 0;
+	bool firstSessionValid = false;
+
+	u16 count = 100;
+
+	while (count--)
+	{
+		rdspr.Start(&spare, &firstSessionAdr);	while (rdspr.Update());
+
+		if (spare.v1.crc == 0)
+		{ 
+			firstSessionNum = spare.v1.file; 
+			firstSessionValid = true; 
+			break; 
+		};
+	};
+
+	bool c = false;
+
+	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
+	{
+		FileDsc &f = nvsi[ind].f;
+
+		if (firstSessionValid && f.session == firstSessionNum)
+		{
+			f.startPage = firstSessionAdr.GetRawPage();
+			//f.size = ???;
+
+			firstSessionValid = false;
+			c = true;
+		}
+		else if (c)
+		{
+			f.size = 0;
+		}
+		else if (f.size != 0)
+		{
+			FLADR adr(f.startPage);
+
+			count = 100;
+
+			while (count--)
+			{
+				rdspr.Start(&spare, &adr);	while (rdspr.Update());
+
+				if (spare.v1.crc == 0 ) break;
+
+				adr.NextPage();
+			};
+
+			if (spare.v1.crc != 0 || f.session != spare.v1.file)
+			{
+				f.size = 0;
+			};
+		};
+	}; 
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 //bool GetSessionNow(SessionInfo *si)
 //{
 //	static SpareArea spare;
@@ -2055,7 +2148,7 @@ static bool UpdateSendSession()
 
 		case 2:
 
-			if (TRAP_MEMORY_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE))
+			if (FLASH_SendStatus(prgrss, FLASH_STATUS_READ_SESSION_IDLE))
 			{
 				if (count > 0)
 				{
@@ -2071,7 +2164,7 @@ static bool UpdateSendSession()
 
 		case 3:
 
-			if (TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
+			if (FLASH_SendStatus(-1, FLASH_STATUS_READ_SESSION_READY))
 			{
 				cmdSendSession = false;
 
@@ -2157,7 +2250,7 @@ void NAND_Idle()
 				nandState = NAND_STATE_READ_START;
 			};
 
-			if (tm.Check(500)) { TRAP_MEMORY_SendStatus(-1, FLASH_STATUS_NONE); };
+			if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
 
 			break;
 
@@ -2208,7 +2301,7 @@ void NAND_Idle()
 
 					eraseBlock.Start(er, true, true);
 
-					if (tm.Check(500)) { TRAP_MEMORY_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); };
+					if (tm.Check(500)) { FLASH_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); };
 				}
 				else
 				{
@@ -2218,10 +2311,12 @@ void NAND_Idle()
 
 					adrLastVector = ~0;
 
-					TRAP_MEMORY_SendStatus(~0, FLASH_STATUS_ERASE);
+					FLASH_SendStatus(~0, FLASH_STATUS_ERASE);
 					nandState = NAND_STATE_WAIT;
 				};
 			};
+
+			if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
 
 			break;
 
@@ -2238,8 +2333,11 @@ void NAND_Idle()
 
 			if (!UpdateSendSession())
 			{
+				lastFlashStatus = FLASH_STATUS_READ_SESSION_READY;
 				nandState = NAND_STATE_SEND_BAD_BLOCKS;
 			};
+	
+			if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
 
 			break;
 
@@ -3333,7 +3431,7 @@ void FLASH_Init()
 
 	InitFlashBuffer();
 
-	InitSessions();
+	InitSessionsNew();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

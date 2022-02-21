@@ -36,6 +36,8 @@ inline void SetDestShaftPos(i32 v) { extern i32 destShaftPos; destShaftPos = v; 
 inline u32 GetTachoCount() { extern u32 tachoCount; return tachoCount; }
 
 extern void SetTargetRPM(u32 v);
+extern void SetLimCurrent(u16 v);
+extern void SetMaxCurrent(u16 v);
 
 //extern void SetDutyPWMDir(i32 v);
 
