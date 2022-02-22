@@ -223,6 +223,7 @@ static NandState nandState = NAND_STATE_WAIT;
 
 static byte lastFlashStatus = FLASH_STATUS_NONE;
 static u32 lastFlashProgress = -1;
+static u32 lastFlashTime = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -242,10 +243,26 @@ bool FLASH_SendStatus(u32 progress, byte status)
 {
 	lastFlashProgress = progress;
 	lastFlashStatus = status;
+	lastFlashTime = GetMilliseconds();
 	
-	//TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+	return TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+}
 
-	return true;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void FLASH_UpdateStatus()
+{
+	u32 t = GetMilliseconds();
+	u32 dt = t - lastFlashTime;
+
+	if (dt >= 500)
+	{
+		TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+
+		lastFlashProgress = ~0;
+		lastFlashStatus = FLASH_STATUS_NONE;
+		lastFlashTime = t;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1231,7 +1248,7 @@ struct Read
 
 struct Read2
 {
-	enum {	WAIT = 0, READ_START, /*READ_1, READ_2, READ_3,*/ READ_PAGE, /*READ_PAGE_1,*/ /*FIND_START,FIND_1,*//*FIND_2,*/FIND_3/*,FIND_4*/};
+	enum {	WAIT = 0, READ_START, /*READ_1, READ_2, READ_3,*/ READ_PAGE, /*READ_PAGE_1,*/ /*FIND_START,FIND_1,*//*FIND_2,*/FIND_3, FLUSH_PAGES};
 
 	FLADR	rd;
 	byte*	rd_data;
@@ -1500,7 +1517,17 @@ bool Read2::Start()
 {
 	if ((curRdBuf = readFlBuf.Get()) != 0)
 	{
-		if (curRdBuf->useAdr) { rd.SetRawAdr(curRdBuf->adr); FlushPageBuffer(rd.GetRawPage()); };
+		if (curRdBuf->useAdr) 
+		{ 
+			rd.SetRawAdr(curRdBuf->adr); 
+			FlushPageBuffer(rd.GetRawPage()); 
+
+			state = FLUSH_PAGES;
+		}
+		else
+		{
+			state = READ_START;
+		};
 
 		vecStart = curRdBuf->vecStart;
 
@@ -1519,7 +1546,6 @@ bool Read2::Start()
 
 		findTryCount = 1024;
 
-		state = READ_START;
 
 		return true;
 	};
@@ -1540,9 +1566,9 @@ void Read2::UpdatePage()
 
 			if (cmdFlushPageBuffer)
 			{
-				cmdFlushPageBuffer = false;
-
 				statePage = 5;
+
+				break;
 			};
 
 			if (sparePage != ~0ul)
@@ -1638,6 +1664,8 @@ void Read2::UpdatePage()
 
 			sparePage = initFlushSparePage;
 			prevSparePage = ~0;
+
+			cmdFlushPageBuffer = false;
 
 			statePage = 0;	
 
@@ -1804,6 +1832,15 @@ bool Read2::Update()
 			curRdBuf->hdr.dataLen = 0;
 
 			End();
+
+			break;
+		
+		case FLUSH_PAGES:	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++	
+
+			if (!cmdFlushPageBuffer)
+			{
+				state = READ_START;
+			};
 
 			break;
 	};
@@ -2250,7 +2287,7 @@ void NAND_Idle()
 				nandState = NAND_STATE_READ_START;
 			};
 
-			if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+			FLASH_UpdateStatus();
 
 			break;
 
@@ -2316,7 +2353,7 @@ void NAND_Idle()
 				};
 			};
 
-			if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+			//if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
 
 			break;
 
@@ -2333,11 +2370,10 @@ void NAND_Idle()
 
 			if (!UpdateSendSession())
 			{
-				lastFlashStatus = FLASH_STATUS_READ_SESSION_READY;
 				nandState = NAND_STATE_SEND_BAD_BLOCKS;
 			};
 	
-			if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
+			//if (tm.Check(200) && IsComputerFind() && EmacIsConnected()) TRAP_MEMORY_SendStatus(lastFlashProgress, lastFlashStatus);
 
 			break;
 

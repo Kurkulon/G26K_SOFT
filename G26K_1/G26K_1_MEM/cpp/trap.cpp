@@ -788,6 +788,7 @@ static bool UpdateSendVector()
 	static u16 ses = 0;
 	static u64 adr = 0;
 	static u64 size = 0;
+	static u64 flashFullSize = 0x200000000ULL;
 	static bool useadr = false;
 
 	static FileDsc *si = 0;
@@ -843,6 +844,13 @@ static bool UpdateSendVector()
 				if (si != 0)
 				{
 					size = si->size;
+				};
+
+				flashFullSize = FLASH_Full_Size_Get();
+
+				if (size > flashFullSize)
+				{
+					size = flashFullSize;
 				};
 
 				vecCount = 0;
