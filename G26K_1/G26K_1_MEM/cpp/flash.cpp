@@ -124,6 +124,8 @@ static SessionInfo lastSessionInfo;
 
 u16 deviceID = 0;
 
+static u64 flashUsedSize = 0;
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct NVV // NonVolatileVars  
@@ -1202,7 +1204,7 @@ bool ReadSpare::Update()
 				else
 				{
 					spare->v1.CheckCRC();
-				
+
 					state = WAIT;
 
 					return false;
@@ -2035,6 +2037,8 @@ static void InitSessionsNew()
 
 	bool c = false;
 
+	flashUsedSize = 0;
+
 	for (u16 i = 128, ind = nvv.index; i > 0; i--, ind = (ind-1)&127)
 	{
 		FileDsc &f = nvsi[ind].f;
@@ -2071,7 +2075,15 @@ static void InitSessionsNew()
 				f.size = 0;
 			};
 		};
+
+		flashUsedSize += f.size;
 	}; 
+
+	u64 fullSize = FLASH_Full_Size_Get();
+
+	if (flashUsedSize > fullSize) flashUsedSize = fullSize;
+
+	NAND_Chip_Disable();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2463,9 +2475,7 @@ u64 FLASH_Full_Size_Get()
 
 u64 FLASH_Used_Size_Get()
 {
-	i64 size = FLASH_Full_Size_Get();
-
-	return size;
+	return flashUsedSize;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

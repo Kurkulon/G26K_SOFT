@@ -484,7 +484,7 @@ Ptr<UNIBUF> CreateTestDspReq01()
 	rsp.CM.data[2] += 1;
 	rsp.CM.data[3] += 1;
 
-	rq->dataLen = (22+1024)*2;
+	rq->dataLen = (22+1500)*2;
 	
 	return rq;
 }
@@ -2345,6 +2345,29 @@ static void UpdateMoto()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateTestFlashWrite()
+{
+	static Ptr<UNIBUF> ptr;
+	static u16 pt = 0;
+
+	//u16 t = GetMillisecondsLow();
+
+	//if (t != pt)
+	{
+//		pt = t;
+
+		ptr = CreateTestDspReq01();
+
+		if (ptr.Valid())
+		{
+			RspDsp01 *rsp = (RspDsp01*)(ptr->GetDataPtr());
+			RequestFlashWrite(ptr, rsp->rw);
+		};
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateDSP()
 {
 	static Ptr<REQ> rq;
@@ -2356,13 +2379,20 @@ static void UpdateDSP()
 	{
 		case 0:
 
-			rq = CreateDspReq01(1);
-
-			if (rq.Valid())
+			if (mv.fireVoltage == 0 && motoTargetRPS == 1500)
 			{
-				qdsp.Add(rq);
+				UpdateTestFlashWrite();
+			}
+			else
+			{
+				rq = CreateDspReq01(1);
 
-				i++;
+				if (rq.Valid())
+				{
+					qdsp.Add(rq);
+
+					i++;
+				};
 			};
 
 			break;
@@ -2389,28 +2419,6 @@ static void UpdateDSP()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void UpdateTestFlashWrite()
-{
-	static Ptr<UNIBUF> ptr;
-	static u16 pt = 0;
-
-	//u16 t = GetMillisecondsLow();
-
-	//if (t != pt)
-	{
-//		pt = t;
-
-		ptr = CreateTestDspReq01();
-
-		if (ptr.Valid())
-		{
-			RspDsp01 *rsp = (RspDsp01*)(ptr->GetDataPtr());
-			RequestFlashWrite(ptr, rsp->rw);
-		};
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #ifndef WIN32
 
 static const u32 dspFlashPages[] = {
@@ -2669,7 +2677,7 @@ static void InitMainVars()
 	mv.imSPR			= 180;
 	mv.fireVoltage		= 500;
 	mv.motoLimCur		= 1000;
-	mv.motoMaxCur		= 2000;
+	mv.motoMaxCur		= 1100;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2979,7 +2987,7 @@ int main()
 {
 //	static bool c = true;
 
-//	static byte buf[100];
+	//static byte buf[8192];
 
 	//volatile byte * const FLD = (byte*)0x60000000;	
 	
@@ -3030,6 +3038,17 @@ int main()
 	u32 fc = 0;
 
 	//ComPort::WriteBuffer wb;
+
+	//for (u32 i = 0; i < ArraySize(buf); i++) buf[i] = i;
+
+	//fps = CRC_CCITT_DMA(buf, 8000, 0xFFFF);
+	//fc = CRC_CCITT_PIO(buf, 8000, 0xFFFF);
+
+	//fps = CRC_CCITT_DMA(buf, 6000, 0xFFFF);
+	//fps = CRC_CCITT_DMA(buf+6000, 2000, fps);
+
+	//fc = CRC_CCITT_PIO(buf, 6000, 0xFFFF);
+	//fc = CRC_CCITT_PIO(buf+6000, 2000, fc);
 
 	while (1)
 	{

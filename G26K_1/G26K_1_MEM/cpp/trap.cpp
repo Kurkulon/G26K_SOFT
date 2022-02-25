@@ -911,7 +911,7 @@ static bool UpdateSendVector()
 
 			if (flrb.ready)
 			{
-				if (flrb.len == 0 || flrb.hdr.session != ses)
+				if (flrb.len == 0 || flrb.hdr.session != ses || vecCount > flashFullSize)
 				{
 					t->len = 0;
 

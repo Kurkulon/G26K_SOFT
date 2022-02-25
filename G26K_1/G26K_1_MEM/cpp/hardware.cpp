@@ -4437,6 +4437,8 @@ u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init)
 	//	CRC_FCE->IR = *(s++)&0xFF;
 	//}
 
+	__dsb(15);
+
 	return CRC_FCE->RES;
 }
 
@@ -4450,22 +4452,25 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
 
-//	if ((u32)s & 1) { CRC_FCE->IR = *s++; len--; };
+	CRC_DMACH->SAR = (u32)s;
 
-	if (len > 0)
+	while (len > 0)
 	{
-		CRC_DMACH->CTLH = BLOCK_TS(len);
+		u32 l = (len > BLOCK_TS(~0)) ? BLOCK_TS(~0) : len;
 
-		CRC_DMACH->SAR = (u32)s;
+		CRC_DMACH->CTLH = l;
 
 		CRC_DMA->CHENREG = CRC_DMA_CHEN;
 
 		while(CRC_DMA->CHENREG & (1<<2));
+
+		//s += l;
+		len -= l;
 	};
 
-	//if (len & 1) { CRC_FCE->IR = s[len-1]; };
-
 	HW::P6->BCLR(5);
+
+	__dsb(15);
 
 	return (byte)CRC_FCE->RES;
 }
