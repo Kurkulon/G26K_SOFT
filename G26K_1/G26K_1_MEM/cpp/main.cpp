@@ -2676,8 +2676,8 @@ static void InitMainVars()
 	mv.cmSPR			= 36;
 	mv.imSPR			= 180;
 	mv.fireVoltage		= 500;
-	mv.motoLimCur		= 1000;
-	mv.motoMaxCur		= 1100;
+	mv.motoLimCur		= 2000;
+	mv.motoMaxCur		= 3000;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

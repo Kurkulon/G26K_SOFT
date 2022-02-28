@@ -10,7 +10,7 @@
 //#define CLOSE_VALVE_CUR 600
 
 #define GEAR_RATIO	12.25
-#define CUR_LIM		3000
+#define CUR_LIM		2000
 #define CUR_MAX		3000
 #define CUR_MIN		100
 #define IMP_CUR_LIM	13000
@@ -1264,7 +1264,7 @@ static void InitADC()
 	SYSCON->PDRUNCFG &= ~(1<<4);
 	SYSCON->SYSAHBCLKCTRL |= CLK::ADC_M;
 
-	ADC->CTRL = (1<<30)|49;
+	ADC->CTRL = (1<<30)|4;
 
 	while(ADC->CTRL & (1<<30));
 
@@ -1342,16 +1342,22 @@ static void UpdateMotor()
 
 	static TM32 tm;//, tmRPM;
 
+	curADC = ((HW::ADC->DAT0&0xFFF0) * 9400) >> 16;  
+
+	if (curADC > 110) curADC -= 110; else curADC = 0;
+
+	if (curADC > maxCur)
+	{	
+		DisableDriver();
+		motorState = 6;
+	};
+
 	if ((u16)(GetMillisecondsLow() - pt) >= 1)
 	{
 		pt = GetMillisecondsLow();
 
 		HW::ResetWDT();
-
-		curADC = ((HW::ADC->DAT0&0xFFF0) * 9400) >> 16;  
-
-		if (curADC > 110) curADC -= 110; else curADC = 0;
-		
+	
 		fcurADC += curADC - avrCurADC; avrCurADC = fcurADC >> 8;
 
 		if (targetRPM == 0)
