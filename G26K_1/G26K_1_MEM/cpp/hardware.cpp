@@ -1514,10 +1514,18 @@ inline void DisableWriteProtect()
 
 byte NAND_CmdReadStatus()
 {
+#ifndef WIN32
+
 	NAND_DIR_OUT();
 	NAND_CMD_LATCH(NAND_CMD_READ_STATUS);
 	NAND_DIR_IN();
 	return NAND_READ();
+
+#else
+
+	return (nandReadStatus & ~0x40) | ((NAND_BUSY()) ? 0 : 0x40);
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -4358,6 +4366,7 @@ void SetClock(const RTC &t)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static __irq void Clock_IRQ()
 {
@@ -4417,6 +4426,7 @@ static void InitClock()
 	HW::SCU_GCU->SRMSK = SCU_INTERRUPT_SRMSK_PI_Msk;
 }
 
+#endif
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #ifdef CPU_XMC48

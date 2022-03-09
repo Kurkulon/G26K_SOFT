@@ -875,6 +875,45 @@ static void RecieveFrame()
 			HW::ETH0->RECEIVE_POLL_DEMAND = 0;
 		};
 
+	#elif defined(WIN32)
+
+		static u32 pt = 0;
+
+		u32 t = GetMilliseconds();
+
+		if (t != pt)
+		{
+			pt = t;
+
+			EthPtr ep;
+
+			ep.eth = (EthHdr*)rx_buf[0];
+
+			while (1)
+			{
+				int len = recv(lstnSocket, (char*)&ep.eip->iph, sizeof(rx_buf[0]), 0); 
+
+				if (len > 0) //(len != SOCKET_ERROR/* && len >= sizeof(ep.eip->iph)*/)
+				{
+					//in_addr srcip;
+					//in_addr dstip;
+
+					//srcip.S_un.S_addr = ep.eip->iph.src;
+					//dstip.S_un.S_addr = ep.eip->iph.dst;
+
+					//printf("Recv prot: %hi, srcip %08lX, dstip %08lX, len:%i\n", ep.eip->iph.p, ReverseDword(ep.eip->iph.src), ReverseDword(ep.eip->iph.dst), len);
+
+					RequestIP(ep.eip, 0);
+				}
+				else
+				{
+					//int	error = WSAGetLastError(); //WSAEOPNOTSUPP
+
+					break;
+				};
+			};
+		};
+
 	#endif
 }
 
@@ -1423,14 +1462,7 @@ void UpdateEMAC()
 
 #else
 
-	switch(i++)
-	{
-		case 0:	RecieveFrame();		break;
-		case 1: UpdateTransmit();	break;
-	};
-
-	i &= 1;
-
+	RecieveFrame();
 
 #endif
 }
