@@ -6,6 +6,8 @@
 #include <windows.h>
 #include <time.h>
 
+LARGE_INTEGER queryPerformanceFrequency = { 0, 0 };
+
 #endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -255,6 +257,13 @@ void RTT_Init()
 		slice->TCSET = 1;
 
 	#endif
+
+#else
+
+	if (!QueryPerformanceFrequency(&queryPerformanceFrequency))
+	{
+		queryPerformanceFrequency.LowPart = 1;
+	};
 
 #endif
 }

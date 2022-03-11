@@ -7,6 +7,11 @@
 
 static SOCKET	lstnSocket;
 
+static CRITICAL_SECTION txCriticalSection; 
+static HANDLE handleTxThread;
+
+DWORD txThreadCount = 0;
+
 #else
 
 #include "core.h"
@@ -361,39 +366,34 @@ bool TransmitEth(EthBuf *b)
 
 #else
 
-	EthPtr ep;
+	EnterCriticalSection(&txCriticalSection);
 
-	ep.eth = &b->eth;
+	txList.Add(b);
 
-	sockaddr_in srvc;
+	LeaveCriticalSection(&txCriticalSection);
 
-	srvc.sin_family = AF_INET;
-	srvc.sin_addr.s_addr = ep.eudp->iph.dst;
-	srvc.sin_port = ep.eudp->udp.dst;
+	ResumeThread(handleTxThread);
 
-	in_addr srcip;
-	in_addr dstip;
+	//EthPtr ep;
 
-	srcip.S_un.S_addr = ep.eip->iph.src;
-	dstip.S_un.S_addr = ep.eip->iph.dst;
+	//ep.eth = &b->eth;
 
-	int len = sendto(lstnSocket, (char*)&ep.eip->iph, b->len - sizeof(b->eth), 0, (SOCKADDR*)&srvc, sizeof(srvc)); 
+	//sockaddr_in srvc;
 
-	//printf("Send prot: %hi, srcip %08lX, dstip %08lX, len:%i ... ", ep.eip->iph.p, ReverseDword(ep.eip->iph.src), ReverseDword(ep.eip->iph.dst), b->len - sizeof(b->eth));
+	//srvc.sin_family = AF_INET;
+	//srvc.sin_addr.s_addr = ep.eudp->iph.dst;
+	//srvc.sin_port = ep.eudp->udp.dst;
 
-	//int error;
+	//in_addr srcip;
+	//in_addr dstip;
 
-	//if (len == SOCKET_ERROR)
-	//{
-	//	error = WSAGetLastError(); //WSAEOPNOTSUPP
-	//	cputs("!!! ERROR\n");
-	//}
-	//else
-	//{
-	//	cputs("OK\n");
-	//};
+	//srcip.S_un.S_addr = ep.eip->iph.src;
+	//dstip.S_un.S_addr = ep.eip->iph.dst;
 
-	b->len = 0;
+	//int len = sendto(lstnSocket, (char*)&ep.eip->iph, b->len - sizeof(b->eth), 0, (SOCKADDR*)&srvc, sizeof(srvc)); 
+
+	//b->len = 0;
+
 
 #endif
 
@@ -1004,7 +1004,60 @@ static void UpdateTransmit()
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifdef WIN32
 
+DWORD WINAPI TxThreadFunction(LPVOID lpParam) 
+{
+	EthBuf *b = 0;
+
+	u32 count = 0;
+
+	while(1)
+	{
+		EnterCriticalSection(&txCriticalSection);
+
+		b = txList.Get();
+
+		LeaveCriticalSection(&txCriticalSection);
+
+		if (b != 0)
+		{
+			EthPtr ep;
+
+			ep.eth = &b->eth;
+
+			sockaddr_in srvc;
+
+			srvc.sin_family = AF_INET;
+			srvc.sin_addr.s_addr = ep.eudp->iph.dst;
+			srvc.sin_port = ep.eudp->udp.dst;
+
+			in_addr srcip;
+			in_addr dstip;
+
+			srcip.S_un.S_addr = ep.eip->iph.src;
+			dstip.S_un.S_addr = ep.eip->iph.dst;
+
+			int len = sendto(lstnSocket, (char*)&ep.eip->iph, b->len - sizeof(b->eth), 0, (SOCKADDR*)&srvc, sizeof(srvc)); 
+
+			b->len = 0;
+
+			count = 100;
+		}
+		else
+		{
+			//Sleep(0);
+
+			if (count == 0) SuspendThread(handleTxThread); else count--;
+		};
+
+		txThreadCount++;
+	};
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 /*--------------------------- init_ethernet ---------------------------------*/
 
@@ -1224,7 +1277,19 @@ bool InitEMAC()
 		closesocket(lstnSocket);
 	    WSACleanup();
 		return false;
-	}
+	};
+
+	cputs("Initialize CriticalSection 'txCriticalSection' ... ");
+
+	InitializeCriticalSection(&txCriticalSection);
+
+	cputs("OK\n" );
+
+	cputs("Create thread 'txThread' ... ");
+
+	handleTxThread = CreateThread(0, 0, TxThreadFunction, 0, 0, 0);
+
+	cputs((handleTxThread == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
 
 	//if (listen(lstnSocket, 1 ) == SOCKET_ERROR )
 	//{

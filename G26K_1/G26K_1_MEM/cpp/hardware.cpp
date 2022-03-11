@@ -4639,14 +4639,14 @@ static void Init_CRC_CCITT_DMA()
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	return GetCRC16_CCIT(data, len, init);
+	return 0;//GetCRC16_CCIT(data, len, init);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
-	crc_ccit_result = GetCRC16_CCIT(data, len, init);
+	crc_ccit_result = 0;//GetCRC16_CCIT(data, len, init);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6022,7 +6022,7 @@ void UpdateDisplay()
 	{
 		pt = t;
 
-		if(PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE))
+		while(PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE))
 		{
 			GetMessage (&msg, NULL, 0, 0);
 

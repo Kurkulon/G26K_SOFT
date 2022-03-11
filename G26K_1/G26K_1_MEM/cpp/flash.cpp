@@ -679,6 +679,22 @@ void Write::Vector_Make(VecData *vd, u16 size)
 
 bool Write::Start()
 {
+#ifdef WIN32
+
+	static TM32 tm;
+
+	if (tm.Check(100))
+	{
+		Printf(20, 0, 0xF0, "Session num  %hu",		nvv.f.session				);
+		Printf(20, 1, 0xF0, "Session size %09llX",	nvv.f.size					);
+		Printf(20, 2, 0xF0, "Raw adr      %09llX",	wr.GetRawAdr()				);
+		Printf(20, 3, 0xF0, "rcvVec       %lu",		rcvVec						);
+		Printf(20, 4, 0xF0, "Writed Vec   %lu",		write.spare.v1.vectorCount	);
+		Printf(20, 5, 0xF0, "GetTickCount %hu",		GetMillisecondsLow()		);
+	};
+
+#endif
+
 	curWrBuf = writeFlBuf.Get();
 
 	if (curWrBuf.Valid())

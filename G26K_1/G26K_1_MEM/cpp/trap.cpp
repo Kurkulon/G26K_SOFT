@@ -1134,7 +1134,7 @@ static bool UpdateSendVector_Dlya_Vova()
 			}
 			else if (!pause)
 			{
-				t = GetSmallTxBuffer();
+				t = GetHugeTxBuffer();
 
 				if (t != 0)
 				{
@@ -1215,7 +1215,7 @@ static bool UpdateSendVector_Dlya_Vova()
 					et.data[0] = 0x40;
 					et.data[1] = 0xAD;
 
-					t->len = sizeof(et.eu) + sizeof(et.tv) + 2;
+					t->len = sizeof(et.eu) + sizeof(et.tv) + 0x1000;
 
 					SendTrap(t);
 

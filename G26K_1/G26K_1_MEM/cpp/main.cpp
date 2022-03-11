@@ -15,7 +15,11 @@
 #include <conio.h>
 //#include <stdio.h>
 
+static const bool __WIN32__ = true;
+
 #else
+
+static const bool __WIN32__ = false;
 
 //#pragma diag_suppress 546,550,177
 
@@ -224,6 +228,7 @@ struct AmpTimeMinMax { bool valid; u16 ampMax, ampMin, timeMax, timeMin; };
 static AmpTimeMinMax sensMinMax[2] = { {0, 0, ~0, 0, ~0}, {0, 0, ~0, 0, ~0} };
 static AmpTimeMinMax sensMinMaxTemp[2] = { {0, 0, ~0, 0, ~0}, {0, 0, ~0, 0, ~0} };
 
+static u32 testDspReqCount = 0;
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2348,20 +2353,28 @@ static void UpdateMoto()
 static void UpdateTestFlashWrite()
 {
 	static Ptr<UNIBUF> ptr;
-	static u16 pt = 0;
+	static u32 count = 0;
 
-	//u16 t = GetMillisecondsLow();
+	static RTM rtm;
 
-	//if (t != pt)
+	if (rtm.Check(MS2RT(1)))
 	{
-//		pt = t;
+		testDspReqCount++;
 
+		count = 100;
+	};
+
+	if (count != 0)
+	{
 		ptr = CreateTestDspReq01();
 
 		if (ptr.Valid())
 		{
+			count--;
+
 			RspDsp01 *rsp = (RspDsp01*)(ptr->GetDataPtr());
 			RequestFlashWrite(ptr, rsp->rw);
+
 		};
 	};
 }
@@ -2379,20 +2392,15 @@ static void UpdateDSP()
 	{
 		case 0:
 
-			if (mv.fireVoltage == 0 && motoTargetRPS == 1500)
+			if ((mv.fireVoltage == 0 && motoTargetRPS == 1500) || __WIN32__)
 			{
-				UpdateTestFlashWrite();
+				if (FLASH_Status() != 0) UpdateTestFlashWrite();
 			}
 			else
 			{
 				rq = CreateDspReq01(1);
 
-				if (rq.Valid())
-				{
-					qdsp.Add(rq);
-
-					i++;
-				};
+				if (rq.Valid())	qdsp.Add(rq), i++;
 			};
 
 			break;
@@ -3067,7 +3075,12 @@ int main()
 			fps = fc; fc = 0; 
 
 #ifdef WIN32
+
+			extern u32 txThreadCount;
+
 			Printf(0, 0, 0xFC, "FPS=%9i", fps);
+			Printf(0, 1, 0xF0, "%lu", testDspReqCount);
+			Printf(0, 2, 0xF0, "%lu", txThreadCount);
 #endif
 		};
 
@@ -3090,12 +3103,12 @@ int main()
 
 			if (key == 'w')
 			{
-				//FLASH_WriteEnable();
+				FLASH_WriteEnable();
 			};
 
 			if (key == 'e')
 			{
-				//FLASH_WriteDisable();
+				FLASH_WriteDisable();
 			};
 		};
 

@@ -82,10 +82,20 @@ inline u16 GetMillisecondsLow()
 
 #ifdef WIN32	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define US2RT(x) ((x+500)/1000)
-#define MS2RT(x) (x)
 
-inline u32 GetRTT() { return (u32)(GetTickCount()); }
+extern LARGE_INTEGER queryPerformanceFrequency;
+
+#define US2RT(x) (((u32)(x) * queryPerformanceFrequency.LowPart + 500000UL) / 1000000UL)
+#define MS2RT(x) (((u32)(x) * queryPerformanceFrequency.LowPart + 500UL) / 1000UL)
+
+inline u32 GetRTT() 
+{ 
+	LARGE_INTEGER t;
+
+	QueryPerformanceCounter(&t);
+
+	return t.LowPart; 
+}
 
 struct RTM
 {
