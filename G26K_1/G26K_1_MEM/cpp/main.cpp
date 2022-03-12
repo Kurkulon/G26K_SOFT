@@ -3104,11 +3104,14 @@ int main()
 			if (key == 'w')
 			{
 				FLASH_WriteEnable();
-			};
-
-			if (key == 'e')
+			}
+			else if (key == 'e')
 			{
 				FLASH_WriteDisable();
+			}
+			else if (key == 'p')
+			{
+				NAND_FullErase();
 			};
 		};
 

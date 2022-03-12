@@ -2294,7 +2294,10 @@ void NAND_Idle()
 			{
 				cmdFullErase = false;
 				eraseSessionsCount = 1;
-				//nandState = NAND_STATE_FULL_ERASE_START;
+
+#ifdef WIN32
+				nandState = NAND_STATE_FULL_ERASE_START;
+#endif
 
 				break;
 			};
@@ -2366,7 +2369,13 @@ void NAND_Idle()
 
 					eraseBlock.Start(er, true, true);
 
-					if (tm.Check(500)) { FLASH_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); };
+					if (tm.Check(500)) 
+					{ 
+						FLASH_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); 
+#ifdef WIN32
+						Printf(0, 3, 0xF0, "%li", t);
+#endif
+					};
 				}
 				else
 				{
