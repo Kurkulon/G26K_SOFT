@@ -2361,10 +2361,10 @@ static void UpdateTestFlashWrite()
 	{
 		testDspReqCount++;
 
-		count = 100;
+		count = 1000;
 	};
 
-	if (count != 0)
+//	if (count != 0)
 	{
 		ptr = CreateTestDspReq01();
 

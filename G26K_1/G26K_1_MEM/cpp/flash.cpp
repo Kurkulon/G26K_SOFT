@@ -88,7 +88,11 @@ static FLRB *curRdBuf = 0;
 
 struct PageBuffer { PageBuffer *next; u32 page; u32 prevPage; byte data[NAND_PAGE_SIZE]; SpareArea spare; };
 
+#ifndef WIN32
 static PageBuffer _pageBuf[2];
+#else
+static PageBuffer _pageBuf[32];
+#endif
 
 static List<PageBuffer> freePageBuffer;
 static List<PageBuffer> readyPageBuffer;
@@ -685,7 +689,7 @@ bool Write::Start()
 
 	if (tm.Check(100))
 	{
-		Printf(20, 0, 0xF0, "Session num  %hu",		nvv.f.session				);
+		Printf(20, 0, 0xF0, "Session num  %-5hu",	nvv.f.session				);
 		Printf(20, 1, 0xF0, "Session size %09llX",	nvv.f.size					);
 		Printf(20, 2, 0xF0, "Raw adr      %09llX",	wr.GetRawAdr()				);
 		Printf(20, 3, 0xF0, "rcvVec       %lu",		rcvVec						);
@@ -2373,7 +2377,7 @@ void NAND_Idle()
 					{ 
 						FLASH_SendStatus((eb-t)*((u64)0x100000000)/eb, FLASH_STATUS_BUSY); 
 #ifdef WIN32
-						Printf(0, 3, 0xF0, "%li", t);
+						Printf(0, 3, 0xF0, "%9li", t);
 #endif
 					};
 				}

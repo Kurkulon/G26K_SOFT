@@ -1776,13 +1776,16 @@ void NAND_CmdEraseBlock(u32 bl)
 
 	*((u32*)nandEraseFillArray) = (bl << NAND_CHIP_BITS) + nandChipSelected;
 
-	_overlapped.Offset = (u32)curNandFilePos;
-	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
+	u64 adr = curNandFilePos;// + NAND_PAGE_SIZE;
+
+	_overlapped.Offset = (u32)adr;
+	_overlapped.OffsetHigh = (u32)(adr>>32);
 	_overlapped.hEvent = 0;
 	_overlapped.Internal = 0;
 	_overlapped.InternalHigh = 0;
 
 	WriteFile(handleNandFile, nandEraseFillArray, (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS, 0, &_overlapped);
+	//WriteFile(handleNandFile, nandEraseFillArray, 8, 0, &_overlapped);
 
 	nandReadStatus = 0;
 
