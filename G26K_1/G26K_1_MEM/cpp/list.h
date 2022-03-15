@@ -3,6 +3,12 @@
 
 #include <types.h>
 
+#ifdef WIN32
+
+#include <intrin.h>
+
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 template <class T> struct List
@@ -25,27 +31,51 @@ protected:
 	void	Add(T* r);
 
 	bool	Empty() { return first == 0; }
+
+
+#ifdef WIN32
+
+public:
+
+	u32		locks_count;
+
+protected:
+
+	long	locked;
+
+    enum {LOCK_IS_FREE = 0, LOCK_IS_TAKEN = 1};
+
+	void Lock()		{ while (_InterlockedCompareExchange(&locked, LOCK_IS_TAKEN, LOCK_IS_FREE) == LOCK_IS_TAKEN) locks_count++; }
+	void Unlock()	{ _InterlockedExchange(&locked, LOCK_IS_FREE);  }
+
+#else
+
+	void Lock()		{ }
+	void Unlock()	{ }
+
+#endif
+
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 template <class T> T* List<T>::Get()
 {
+	Lock();
+
 	T* r = first;
 
 	if (r != 0)
 	{
 		first = (T*)r->next;
 
-//		r->next = 0;
-
 		if (first == 0)
 		{
 			last = 0;
 		};
-
-//		counter--;
 	};
+
+	Unlock();
 	
 	return r;
 }
@@ -59,6 +89,8 @@ template <class T> void List<T>::Add(T* r)
 		return;
 	};
 
+	Lock();
+
 	if (last == 0)
 	{
 		first = last = r;
@@ -69,9 +101,9 @@ template <class T> void List<T>::Add(T* r)
 		last = r;
 	};
 
-	//counter++;
-
 	r->next = 0;
+
+	Unlock();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

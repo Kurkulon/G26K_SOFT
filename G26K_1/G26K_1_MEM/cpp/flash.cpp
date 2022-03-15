@@ -88,11 +88,7 @@ static FLRB *curRdBuf = 0;
 
 struct PageBuffer { PageBuffer *next; u32 page; u32 prevPage; byte data[NAND_PAGE_SIZE]; SpareArea spare; };
 
-#ifndef WIN32
 static PageBuffer _pageBuf[2];
-#else
-static PageBuffer _pageBuf[32];
-#endif
 
 static List<PageBuffer> freePageBuffer;
 static List<PageBuffer> readyPageBuffer;

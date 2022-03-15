@@ -7,7 +7,6 @@
 
 static SOCKET	lstnSocket;
 
-static CRITICAL_SECTION txCriticalSection; 
 static HANDLE handleTxThread;
 
 DWORD txThreadCount = 0;
@@ -22,6 +21,7 @@ DWORD txThreadCount = 0;
 #include "emac.h"
 #include "xtrap.h"
 #include "list.h"
+#include "hardware.h"
 
 //#pragma diag_suppress 546,550,177
 
@@ -366,11 +366,7 @@ bool TransmitEth(EthBuf *b)
 
 #else
 
-	EnterCriticalSection(&txCriticalSection);
-
 	txList.Add(b);
-
-	LeaveCriticalSection(&txCriticalSection);
 
 	ResumeThread(handleTxThread);
 
@@ -912,6 +908,8 @@ static void RecieveFrame()
 					break;
 				};
 			};
+
+			Printf(20, 6, 0xF0, "txLocksCount %-9lu", txList.locks_count);
 		};
 
 	#endif
@@ -1014,11 +1012,7 @@ DWORD WINAPI TxThreadFunction(LPVOID lpParam)
 
 	while(1)
 	{
-		EnterCriticalSection(&txCriticalSection);
-
 		b = txList.Get();
-
-		LeaveCriticalSection(&txCriticalSection);
 
 		if (b != 0)
 		{
@@ -1278,12 +1272,6 @@ bool InitEMAC()
 	    WSACleanup();
 		return false;
 	};
-
-	cputs("Initialize CriticalSection 'txCriticalSection' ... ");
-
-	InitializeCriticalSection(&txCriticalSection);
-
-	cputs("OK\n" );
 
 	cputs("Create thread 'txThread' ... ");
 

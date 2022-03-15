@@ -15,15 +15,20 @@
 #include <stdio.h>
 #include <intrin.h>
 #include "CRC16_CCIT.h"
+#include "list.h"
 
 static HANDLE handleNandFile;
 static const char nameNandFile[] = "NAND_FLASH_STORE.BIN";
+
+static HANDLE handleWriteThread;
+static HANDLE handleReadThread;
 
 static byte nandChipSelected = 0;
 
 static u64 curNandFilePos = 0;
 static u64 curNandFileBlockPos = 0;
 static u32 curBlock = 0;
+static u32 curRawBlock = 0;
 static u16 curPage = 0;
 static u16 curCol = 0;
 
@@ -43,6 +48,17 @@ static byte fram_SPI_Mem[0x40000];
 static bool fram_spi_WREN = false;
 
 static u16 crc_ccit_result = 0;
+
+
+struct BlockBuffer { BlockBuffer *next; u32 block; u32 prevBlock; byte data[(NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS]; };
+
+static BlockBuffer _blockBuf[4];
+
+static List<BlockBuffer> freeBlockBuffer;
+static List<BlockBuffer> rdBlockBuffer;
+static List<BlockBuffer> wrBlockBuffer;
+
+static BlockBuffer *curNandBlockBuffer = 0;
 
 #else
 
@@ -1739,11 +1755,9 @@ static void SetCurAdrNandFile(u16 col, u32 bl, u16 pg)
 	curPage = pg;
 	curCol = col;
 
-	//bl = ROW(bl, pg);
-
 	u64 adr = bl;
 	
-	adr = (adr << NAND_CHIP_BITS) + nandChipSelected;
+	curRawBlock = adr = (adr << NAND_CHIP_BITS) + nandChipSelected;
 
 	adr *= (NAND_PAGE_SIZE + NAND_SPARE_SIZE) << NAND_PAGE_BITS;
 
@@ -1752,8 +1766,6 @@ static void SetCurAdrNandFile(u16 col, u32 bl, u16 pg)
 	adr += col & ((1 << (NAND_COL_BITS+1))-1);
 
 	curNandFilePos = adr;
-
-	//SetFilePointer(handleNandFile, _overlapped.Offset, (i32*)&_overlapped.OffsetHigh, FILE_BEGIN);
 }
 
 #endif
@@ -1774,18 +1786,35 @@ void NAND_CmdEraseBlock(u32 bl)
 
 	SetCurAdrNandFile(0, bl, 0);
 
-	*((u32*)nandEraseFillArray) = (bl << NAND_CHIP_BITS) + nandChipSelected;
+	u32 block = curRawBlock;
 
-	u64 adr = curNandFilePos;// + NAND_PAGE_SIZE;
+	if (curNandBlockBuffer != 0 && curNandBlockBuffer->block != block) wrBlockBuffer.Add(curNandBlockBuffer), ResumeThread(handleWriteThread), curNandBlockBuffer = 0;
 
-	_overlapped.Offset = (u32)adr;
-	_overlapped.OffsetHigh = (u32)(adr>>32);
-	_overlapped.hEvent = 0;
-	_overlapped.Internal = 0;
-	_overlapped.InternalHigh = 0;
+	if (curNandBlockBuffer == 0)
+	{
+		while ((curNandBlockBuffer = freeBlockBuffer.Get()) == 0) { Sleep(0); };
 
-	WriteFile(handleNandFile, nandEraseFillArray, (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS, 0, &_overlapped);
-	//WriteFile(handleNandFile, nandEraseFillArray, 8, 0, &_overlapped);
+		curNandBlockBuffer->block = block;
+		curNandBlockBuffer->prevBlock = 0;
+	};
+
+	u32 *d = (u32*)(curNandBlockBuffer->data);
+
+	u32 count = ((NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS) >> 2;
+
+	while (count != 0) *(d++) = ~0, count--;
+
+	//*((u32*)nandEraseFillArray) = (bl << NAND_CHIP_BITS) + nandChipSelected;
+
+	//u64 adr = curNandFilePos;// + NAND_PAGE_SIZE;
+
+	//_overlapped.Offset = (u32)adr;
+	//_overlapped.OffsetHigh = (u32)(adr>>32);
+	//_overlapped.hEvent = 0;
+	//_overlapped.Internal = 0;
+	//_overlapped.InternalHigh = 0;
+
+	//WriteFile(handleNandFile, nandEraseFillArray, (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS, 0, &_overlapped);
 
 	nandReadStatus = 0;
 
@@ -1968,6 +1997,60 @@ void NAND_Test_FLADR()
 }
 
 #endif
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+DWORD WINAPI NAND_WriteThread(LPVOID lpParam) 
+{
+	static OVERLAPPED	ovrl;
+	static BlockBuffer *bb = 0; 
+	
+	while(1)
+	{
+		bb = wrBlockBuffer.Get();
+
+		if (bb != 0)
+		{
+			u64 adr = bb->block;// + NAND_PAGE_SIZE;
+
+			adr *= (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS;
+
+			ovrl.Offset = (u32)adr;
+			ovrl.OffsetHigh = (u32)(adr>>32);
+			ovrl.hEvent = 0;
+			ovrl.Internal = 0;
+			ovrl.InternalHigh = 0;
+
+			SetFilePointer(handleNandFile, ovrl.Offset, (i32*)&ovrl.OffsetHigh, FILE_BEGIN);
+
+			WriteFile(handleNandFile, bb->data, sizeof(bb->data), 0, 0);
+
+			freeBlockBuffer.Add(bb);
+		}
+		else
+		{
+			SuspendThread(GetCurrentThread());
+		};
+	};
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+DWORD WINAPI NAND_ReadThread(LPVOID lpParam) 
+{
+	while(1)
+	{
+		SuspendThread(GetCurrentThread());
+	};
+}
+
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void NAND_Init()
@@ -2170,7 +2253,7 @@ static void NAND_Init()
 
 	printf("Open file %s ... ", nameNandFile);
 
-	handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, FILE_FLAG_OVERLAPPED , 0);
+	handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0 /*FILE_FLAG_OVERLAPPED*/, 0);
 	//handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0 , 0);
 
 	cputs((handleNandFile == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
@@ -2213,6 +2296,22 @@ static void NAND_Init()
 	NAND_Test_FLADR();
 
 	FLADR::InitVaildTables(nandSize.mask);
+
+	
+	cputs("Create thread 'writeThread' ... ");
+
+	handleWriteThread = CreateThread(0, 0, NAND_WriteThread, 0, 0, 0);
+
+	cputs((handleWriteThread == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
+
+	cputs("Create thread 'readThread' ... ");
+
+	handleReadThread = CreateThread(0, 0, NAND_ReadThread, 0, 0, 0);
+
+	cputs((handleReadThread == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
+
+	for (u32 i = 0; i < ArraySize(_blockBuf); i++) freeBlockBuffer.Add(&(_blockBuf[i]));
+
 
 #endif
 }
