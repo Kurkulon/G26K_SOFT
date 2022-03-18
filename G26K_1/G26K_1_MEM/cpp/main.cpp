@@ -3121,6 +3121,8 @@ int main()
 
 #ifdef WIN32
 
+	NAND_FlushBlockBuffers();
+
 	I2C_Destroy();
 	SPI_Destroy();
 

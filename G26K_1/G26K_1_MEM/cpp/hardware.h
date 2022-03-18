@@ -424,6 +424,9 @@ extern void UpdateDisplay();
 extern int PutString(u32 x, u32 y, byte c, const char *str);
 extern int Printf(u32 x, u32 y, byte c, const char *format, ... );
 
+extern void NAND_FlushBlockBuffers();
+extern void NAND_ReqFlushBlockBuffers();
+
 #endif
 
 #endif // HARDWARE_H__23_12_2013__11_37

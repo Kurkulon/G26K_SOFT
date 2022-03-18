@@ -118,7 +118,12 @@ static bool flashEmpty = false;
 static bool testWriteFlash = false;
 
 static const bool verifyWritePage = true; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+
+#ifndef WIN32
+static const bool forceEraseWrite = false;
+#else
 static const bool forceEraseWrite = true;
+#endif
 
 static SessionInfo lastSessionInfo;
 

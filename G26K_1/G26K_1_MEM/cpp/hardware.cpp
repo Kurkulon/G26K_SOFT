@@ -26,7 +26,7 @@ static HANDLE handleReadThread;
 static byte nandChipSelected = 0;
 
 static u64 curNandFilePos = 0;
-static u64 curNandFileBlockPos = 0;
+//static u64 curNandFileBlockPos = 0;
 static u32 curBlock = 0;
 static u32 curRawBlock = 0;
 static u16 curPage = 0;
@@ -50,15 +50,17 @@ static bool fram_spi_WREN = false;
 static u16 crc_ccit_result = 0;
 
 
-struct BlockBuffer { BlockBuffer *next; u32 block; u32 prevBlock; byte data[(NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS]; };
+struct BlockBuffer { BlockBuffer *next; u32 block; u32 prevBlock; u32 writed; u32 data[((NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS) >> 2]; };
 
-static BlockBuffer _blockBuf[4];
+static BlockBuffer _blockBuf[16];
 
 static List<BlockBuffer> freeBlockBuffer;
 static List<BlockBuffer> rdBlockBuffer;
 static List<BlockBuffer> wrBlockBuffer;
 
-static BlockBuffer *curNandBlockBuffer = 0;
+static BlockBuffer *curNandBlockBuffer[4] = { 0 };
+
+static volatile bool busyWriteThread = false;
 
 #else
 
@@ -1663,7 +1665,7 @@ bool NAND_CheckDataComplete()
 
 	#elif defined(WIN32)
 
-		return HasOverlappedIoCompleted(&_overlapped);
+		return true; //HasOverlappedIoCompleted(&_overlapped);
 
 	#endif
 }
@@ -1749,7 +1751,50 @@ inline u32 NAND_ROW(u32 block, u16 page)
 
 #ifdef WIN32
 
-static void SetCurAdrNandFile(u16 col, u32 bl, u16 pg)
+static BlockBuffer* NAND_AllocBlockBuffer()
+{
+	BlockBuffer *bb;
+
+	while ((bb = freeBlockBuffer.Get()) == 0) { Sleep(0); };
+
+	bb->block = ~0;
+	bb->prevBlock = ~0;
+	bb->writed = 0;
+
+	return bb;
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+static void NAND_ReqReadBlock(BlockBuffer* bb)
+{
+	if (bb != 0)
+	{
+		u64 adr = bb->block;
+
+		adr *= (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS;
+
+		_overlapped.Offset = (u32)adr;
+		_overlapped.OffsetHigh = (u32)(adr>>32);
+		_overlapped.hEvent = 0;
+		_overlapped.Internal = 0;
+		_overlapped.InternalHigh = 0;
+
+		ReadFile(handleNandFile, bb->data, sizeof(bb->data), 0, &_overlapped);
+	};
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+static void NAND_SetCurAdrFile(u16 col, u32 bl, u16 pg)
 {
 	curBlock = bl;
 	curPage = pg;
@@ -1763,9 +1808,55 @@ static void SetCurAdrNandFile(u16 col, u32 bl, u16 pg)
 
 	adr += (u32)(NAND_PAGE_SIZE + NAND_SPARE_SIZE) * pg;
 
-	adr += col & ((1 << (NAND_COL_BITS+1))-1);
+	adr += col;// & ((1 << (NAND_COL_BITS+1))-1);
 
 	curNandFilePos = adr;
+
+	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
+
+	if (bb != 0 && bb->block != curRawBlock) 
+	{
+		wrBlockBuffer.Add(bb);
+		ResumeThread(handleWriteThread);
+		bb = 0;
+	};
+
+	if (bb == 0)
+	{
+		bb = NAND_AllocBlockBuffer();
+	};
+
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+void NAND_ReqFlushBlockBuffers()
+{
+	for (u32 i = 0; i < ArraySize(curNandBlockBuffer); i++)
+	{
+		BlockBuffer* &bb = curNandBlockBuffer[i];
+
+		if (bb != 0) wrBlockBuffer.Add(bb), bb = 0;
+	};
+
+	ResumeThread(handleWriteThread);
+}
+
+#endif
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef WIN32
+
+void NAND_FlushBlockBuffers()
+{
+	NAND_ReqFlushBlockBuffers();
+
+	while(busyWriteThread) Sleep(1);
 }
 
 #endif
@@ -1784,25 +1875,19 @@ void NAND_CmdEraseBlock(u32 bl)
 
 #else
 
-	SetCurAdrNandFile(0, bl, 0);
+	NAND_SetCurAdrFile(0, bl, 0);
 
-	u32 block = curRawBlock;
+	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
 
-	if (curNandBlockBuffer != 0 && curNandBlockBuffer->block != block) wrBlockBuffer.Add(curNandBlockBuffer), ResumeThread(handleWriteThread), curNandBlockBuffer = 0;
+	bb->block = curRawBlock;
 
-	if (curNandBlockBuffer == 0)
-	{
-		while ((curNandBlockBuffer = freeBlockBuffer.Get()) == 0) { Sleep(0); };
+	u32 *d = bb->data;
 
-		curNandBlockBuffer->block = block;
-		curNandBlockBuffer->prevBlock = 0;
-	};
-
-	u32 *d = (u32*)(curNandBlockBuffer->data);
-
-	u32 count = ((NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS) >> 2;
+	u32 count = ArraySize(bb->data);
 
 	while (count != 0) *(d++) = ~0, count--;
+
+	bb->writed = 1;
 
 	//*((u32*)nandEraseFillArray) = (bl << NAND_CHIP_BITS) + nandChipSelected;
 
@@ -1834,7 +1919,16 @@ void NAND_CmdRandomRead(u16 col)
 
 #else
 
-	SetCurAdrNandFile(col, curBlock, curPage);
+	NAND_SetCurAdrFile(col, curBlock, curPage);
+
+	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
+
+	if (bb != 0 && bb->block != curRawBlock)
+	{
+		bb->block = curRawBlock;
+
+		NAND_ReqReadBlock(bb);
+	};
 
 #endif
 }
@@ -1853,7 +1947,16 @@ void NAND_CmdReadPage(u16 col, u32 bl, u16 pg)
 
 #else
 
-	SetCurAdrNandFile(col, bl, pg);
+	NAND_SetCurAdrFile(col, bl, pg);
+
+	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
+
+	if (bb != 0 && bb->block != curRawBlock)
+	{
+		bb->block = curRawBlock;
+
+		NAND_ReqReadBlock(bb);
+	};
 
 #endif
 }
@@ -1871,7 +1974,7 @@ void NAND_CmdWritePage(u16 col, u32 bl, u16 pg)
 
 #else
 
-	SetCurAdrNandFile(col, bl, pg);
+	NAND_SetCurAdrFile(col, bl, pg);
 
 #endif
 }
@@ -2005,31 +2108,46 @@ DWORD WINAPI NAND_WriteThread(LPVOID lpParam)
 {
 	static OVERLAPPED	ovrl;
 	static BlockBuffer *bb = 0; 
+	static HANDLE ev;
+	static u32 numBytesWriten;
 	
+	ev = CreateEventA(0, FALSE, FALSE, 0);
+
 	while(1)
 	{
+		busyWriteThread = true;
+		
 		bb = wrBlockBuffer.Get();
 
 		if (bb != 0)
 		{
-			u64 adr = bb->block;// + NAND_PAGE_SIZE;
+			if (bb->writed)
+			{
+				u64 adr = bb->block;// + NAND_PAGE_SIZE;
 
-			adr *= (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS;
+				adr *= (NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS;
 
-			ovrl.Offset = (u32)adr;
-			ovrl.OffsetHigh = (u32)(adr>>32);
-			ovrl.hEvent = 0;
-			ovrl.Internal = 0;
-			ovrl.InternalHigh = 0;
+				ovrl.Offset = (u32)adr;
+				ovrl.OffsetHigh = (u32)(adr>>32);
+				ovrl.hEvent = ev;
+				ovrl.Internal = 0;
+				ovrl.InternalHigh = 0;
 
-			SetFilePointer(handleNandFile, ovrl.Offset, (i32*)&ovrl.OffsetHigh, FILE_BEGIN);
+				//SetFilePointer(handleNandFile, ovrl.Offset, (i32*)&ovrl.OffsetHigh, FILE_BEGIN);
 
-			WriteFile(handleNandFile, bb->data, sizeof(bb->data), 0, 0);
+				WriteFile(handleNandFile, bb->data, sizeof(bb->data), 0, &ovrl);
+
+				WaitForSingleObject(ev, INFINITE);
+
+				bb->writed = 0;
+			};
 
 			freeBlockBuffer.Add(bb);
 		}
 		else
 		{
+			busyWriteThread = false;
+
 			SuspendThread(GetCurrentThread());
 		};
 	};
@@ -2253,7 +2371,7 @@ static void NAND_Init()
 
 	printf("Open file %s ... ", nameNandFile);
 
-	handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0 /*FILE_FLAG_OVERLAPPED*/, 0);
+	handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, FILE_FLAG_OVERLAPPED, 0);
 	//handleNandFile = CreateFile(nameNandFile, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, 0 , 0);
 
 	cputs((handleNandFile == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
@@ -2438,15 +2556,22 @@ void NAND_WriteDataDMA(volatile void *src, u16 len)
 
 #else
 
-	_overlapped.Offset = (u32)curNandFilePos;
-	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
-	_overlapped.hEvent = 0;
-	_overlapped.Internal = 0;
-	_overlapped.InternalHigh = 0;
+	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
 
-	WriteFile(handleNandFile, (void*)src, len, 0, &_overlapped);
+	if (bb != 0 && bb->block == curRawBlock)
+	{
+		DataPointer s((void*)src);
+		DataPointer d(bb->data);
 
-	curNandFilePos += len;
+		d.b += (u32)(NAND_PAGE_SIZE + NAND_SPARE_SIZE) * curPage + curCol;
+
+		curCol += len;
+
+		while (len > 3) *d.d++ = *s.d++, len -= 4;
+		while (len > 0) *d.b++ = *s.b++, len -= 1;
+
+		bb->writed = 1;
+	};
 
 #endif
 }
@@ -2603,15 +2728,20 @@ void NAND_ReadDataDMA(volatile void *dst, u16 len)
 
 #else
 
-	_overlapped.Offset = (u32)curNandFilePos;
-	_overlapped.OffsetHigh = (u32)(curNandFilePos>>32);
-	_overlapped.hEvent = 0;
-	_overlapped.Internal = 0;
-	_overlapped.InternalHigh = 0;
+	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
 
-	ReadFile(handleNandFile, (void*)dst, len, 0, &_overlapped);
+	if (bb != 0 && bb->block == curRawBlock)
+	{
+		DataPointer d((void*)dst);
+		DataPointer s(bb->data);
 
-	curNandFilePos += len;
+		s.b += (u32)(NAND_PAGE_SIZE + NAND_SPARE_SIZE) * curPage + curCol;
+
+		curCol += len;
+
+		while (len > 3) *d.d++ = *s.d++, len -= 4;
+		while (len > 0) *d.b++ = *s.b++, len -= 1;
+	};
 
 #endif
 }
