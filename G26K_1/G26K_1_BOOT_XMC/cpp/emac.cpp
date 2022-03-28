@@ -4,6 +4,8 @@
 #include "tftp.h"
 #include "list.h"
 #include "main.h"
+#include "time.h"
+#include "SEGGER_RTT.h"
 
 //#pragma diag_suppress 546,550,177
 
@@ -1065,14 +1067,13 @@ static bool UpdateLink()
 
 				if ((reg_LINKMDCS & LINKMDCS_CABLE_DIAG_EN) == 0)
 				{
-					if ((reg_LINKMDCS & LINKMDCS_CABLE_DIAG_MASK) == 0)
-					{
-						emacCableNormal = true;
-					}
-					else
-					{
-						emacCableNormal = false;
-					};
+					emacCableNormal = (reg_LINKMDCS & LINKMDCS_CABLE_DIAG_MASK) == 0;
+
+					const char * diagRes[4] = { RTT_CTRL_TEXT_BRIGHT_GREEN "NORMAL", RTT_CTRL_TEXT_BRIGHT_YELLOW "OPEN", RTT_CTRL_TEXT_BRIGHT_YELLOW "SHORT", RTT_CTRL_TEXT_BRIGHT_RED "FAILED" };
+
+					SEGGER_RTT_printf(0, RTT_CTRL_TEXT_WHITE "Ethernet cable diagnosic test ... %s - %u ms\n", diagRes[(reg_LINKMDCS>>13)&3], GetMilliseconds());
+
+					if (reg_LINKMDCS & LINKMDCS_SHORT_CABLE) SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Short cable (<10 meter) has been detected\n");
 
 					ReqReadPHY(PHY_REG_PHYCON1);
 
@@ -1092,7 +1093,12 @@ static bool UpdateLink()
 			{
 				reg_PHYCON1 = ResultPHY();
 
-				emacEnergyDetected = reg_PHYCON1 & PHYCON1_ENERGY_DETECT;
+				if (reg_PHYCON1 & PHYCON1_ENERGY_DETECT)
+				{
+					if (!emacEnergyDetected) SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Signal present on receive differential pair\n");
+
+					emacEnergyDetected = true;
+				};
 
 				if (reg_PHYCON1 & PHYCON1_LINK_STATUS)
 				{
@@ -1101,14 +1107,14 @@ static bool UpdateLink()
 					ReqWritePHY(PHY_REG_BMCR, BMCR_ANENABLE|BMCR_FULLDPLX);
 
 					linkState++;
+
+					SEGGER_RTT_printf(0, RTT_CTRL_TEXT_WHITE "Ethernet Link is up - %u ms\n", GetMilliseconds());
 				}
 				else
 				{
 					ReqReadPHY(PHY_REG_PHYCON1);
 				};
 			};
-
-			break;
 
 		case 4:
 
@@ -1142,6 +1148,12 @@ static bool UpdateLink()
 						#elif defined(CPU_XMC48)
 							HW::ETH0->MAC_CONFIGURATION |= MAC_FES;
 						#endif
+
+						SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Speed 100 Mbit ");
+					}
+					else
+					{
+						SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Speed 10 Mbit ");
 					};
 
 					if (ResultPHY() & 4 /*ANLPAR_DUPLEX*/)	//  Full duplex is enabled.
@@ -1151,7 +1163,14 @@ static bool UpdateLink()
 						#elif defined(CPU_XMC48)
 							HW::ETH0->MAC_CONFIGURATION |= MAC_DM;
 						#endif
+						
+						SEGGER_RTT_WriteString(0, "Full duplex mode\n");
+					}
+					else
+					{
+						SEGGER_RTT_WriteString(0, "Half duplex mode\n");
 					};
+
 
 					result = true;
 

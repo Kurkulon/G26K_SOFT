@@ -63,23 +63,28 @@ __heap_base
 Heap_Mem        SPACE   Heap_Size
 __heap_limit
 
-VecTableIntSize	EQU		16*4	
-VecTableExtSize	EQU		112*4	
-SCB_VTOR		EQU		0xE000ED08
+VecTableIntSize		EQU		16*4	
+VecTableExtSize		EQU		112*4	
+SCB_VTOR			EQU		0xE000ED08
+SeggerRttCB_size	EQU		0x2000
 
-				;AREA	VTBL, NOINIT, READWRITE, ALIGN=7
 				AREA	||.ARM.__AT_0x20000000||, DATA, NOINIT, ALIGN=7
 				EXPORT  VectorTableInt
                 EXPORT  VectorTableExt
 VectorTableInt	SPACE	VecTableIntSize				
 VectorTableExt	SPACE	VecTableExtSize				
 
+                ALIGN	128
+
+                EXPORT  SeggerRttCB
+SeggerRttCB		SPACE	SeggerRttCB_size - (SeggerRttCB-VectorTableInt)		
+
                 PRESERVE8
                 THUMB
 
 ; Vector Table Mapped to Address 0 at Reset
 
-                AREA    RESET, DATA, READONLY, ALIGN=4
+                AREA    RESET, CODE, READONLY, ALIGN=4
                 
 __Vectors       DCD     __initial_sp              ; 0 Top of Stack
                 DCD     Reset_Handler             ; 1 Reset Handler
@@ -90,8 +95,21 @@ __Vectors       DCD     __initial_sp              ; 0 Top of Stack
                 DCB		__DATE__, "\n"
                 DCB		__TIME__, "\n"
 
+                ALIGN	16
 
-                AREA    |.text|, CODE, READONLY
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+_MainAppStart	PROC
+				EXPORT	_MainAppStart
+				
+				LDR		R1, [R0]
+				MOV		SP, R1
+				LDR		R0, [R0, #4]
+				BX		R0
+
+                ENDP
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ; Reset Handler
 
@@ -159,16 +177,7 @@ Reset_Handler   PROC
                 BX      R0
                 ENDP
 
-;_MainAppStart	PROC
-;				EXPORT	_MainAppStart
-;				
-;				LDR		R1, [R0]
-;				MOV		SP, R1
-;				LDR		R0, [R0, #4]
-;				BX		R0
-;
-;                ENDP
-
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 NMI_Handler			PROC	;2
 					LDR		R0,[SP,#0x18]	; R0 = return Address

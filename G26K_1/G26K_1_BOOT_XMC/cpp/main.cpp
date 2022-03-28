@@ -10,6 +10,7 @@
 #include "crc16.h"
 #include "emac.h"
 #include "tftp.h"
+#include "SEGGER_RTT.h"
 
 #pragma diag_suppress 546,550,177
 
@@ -576,6 +577,8 @@ static bool HandShake()
 
 	tm.Reset();
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "Start Ethernet handshake ...\n");
+
 	while (!tm.Check(200) && !c)
 	{
 		HW::WDT->Update();
@@ -626,6 +629,8 @@ static bool HandShake()
 		{
 			runEmac = c = true;
 			timeOut.Reset();
+
+			SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_GREEN "Emac connected - %u ms\n", GetMilliseconds());
 		};
 	};
 
@@ -859,6 +864,8 @@ static void WDT_Init()
 		#endif
 
 	#endif
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "WDT init ... OK\n");
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -868,6 +875,12 @@ extern "C" void _MainAppStart(u32 adr);
 int main()
 {
 	//__breakpoint(0);
+
+	SEGGER_RTT_Init();
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_CLEAR);
+
+	SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Bootloader Start ... %u ms\n", GetMilliseconds());
 
 	ResetPHY();
 
@@ -924,6 +937,8 @@ int main()
 	HW::Peripheral_Disable(PID_USIC1);
 
 	HW::WDT_Disable();
+
+	SEGGER_RTT_printf(0, RTT_CTRL_TEXT_BRIGHT_GREEN "Main App Start ... %u ms\n", GetMilliseconds());
 
 	_MainAppStart(FLASH_START);
 

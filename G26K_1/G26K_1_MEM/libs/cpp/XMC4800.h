@@ -17,10 +17,31 @@
 
 #include "cm4.h"
 
-#define MCK_MHz 300
-#define MCK (MCK_MHz*1000000)
+#define CPUCLK_MHz 200
 
-#define NS2CLK(x) (((x)*MCK_MHz+500)/1000)
+#if (CPUCLK_MHz > 100)
+#define SYSCLK_MHz		((CPUCLK_MHz+1)/2)
+#define __SYSCLK_DIV	1
+#define __EBU_DIV		((CPUCLK_MHz/100)-1)
+#else
+#define SYSCLK_MHz		CPUCLK_MHz
+#define __SYSCLK_DIV	0
+#define __EBU_DIV		0
+#endif
+
+#define EBUCLK_MHz (CPUCLK_MHz/(__EBU_DIV+1))
+
+#define CPUCLK (CPUCLK_MHz*1000000)
+#define SYSCLK (SYSCLK_MHz*1000000)
+#define EBUCLK (EBUCLK_MHz*1000000)
+
+#define NS2CCLK(x)		(((x)*CPUCLK_MHz+500)/1000)
+#define NS2SCLK(x)		(((x)*SYSCLK_MHz+500)/1000)
+#define NS2EBUCLK(x)	(((x)*EBUCLK_MHz+500)/1000)
+
+#define __PBCLKCR   (__SYSCLK_DIV)
+#define __CCUCLKCR  (__SYSCLK_DIV)
+#define __EBUCLKCR  (__EBU_DIV)
 
 
 #ifndef WIN32

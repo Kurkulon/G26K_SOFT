@@ -22,6 +22,7 @@ DWORD txThreadCount = 0;
 #include "xtrap.h"
 #include "list.h"
 #include "hardware.h"
+#include "SEGGER_RTT.h"
 
 //#pragma diag_suppress 546,550,177
 
@@ -1061,6 +1062,8 @@ bool InitEMAC()
 {
 #ifndef WIN32
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "Init EMAC ...");
+
 	using namespace HW;
 	
 	/* Initialize the GMAC ethernet controller. */
@@ -1204,6 +1207,8 @@ bool InitEMAC()
 	#endif
 
 	StartLink();
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 
 #else
 
@@ -1384,6 +1389,8 @@ static bool UpdateLink()
 			{
 				if (ResultPHY() & PHYCON1_OP_MODE_MASK /*BMSR_LINKST*/)
 				{
+					SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Link is up - ");
+
 					#ifdef CPU_SAME53	
 						HW::GMAC->NCFGR &= ~(GMAC_SPD|GMAC_FD);
 					#elif defined(CPU_XMC48)
@@ -1397,6 +1404,12 @@ static bool UpdateLink()
 						#elif defined(CPU_XMC48)
 							HW::ETH0->MAC_CONFIGURATION |= MAC_FES;
 						#endif
+						
+						SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Speed 100 Mbit ");
+					}
+					else
+					{
+						SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "Ethernet Speed 10 Mbit ");
 					};
 
 					if (ResultPHY() & 4 /*ANLPAR_DUPLEX*/)	//  Full duplex is enabled.
@@ -1406,6 +1419,12 @@ static bool UpdateLink()
 						#elif defined(CPU_XMC48)
 							HW::ETH0->MAC_CONFIGURATION |= MAC_DM;
 						#endif
+						
+						SEGGER_RTT_WriteString(0, "Full duplex mode\n");
+					}
+					else
+					{
+						SEGGER_RTT_WriteString(0, "Half duplex mode\n");
 					};
 
 					result = true;
@@ -1447,6 +1466,8 @@ static bool CheckLink() // Если нет связи, то результат false
 			if (IsReadyPHY())
 			{
 				result = ((ResultPHY() & BMSR_LINKST) != 0);
+
+				if (!result) SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Ethernet Link Down\n");
 
 				state = 0;
 			};

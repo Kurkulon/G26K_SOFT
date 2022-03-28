@@ -10,6 +10,8 @@
 #include "list.h"
 #include "PointerCRC.h"
 
+#include "SEGGER_RTT.h"
+
 #ifdef WIN32
 
 #include <conio.h>
@@ -2686,12 +2688,15 @@ static void InitMainVars()
 	mv.fireVoltage		= 500;
 	mv.motoLimCur		= 2000;
 	mv.motoMaxCur		= 3000;
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "Init Main Vars Vars ... OK\n");
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void LoadVars()
 {
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE "Load Vars ... ");
 
 	static DSCI2C dsc;
 	static DSCSPI spi;
@@ -2770,6 +2775,10 @@ static void LoadVars()
 
 		if (p.CRC.w == 0) { c2 = true; break; };
 	};
+
+	SEGGER_RTT_WriteString(0, "FRAM SPI - "); SEGGER_RTT_WriteString(0, (c1) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR"));
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE " ... FRAM I2C - "); SEGGER_RTT_WriteString(0, (c2) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR\n"));
 
 	if (c1 && c2)
 	{
@@ -2993,6 +3002,8 @@ static void Update()
 
 int main()
 {
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "main() start ...\n");
+
 //	static bool c = true;
 
 	//static byte buf[8192];

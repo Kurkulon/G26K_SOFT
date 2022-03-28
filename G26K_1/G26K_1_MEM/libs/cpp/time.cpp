@@ -1,6 +1,8 @@
 #include "time.h"
 #include "core.h"
 
+#include "SEGGER_RTT.h"
+
 #ifdef WIN32
 
 #include <windows.h>
@@ -205,13 +207,15 @@ static void InitTimer()
 	timeBDC.year = 2000;
 	timeBDC.time = 0;
 
-	CM4::SysTick->LOAD = (MCK+freq/2)/freq;
+	CM4::SysTick->LOAD = (CPUCLK+freq/2)/freq;
 	VectorTableInt[15] = Timer_Handler;
 	CM4::SysTick->VAL = 0;
 	CM4::SysTick->CTRL = 7;
 	__enable_irq();
 
 #endif
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "System Timer Init ... \n");
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -257,6 +261,8 @@ void RTT_Init()
 		slice->TCSET = 1;
 
 	#endif
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "RTT Init ... \n");
 
 #else
 

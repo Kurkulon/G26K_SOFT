@@ -164,6 +164,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\SEGGER_RTT.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\SEGGER_RTT_printf.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\time.cpp"
 				>
 			</File>
@@ -203,6 +211,14 @@
 			</File>
 			<File
 				RelativePath=".\cpp\same53.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\SEGGER_RTT.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\SEGGER_RTT_Conf.h"
 				>
 			</File>
 			<File

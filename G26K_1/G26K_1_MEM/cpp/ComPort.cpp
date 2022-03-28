@@ -270,7 +270,7 @@ word ComPort::BoudToPresc(dword speed)
 
 	#elif defined(CPU_XMC48)
 
-		presc = ((MCK + speed/2) / speed + 8) / 16;
+		presc = ((SYSCLK + speed/2) / speed + 8) / 16;
 
 		if (presc > 1024) presc = 1024;
 

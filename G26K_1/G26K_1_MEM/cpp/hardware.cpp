@@ -6,6 +6,8 @@
 
 #include "hardware.h"
 
+#include "SEGGER_RTT.h"
+
 #ifdef WIN32
 
 #include <windows.h>
@@ -387,8 +389,8 @@ static void I2C_Init();
 	#define ManCCU_PID				PID_CCU41
 	#define ManTmr					HW::CCU41_CC41
 	#define ManRT_PSC				3
-	#define MT(v)					((u16)((MCK_MHz*(v)+(1<<ManRT_PSC)/2)/(1<<ManRT_PSC)))
-	#define BAUD2CLK(x)				((u32)((MCK/8.0)/x+0.5))
+	#define MT(v)					((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)/(1<<ManRT_PSC)))
+	#define BAUD2CLK(x)				((u32)((SYSCLK/8.0)/x+0.5))
 
 	#define MANT_IRQ				CCU41_0_IRQn
 	#define MANR_IRQ				CCU41_2_IRQn
@@ -415,7 +417,7 @@ static void I2C_Init();
 	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
 	#define ManT_PSC				3					// 0.04us
-	#define US2MT(v)				((u16)((MCK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
+	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
 	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
 	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
 	#define ManT1_PSL				(0) 
@@ -500,7 +502,7 @@ static void I2C_Init();
 	#define SyncRot_PSC				8					//1.28us
 	#define SyncRot_DIV				(1<<SyncRot_PSC)	
 
-	#define US2SRT(v)				(((MCK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
+	#define US2SRT(v)				(((SYSCLK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
 
 	#define PIN_SHAFT				6
 	#define SHAFT					(1<<PIN_SHAFT)
@@ -547,7 +549,7 @@ static void I2C_Init();
 
 	#define CHIPID_LOC ((uint8_t *)0x20000000UL)
 
-	#define PMU_FLASH_WS          (NS2CLK(30))	//(0x3U)
+	#define PMU_FLASH_WS          (NS2CCLK(30))	//(0x3U)
 
 	#define OSCHP_FREQUENCY			(25000000U)
 	#define FOSCREF					(2500000U)
@@ -606,9 +608,9 @@ static void I2C_Init();
 	/* PLL settings, fPLL = 288MHz */
 	#if PLL_CLOCK_SRC == PLL_CLOCK_SRC_EXT_XTAL
 
-		#define PLL_K2DIV	((VCO_NOM/MCK)-1)
+		#define PLL_K2DIV	((VCO_NOM/CPUCLK)-1)
 		#define PLL_PDIV	(((OSCHP_FREQUENCY-VCO_IN_MAX)*2/VCO_IN_MAX+1)/2)
-		#define PLL_NDIV	((MCK*(PLL_K2DIV+1)*2/(OSCHP_FREQUENCY/(PLL_PDIV+1))+1)/2-1) // (7U) 
+		#define PLL_NDIV	((CPUCLK*(PLL_K2DIV+1)*2/(OSCHP_FREQUENCY/(PLL_PDIV+1))+1)/2-1) // (7U) 
 
 		#define VCO ((OSCHP_FREQUENCY / (PLL_PDIV + 1UL)) * (PLL_NDIV + 1UL))
 
@@ -657,10 +659,10 @@ static void I2C_Init();
 	#define __CLKSET    (0x00000000UL)
 	#define __SYSCLKCR  (0x00010000UL)
 	#define __CPUCLKCR  (0x00000000UL)
-	#define __PBCLKCR   (0x00000000UL)
-	#define __CCUCLKCR  (0x00000000UL)
+//	#define __PBCLKCR   (0x00000000UL)
+//	#define __CCUCLKCR  (0x00000000UL)
 	#define __WDTCLKCR  (0x00000000UL)
-	#define __EBUCLKCR  (0x00000003UL)
+//	#define __EBUCLKCR  (0x00000003UL)
 	#define __USBCLKCR  (0x00010005UL)
 	#define __ECATCLKCR (0x00000001UL)
 
@@ -737,7 +739,7 @@ static void I2C_Init();
 
 	#define I2C__PCR (STIM)
 
-	#define I2C__FDR ((1024 - (((MCK + 400000/2) / 400000 + 8) / 16)) | DM(1))
+	#define I2C__FDR ((1024 - (((SYSCLK + 400000/2) / 400000 + 8) / 16)) | DM(1))
 
 	#define I2C__TCSR (TDEN(1)|TDSSM(1))
 
@@ -787,9 +789,9 @@ static void I2C_Init();
 
 	#define SPI__BAUD (4000000)
 
-	#define SPI__FDR ((1024 - ((MCK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
+	#define SPI__FDR ((1024 - ((SYSCLK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
 
-	#define SPI__BAUD2FDR(v) ((1024 - ((MCK + (v)/2) / (v) + 1) / 2) | DM(1))
+	#define SPI__BAUD2FDR(v) ((1024 - ((SYSCLK + (v)/2) / (v) + 1) / 2) | DM(1))
 
 	#define SPI__TCSR (TDEN(1)|HPCMD(0))
 
@@ -830,6 +832,10 @@ extern "C" void SystemInit()
 	//u32 i;
 	using namespace CM4;
 	using namespace HW;
+
+	SEGGER_RTT_Init();
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "SystemInit ... ");
 
 //	__breakpoint(0);
 
@@ -934,15 +940,15 @@ extern "C" void SystemInit()
 		SCU_PLL->PLLCON0 &= ~SCU_PLL_PLLCON0_VCOBYP_Msk;	while ((SCU_PLL->PLLSTAT & SCU_PLL_PLLSTAT_VCOBYST_Msk) != 0U);
 
 		/* Before scaling to final frequency we need to setup the clock dividers */
-		SCU_CLK->SYSCLKCR = __SYSCLKCR;
-		SCU_CLK->PBCLKCR = __PBCLKCR;
-		SCU_CLK->CPUCLKCR = __CPUCLKCR;
-		SCU_CLK->CCUCLKCR = __CCUCLKCR;
-		SCU_CLK->WDTCLKCR = __WDTCLKCR;
-		SCU_CLK->EBUCLKCR = __EBUCLKCR;
-		SCU_CLK->USBCLKCR = __USBCLKCR;
-		SCU_CLK->ECATCLKCR = __ECATCLKCR;
-		SCU_CLK->EXTCLKCR = __EXTCLKCR;
+		SCU_CLK->SYSCLKCR	= __SYSCLKCR;
+		SCU_CLK->PBCLKCR	= __PBCLKCR;
+		SCU_CLK->CPUCLKCR 	= __CPUCLKCR;
+		SCU_CLK->CCUCLKCR 	= __CCUCLKCR;
+		SCU_CLK->WDTCLKCR 	= __WDTCLKCR;
+		SCU_CLK->EBUCLKCR 	= __EBUCLKCR;
+		SCU_CLK->USBCLKCR 	= __USBCLKCR;
+		SCU_CLK->ECATCLKCR	= __ECATCLKCR;
+		SCU_CLK->EXTCLKCR	= __EXTCLKCR;
 
 		/* PLL frequency stepping...*/
 		/* Reset OSCDISCDIS */
@@ -1149,6 +1155,7 @@ extern "C" void SystemInit()
   /* Enable unaligned memory access - SCB_CCR.UNALIGN_TRP = 0 */
 	CM4::SCB->CCR &= ~(SCB_CCR_UNALIGN_TRP_Msk);
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n");
 }
 
 #endif
@@ -1293,6 +1300,8 @@ static byte clog2(u32 v) {byte r = 0; while (v>>=1) {r++;}; return r;}
 static u32 chipSelect[NAND_MAX_CHIP] = { FCS0, FCS1, FCS2, FCS3, FCS4, FCS5, FCS6, FCS7 };
 
 #define maskChipSelect (FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7)
+
+static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10", "DD11", "DD12", "DD13", "DD14" };
 
 #endif
 
@@ -2173,6 +2182,8 @@ DWORD WINAPI NAND_ReadThread(LPVOID lpParam)
 
 static void NAND_Init()
 {
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "NAND Flash Init ... \n");
+
 #ifndef WIN32
 
 	using namespace HW;
@@ -2235,7 +2246,7 @@ static void NAND_Init()
 
 #elif defined(CPU_XMC48)
 
-	HW::EBU_Enable(0);
+	HW::EBU_Enable(__EBU_DIV);
 
 	HW::Peripheral_Enable(PID_DMA0);
 
@@ -2248,12 +2259,12 @@ static void NAND_Init()
 	EBU->ADDRSEL0 = EBU_REGENAB/*|EBU_ALTENAB*/;
 
 	EBU->BUSRCON0 = EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
-	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(NS2CLK(60))|EBU_DATAC(0)|EBU_RDRECOVC(NS2CLK(0))|EBU_RDDTACS(0);
+	EBU->BUSRAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITRDC(NS2EBUCLK(60))|EBU_DATAC(0)|EBU_RDRECOVC(NS2EBUCLK(0))|EBU_RDDTACS(0);
 
 	EBU->BUSWCON0 = EBU_LOCKCS|EBU_AGEN(4)|EBU_WAIT(0)|EBU_PORTW(1);
 
 //				 = |			|				 |		tWP		 |			   |			   |				;
-	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(NS2CLK(45))|EBU_DATAC(0)|EBU_WRRECOVC(NS2CLK(0))|EBU_WRDTACS(0);
+	EBU->BUSWAP0 = EBU_ADDRC(0)|EBU_CMDDELAY(0)|EBU_WAITWRC(NS2EBUCLK(45))|EBU_DATAC(0)|EBU_WRRECOVC(NS2EBUCLK(0))|EBU_WRDTACS(0);
 
 #endif
 
@@ -2268,6 +2279,8 @@ static void NAND_Init()
 
 	for(byte chip = 0; chip < NAND_MAX_CHIP; chip ++)
 	{
+		SEGGER_RTT_printf(0, RTT_CTRL_TEXT_WHITE "Chip %u - %s ... ", chip, chipRefDes[chip]);
+
 		NAND_Chip_Select(chip);
 		ResetNand();
 
@@ -2293,14 +2306,25 @@ static void NAND_Init()
 
 		NAND_Read_ID(&id);
 
+		u32 chipSize = 0;
+
 		if((id.maker == 0xEC) && (id.device == 0xD3))
 		{
+			byte col_bits = id.pageSize + 10;
+			byte page_off = col_bits;
+			byte chip_off = id.blockSize + 16;
+			byte page_bits = chip_off - page_off;
+			byte block_bits = (id.planeSize + 23 + id.planeNumber) - chip_off;
+
+			chipSize = 1UL << (col_bits + page_bits + block_bits - 20);
+
 			if (nandSize.ch == 0)
 			{
-				FLADR::PAGE_OFF			= FLADR::COL_BITS = id.pageSize + 10;
-				FLADR::CHIP_OFF			= id.blockSize + 16;
-				FLADR::PAGE_BITS		= FLADR::CHIP_OFF - FLADR::PAGE_OFF;
-				FLADR::BLOCK_BITS		= (id.planeSize + 23 + id.planeNumber) - FLADR::CHIP_OFF;
+				FLADR::COL_BITS 	= col_bits;
+				FLADR::PAGE_OFF		= page_off;		
+				FLADR::CHIP_OFF		= chip_off;
+				FLADR::PAGE_BITS	= page_bits;
+				FLADR::BLOCK_BITS	= block_bits;
 
 				nandSize.ch = 1ULL << (FLADR::COL_BITS+FLADR::PAGE_BITS+FLADR::BLOCK_BITS);
 			};
@@ -2310,6 +2334,8 @@ static void NAND_Init()
 			if (bitMask == 0) { nandSize.mask |= (1 << chip); };
 
 			nandSize.integrityCRC[chip] = 0;
+
+			SEGGER_RTT_printf(0, "Samsung - %u MB - ", chipSize);
 		}
 		else if((id.maker == 0x2C) && (id.device == 0x68))
 		{
@@ -2329,12 +2355,21 @@ static void NAND_Init()
 
 			if (np.integrityCRC == crc/* || np.integrityCRC == 0xA61F*/)
 			{
+				byte col_bits = clog2(np.numberDataBytesPerPage);
+				byte page_off = col_bits;
+				byte page_bits = clog2(np.numberPagesPerBlock);
+				byte chip_off = page_off + page_bits;
+				byte block_bits = clog2(np.numberBlocksPerLUN * np.numberLUNsPerChip);
+
+				chipSize = 1UL << (col_bits + page_bits + block_bits - 20);
+
 				if (nandSize.mask == 0)
 				{
-					FLADR::PAGE_OFF			= FLADR::COL_BITS = clog2(np.numberDataBytesPerPage);
-					FLADR::PAGE_BITS		= clog2(np.numberPagesPerBlock);
-					FLADR::CHIP_OFF			= FLADR::PAGE_OFF + FLADR::PAGE_BITS;
-					FLADR::BLOCK_BITS		= clog2(np.numberBlocksPerLUN * np.numberLUNsPerChip);
+					FLADR::COL_BITS 	= col_bits;
+					FLADR::PAGE_OFF		= page_off;		
+					FLADR::CHIP_OFF		= chip_off;
+					FLADR::PAGE_BITS	= page_bits;
+					FLADR::BLOCK_BITS	= block_bits;
 
 					nandSize.ch = 1ULL << (FLADR::COL_BITS+FLADR::PAGE_BITS+FLADR::BLOCK_BITS);
 				};
@@ -2342,8 +2377,12 @@ static void NAND_Init()
 				nandSize.fl += nandSize.ch;
 				
 				if (bitMask == 0) { nandSize.mask |= (1 << chip); };
+
+				SEGGER_RTT_printf(0, "%u MB - ", chipSize);
 			};
 		};
+		
+		SEGGER_RTT_WriteString(0, (nandSize.mask & (1 << chip)) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "!!! ERROR !!!\n"));
 	};
 
 	if (nandSize.ch != 0)
@@ -3542,8 +3581,9 @@ bool SendManData2(MTB* mtb)
 
 static void InitManTransmit2()
 {
-
 	using namespace HW;
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE "Manchester transmit2 Init ... ");
 
 	VectorTableExt[MANT_CCU8_IRQ] = ManTrmIRQ2;
 	CM4::NVIC->CLR_PR(MANT_CCU8_IRQ);
@@ -3597,6 +3637,8 @@ static void InitManTransmit2()
 	//ManT1->SWR = ~0;
 	//ManT_CCU8->GIDLC = ManT_CCU8_GIDLC;
 	//ManT->INTE = CC8_PME;
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 #endif
@@ -3797,6 +3839,8 @@ static void InitManRecieve()
 {
 	using namespace HW;
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "Manchester Reciever Init ... ");
+
 	VectorTableExt[MANR_IRQ] = ManRcvIRQ2;
 	CM4::NVIC->CLR_PR(MANR_IRQ);
 	CM4::NVIC->SET_ER(MANR_IRQ);	
@@ -3911,6 +3955,7 @@ static void InitManRecieve()
 
 #endif
 
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 #endif
@@ -4446,6 +4491,8 @@ static void I2C_Init()
 
 	using namespace HW;
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "I2C Init ... ");
+
 	#ifdef CPU_SAME53	
 
 		HW::GCLK->PCHCTRL[GCLK_SERCOM3_CORE]	= GCLK_GEN(GEN_25M)|GCLK_CHEN;	// 25 MHz
@@ -4514,6 +4561,8 @@ static void I2C_Init()
 		CM4::NVIC->SET_ER(I2C_IRQ);
 
 	#endif
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 
 #else
 
@@ -4633,18 +4682,31 @@ static void InitClock()
 	dsc.wdata2 = 0;
 	dsc.wlen2 = 0;
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Sync with DS3232 ... ");
+
 	I2C_AddRequest(&dsc);
 
 	while (!dsc.ready) { I2C_Update(); };
 
-	t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
-	t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);
-	t.hour	= (buf[2]&0xF) + ((buf[2]>>4)*10);
-	t.day	= (buf[4]&0xF) + ((buf[4]>>4)*10);
-	t.mon	= (buf[5]&0xF) + ((buf[5]>>4)*10);
-	t.year	= (buf[6]&0xF) + ((buf[6]>>4)*10) + 2000;
+	if (dsc.ready && dsc.ack)
+	{
+		t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
+		t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);
+		t.hour	= (buf[2]&0xF) + ((buf[2]>>4)*10);
+		t.day	= (buf[4]&0xF) + ((buf[4]>>4)*10);
+		t.mon	= (buf[5]&0xF) + ((buf[5]>>4)*10);
+		t.year	= (buf[6]&0xF) + ((buf[6]>>4)*10) + 2000;
 
-	SetTime(t);
+		SetTime(t);
+
+		SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n");
+	}
+	else
+	{
+		SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_RED "!!! ERROR !!!\n");
+	};
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE "Clock Init ... ");
 
 	VectorTableExt[CLOCK_IRQ] = Clock_IRQ;
 	CM4::NVIC->CLR_PR(CLOCK_IRQ);
@@ -4656,6 +4718,8 @@ static void InitClock()
 
 	HW::RTC->MSKSR = RTC_MSKSR_MPSE_Msk;
 	HW::SCU_GCU->SRMSK = SCU_INTERRUPT_SRMSK_PI_Msk;
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 #endif
@@ -4761,6 +4825,8 @@ bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 
 static void Init_CRC_CCITT_DMA()
 {
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Init_CRC_CCITT_DMA ... ");
+
 	HW::Peripheral_Enable(PID_FCE);
 
 	HW::FCE->CLC = 0;
@@ -4772,6 +4838,8 @@ static void Init_CRC_CCITT_DMA()
 	CRC_DMACH->DAR = (u32)&CRC_FCE->IR;
 	CRC_DMACH->CFGL = 0;
 	CRC_DMACH->CFGH = PROTCTL(1);
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -4915,6 +4983,8 @@ static void Init_CRC_CCITT_DMA()
 
 static void WDT_Init()
 {
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "WDT Init ... ");
+
 	#ifdef CPU_SAME53	
 
 		//HW::MCLK->APBAMASK |= APBA_WDT;
@@ -4948,6 +5018,8 @@ static void WDT_Init()
 		#endif
 
 	#endif
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 
@@ -5062,6 +5134,8 @@ static void Init_Sync_Rot()
 {
 	using namespace HW;
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "Init_Sync_Rot ... ");
+
 #ifdef CPU_SAME53	
 
 
@@ -5136,6 +5210,8 @@ static void Init_Sync_Rot()
 	SyncRotCCU->GCSS = Sync_GCSS|Rot_GCSS;  
 
 #endif
+
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -5215,6 +5291,8 @@ static void InitShaft()
 {
 	using namespace HW;
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "Init Shaft ... ");
+
 	VectorTableExt[IRQ_SHAFT] = ShaftIRQ;
 	CM4::NVIC->CLR_PR(IRQ_SHAFT);
 	CM4::NVIC->SET_ER(IRQ_SHAFT);	
@@ -5251,6 +5329,7 @@ static void InitShaft()
 
 #endif
 
+	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
 #endif
@@ -5938,6 +6017,8 @@ static void SPI_Init()
 
 	using namespace HW;
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "SPI Init ... ");
+
 	#ifdef CPU_SAME53	
 
 		HW::GCLK->PCHCTRL[GCLK_SERCOM0_CORE] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;	// 25 MHz
@@ -6035,6 +6116,9 @@ static void SPI_Init()
 	//	SPI->CCR = SPI__CCR;
 
 	#endif
+
+	SEGGER_RTT_WriteString(0, "OK\n");
+
 #else
 
 	HANDLE h;
@@ -6488,6 +6572,8 @@ int Printf(u32 xx, u32 yy, byte c, const char *format, ... )
 
 void InitHardware()
 {
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Hardware Init ... \n");
+
 #ifdef CPU_SAME53	
 	
 	using namespace HW;

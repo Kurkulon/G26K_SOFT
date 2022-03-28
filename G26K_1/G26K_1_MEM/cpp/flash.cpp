@@ -13,6 +13,7 @@
 //#include "twi.h"
 #include "PointerCRC.h"
 #include "xtrap.h"
+#include "SEGGER_RTT.h"
 
 
 #pragma diag_suppress 550,177
@@ -3012,7 +3013,7 @@ byte FLASH_Status()
 
 static void LoadVars()
 {
-//	twi.Init(1);
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "Flash Load Vars ... ");
 
 	PointerCRC p(buf);
 
@@ -3077,6 +3078,10 @@ static void LoadVars()
 
 	fram_SPI_flashVarsOk = c1;
 	fram_I2C_flashVarsOk = c2;
+
+	SEGGER_RTT_WriteString(0, "FRAM SPI - "); SEGGER_RTT_WriteString(0, (c1) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR"));
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE " ... FRAM I2C - "); SEGGER_RTT_WriteString(0, (c2) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR\n"));
 
 	if (c1 && c2)
 	{
@@ -3338,7 +3343,7 @@ static void SaveVars()
 
 static void LoadSessions()
 {
-	//PointerCRC p(buf);
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Flash Load Sessions ... ");
 
 	static DSCI2C dsc;
 	static DSCSPI spi, spi2;
@@ -3493,6 +3498,10 @@ static void LoadSessions()
 			};
 		};
 	};
+
+	SEGGER_RTT_WriteString(0, "FRAM SPI - "); SEGGER_RTT_WriteString(0, (fram_SPI_loadSessionsOk) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR"));
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE " ... FRAM I2C - "); SEGGER_RTT_WriteString(0, (fram_I2C_loadSessionsOk) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "ERROR\n"));
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

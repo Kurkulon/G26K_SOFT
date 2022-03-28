@@ -429,7 +429,7 @@
 
 	#define CHIPID_LOC ((uint8_t *)0x20000000UL)
 
-	#define PMU_FLASH_WS          (NS2CLK(30))	//(0x3U)
+	#define PMU_FLASH_WS          (NS2CCLK(30))	//(0x3U)
 
 	#define OSCHP_FREQUENCY			(25000000U)
 	#define FOSCREF					(2500000U)
@@ -488,9 +488,9 @@
 	/* PLL settings, fPLL = 288MHz */
 	#if PLL_CLOCK_SRC == PLL_CLOCK_SRC_EXT_XTAL
 
-		#define PLL_K2DIV	((VCO_NOM/MCK)-1)
+		#define PLL_K2DIV	((VCO_NOM/CPUCLK)-1)
 		#define PLL_PDIV	(((OSCHP_FREQUENCY-VCO_IN_MAX)*2/VCO_IN_MAX+1)/2)
-		#define PLL_NDIV	((MCK*(PLL_K2DIV+1)*2/(OSCHP_FREQUENCY/(PLL_PDIV+1))+1)/2-1) // (7U) 
+		#define PLL_NDIV	((CPUCLK*(PLL_K2DIV+1)*2/(OSCHP_FREQUENCY/(PLL_PDIV+1))+1)/2-1) // (7U) 
 
 		#define VCO ((OSCHP_FREQUENCY / (PLL_PDIV + 1UL)) * (PLL_NDIV + 1UL))
 
@@ -539,10 +539,10 @@
 	#define __CLKSET    (0x00000000UL)
 	#define __SYSCLKCR  (0x00010000UL)
 	#define __CPUCLKCR  (0x00000000UL)
-	#define __PBCLKCR   (0x00000000UL)
-	#define __CCUCLKCR  (0x00000000UL)
+//	#define __PBCLKCR   (0x00000000UL)
+//	#define __CCUCLKCR  (0x00000000UL)
 	#define __WDTCLKCR  (0x00000000UL)
-	#define __EBUCLKCR  (0x00000003UL)
+//	#define __EBUCLKCR  (0x00000003UL)
 	#define __USBCLKCR  (0x00010005UL)
 	#define __ECATCLKCR (0x00000001UL)
 

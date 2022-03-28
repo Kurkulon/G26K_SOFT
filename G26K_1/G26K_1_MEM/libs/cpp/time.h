@@ -127,8 +127,8 @@ struct RTM
 
 #elif defined(CPU_XMC48)	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define US2RT(x) (((x)*MCK_MHz+1024)/2048)
-#define MS2RT(x) (((x)*MCK_MHz*1000+1024)/2048)
+#define US2RT(x) (((x)*SYSCLK_MHz+1024)/2048)
+#define MS2RT(x) (((x)*SYSCLK_MHz*1000+1024)/2048)
 
 inline u16 GetRTT() { return HW::CCU43_CC43->TIMER; }
 
