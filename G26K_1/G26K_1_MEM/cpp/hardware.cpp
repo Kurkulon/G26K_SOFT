@@ -2339,6 +2339,8 @@ static void NAND_Init()
 		}
 		else if((id.maker == 0x2C) && (id.device == 0x68))
 		{
+			SEGGER_RTT_WriteString(0, "Micron - ");
+
 			NAND_Set_Features(1, 5, 0, 0, 0);
 			
 			ResetNand();
@@ -2352,6 +2354,8 @@ static void NAND_Init()
 			u16 crc = GetCRC16_8005_refl(&np, sizeof(np)-2, 0x4F4E);
 
 			nandSize.integrityCRC[chip] = crc;
+
+			SEGGER_RTT_printf(0, "CRC:%04X - ", crc);
 
 			if (np.integrityCRC == crc/* || np.integrityCRC == 0xA61F*/)
 			{
