@@ -67,6 +67,51 @@ static u16 flashCRC = 0;
 static u32 flashLen = 0;
 static u16 lastErasedBlock = ~0;
 
+//const i16 sin_Table[40] = {	0,		3196,	6270,	9102,	11585,	13623,	15137,	16069,
+//							16384,	16069,	15137,	13623,	11585,	9102,	6270,	3196,
+//							0,		-3196,	-6270,	-9102,	-11585,	-13623,	-15137,	-16069,
+//							-16384,	-16069,	-15137,	-13623,	-11585,	-9102,	-6270,	-3196,
+//							0,		3196,	6270,	9102,	11585,	13623,	15137,	16069 };
+
+const i16 sin_Table[10] = {	0,	11585,	16384,	11585,	0,	-11585,	-16384,	-11585,	0,	11585 };
+
+//const i16 sin_Table[10] = {	16384,	16384,	16384,	16384,	-16384,	-16384,	-16384,	-16384,	16384,	16384 };
+
+//const i16 wavelet_Table[8] = { 328, 4922, 12442, 9053, -2522, -4922, -1616, -153 };
+//const i16 wavelet_Table[8] = { 0, 4176, 12695, 11585, 0, -4176, -1649, -196};
+//const i16 wavelet_Table[16] = { 0,509,1649,2352,0,-6526,-12695,-10869,0,10869,12695,6526,0,-2352,-1649,-509 };
+//const i16 wavelet_Table[32] = {-1683,-3326,-3184,0,5304,9229,7777,0,-10037,-15372,-11402,0,11402,15372,10037,0,-7777,-9229,-5304,0,3184,3326,1683,0,-783,-720,-321,0,116,94,37,0};
+//const i16 wavelet_Table[32] = {0,385,1090,1156,0,-1927,-3270,-2698,0,3468,5450,4239,0,-5010,-7630,-5781,0,6551,9810,7322,0,-8093,-11990,-8864,0,9634,14170,10405,0,-11176,-16350,-11947};
+const i16 wavelet_Table[32] = {0,-498,-1182,-1320,0,2826,5464,5065,0,-7725,-12741,-10126,0,11476,16381,11290,0,-9669,-12020,-7223,0,4713,5120,2690,0,-1344,-1279,-588,0,226,188,76};
+//const i16 wavelet_Table[32] = {-498,-1182,-1320,0,2826,5464,5065,0,-7725,-12741,-10126,0,11476,16381,11290,0,-9669,-12020,-7223,0,4713,5120,2690,0,-1344,-1279,-588,0,226,188,76,0};
+
+#define K_DEC (1<<2)
+#define K_DEC_MASK (K_DEC-1)
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void PreProcessDspVars(ReqDsp01 *v)
+{
+	static u16 freq = 0;
+	static u16 st = 0;
+
+	if (v->mode == 1)
+	{
+		if (freq != v->mainSens.freq)
+		{
+			freq = v->mainSens.freq;
+
+			u16 f = (freq > 400) ? 400 : freq;
+
+			st = (20000/8 + f/2) / f;
+		};
+
+		v->mainSens.st = st;
+	};
+
+	SetDspVars(v);
+}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -79,9 +124,10 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	if (req->vavesPerRoundCM > 72) { req->vavesPerRoundCM = 72; }
 	if (req->vavesPerRoundIM > 500) { req->vavesPerRoundIM = 500; }
 
-	SetDspVars(req);
+	PreProcessDspVars(req);
 
 	mode = req->mode;
+
 	imThr = req->mainSens.thr;
 	imDescr = req->mainSens.descr;
 	imDelay = req->mainSens.sd;
@@ -340,15 +386,15 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	}
 	else if (filtrType == 2)
 	{
-		i32 av = 0;
+		//i32 av = 0;
 
 		for (u32 i = dsc.len; i > 0; i--)
 		{
-			i16 v = d[4] - 2048;
+			i16 v = (d[4] + d[5])/2 - 2048;
 
-			av += v - av/2;
+			//av += v - av/2;
 
-			*(d++) = av / 2;
+			*(d++) = v;//av / 2;
 		};
 	}
 	else if (filtrType == 3)
@@ -358,15 +404,15 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 
 		for (u32 i = dsc.len; i > 0; i--)
 		{
-			i16 v = d[4] - 2048;
+			i16 v = (d[6] - d[4] + d[7] - d[5])/4;// - 2048;
 
-			av += v - av/2;
+//			av += v - av/2;
 
-			v = av / 2;
+//			v = av / 2;
 
-			*(d++) = v -= *ab/32;
+			*(d++) = v;// -= *ab/32;
 
-			*(ab++) += v;
+//			*(ab++) += v;
 		};
 	}
 	else
@@ -375,6 +421,128 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 		{
 			*d = d[4] - 2048; d++;
 		};
+	};
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
+static void Filtr_IM(DSCPPI &dsc, u16 imDescr, u16 imDelay)
+{
+	i16 *d = (i16*)(dsc.data + dsc.offset);
+	i16 *pd = (i16*)d;
+
+	u16 descr = (imDescr > imDelay) ? (imDescr - imDelay) : 0;
+	i32 ind = descr / dsc.sampleTime;
+
+	i32 sums = 0;
+	i32 sumc = 0;
+
+	i32 max = -32768;
+	i32 imax = -1;
+
+	for (u32 i = 0; i < dsc.len; i++)
+	{
+		i16 v = *d;// - 2048;
+
+		i32 s = (i32)(v) * sin_Table[i&7];
+		i32 c = (i32)(v) * sin_Table[2+(i&7)];
+
+		sums += s;
+		sumc += c;
+
+		//n = (n+1) & 3;
+
+		if ((i&K_DEC_MASK) == K_DEC_MASK)
+		{
+			if (sums < 0) sums = -sums;
+			if (sumc < 0) sumc = -sumc;
+
+			i32 x = (sums+sumc) / (16384*K_DEC);
+
+			*(pd++) = x; sums = 0;  sumc = 0;  
+
+			if (i >= ind && x > max) { max = x; imax = i; };
+		};
+
+		//*d = (; 
+		
+		d++;
+	};
+
+	dsc.len /= K_DEC;
+	dsc.sampleTime *= K_DEC;
+	imax /= K_DEC;
+
+	if (imax >= 0)
+	{
+		u32 t = dsc.sampleDelay + imax * dsc.sampleTime;
+		dsc.fi_time  = (t < 0xFFFF) ? t : 0xFFFF;
+		dsc.fi_amp = max;
+		dsc.maxAmp = max;
+	}
+	else
+	{
+		dsc.fi_time  = ~0;
+		dsc.fi_amp = 0;
+		dsc.maxAmp = 0;
+	};
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
+static void Filtr_Wavelet(DSCPPI &dsc, u16 imDescr, u16 imDelay)
+{
+	i16 *d = (i16*)(dsc.data + dsc.offset);
+
+	i32 max = -32768;
+	i32 imax = -1;
+
+	i16 *p = d+dsc.len;
+
+	for (i32 i = ArraySize(wavelet_Table); i > 0; i--) *(p++) = 0;
+
+	u16 descr = (imDescr > imDelay) ? (imDescr - imDelay) : 0;
+	i32 ind = (descr + dsc.sampleTime/2) / dsc.sampleTime;
+
+	ind = dsc.len - ind;
+
+	for (i32 i = dsc.len; i > 0 ; i--)
+	{
+		i32 sum = 0;
+
+		for (i32 j = 0; j < ArraySize(wavelet_Table); j += 2)
+		{
+			sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
+		};
+
+		*(d++) = sum /= 16384*4;
+
+		if (sum < 0) sum = -sum;
+
+		if (i <= ind && sum > max) { max = sum; imax = i; };
+	};
+
+	if (imax >= 0)
+	{
+		imax = dsc.len - imax;
+		u32 t = dsc.sampleDelay + imax * dsc.sampleTime;
+		dsc.fi_time  = (t < 0xFFFF) ? t : 0xFFFF;
+		dsc.fi_amp = max;
+		dsc.maxAmp = max;
+	}
+	else
+	{
+		dsc.fi_time  = ~0;
+		dsc.fi_amp = 0;
+		dsc.maxAmp = 0;
 	};
 }
 
@@ -564,6 +732,8 @@ static void GetAmpTimeIM_3(DSCPPI &dsc, u16 imDescr, u16 imDelay,  u16 imThr, u1
 
 static void ProcessDataCM(DSCPPI &dsc)
 {
+	*pPORTGIO_SET = 1<<6;
+
 	//u16 amp, time;
 
 	//GetAmpTimeIM(dsc, amp, time);
@@ -603,6 +773,8 @@ static void ProcessDataCM(DSCPPI &dsc)
 	rsp->angle = t;
 
 	processedPPI.Add(&dsc);
+
+	*pPORTGIO_CLEAR = 1<<6;
 }
 
 #pragma optimize_as_cmd_line
@@ -751,7 +923,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 	if (imdsc == 0)
 	{
-		count = 500; //vavesPerRoundIM;
+		count = vavesPerRoundIM*9/8;
 		cmCount = vavesPerRoundIM / 8;
 		i = 0;
 
@@ -843,12 +1015,23 @@ static void UpdateMode()
 		{
 			Filtr_Data(*dsc, filtrType);
 			
-			GetAmpTimeIM_3(*dsc, imDescr, imDelay, imThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
-
 			switch (mode)
 			{
-				case 0:  ProcessDataCM(*dsc); break;
-				case 1:  ProcessDataIM(*dsc); break;
+				case 0:  
+
+					GetAmpTimeIM_3(*dsc, imDescr, imDelay, imThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+
+					ProcessDataCM(*dsc); 
+
+					break;
+
+				case 1:  
+
+					Filtr_Wavelet(*dsc, imDescr, imDelay);
+					
+					ProcessDataIM(*dsc); 
+					
+					break;
 			};
 		}
 		else

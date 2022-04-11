@@ -51,7 +51,7 @@
 #define IVG_FIRE			13
 //#define IVG_GPTIMER0_FIRE	10
 
-#define PPI_BUF_NUM 6
+#define PPI_BUF_NUM 8
 
 #define PIN_SHAFT		6
 #define PIN_SYNC		4
@@ -363,7 +363,7 @@ static void ReadPPI(PPI &ppi)
 		*pTIMER1_WIDTH = curDscPPI->ppiclkdiv>>1;
 
 		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
-		*pDMA0_X_COUNT = ppi.len + 10; curDscPPI->len = ppi.len;
+		*pDMA0_X_COUNT = ppi.len + 32; curDscPPI->len = ppi.len;
 		*pDMA0_X_MODIFY = 2;
 
 		*pPPI_COUNT = 0;//*pDMA0_X_COUNT - 1;

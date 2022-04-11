@@ -1199,6 +1199,15 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 		manVec40[sensInd&1].Free();
 
+		if (!curManVec40.Valid())
+		{
+			sensInd = (sensInd + 1) & 1;
+
+			curManVec40 = manVec40[sensInd];
+
+			manVec40[sensInd&1].Free();
+		};
+
 		if (curManVec40.Valid())
 		{
 			RspDsp01 &rsp = *((RspDsp01*)(curManVec40->GetDataPtr()));
