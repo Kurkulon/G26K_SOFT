@@ -266,7 +266,7 @@ void SetDspVars(const ReqDsp01 *v)
 
 	SetPPI(refPPI, dspVars.refSens, 1);
 	
-	firesPerRound = (dspVars.mode == 0) ? dspVars.vavesPerRoundCM : dspVars.vavesPerRoundIM;
+	firesPerRound = (dspVars.mode == 0) ? dspVars.wavesPerRoundCM : dspVars.wavesPerRoundIM;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

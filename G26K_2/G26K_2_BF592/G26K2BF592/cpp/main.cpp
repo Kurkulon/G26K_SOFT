@@ -40,8 +40,8 @@ static u16 sampleTime = 8;
 static u16 sampleLen = 512;
 static u16 gain = 0;
 
-static u16 vavesPerRoundCM = 100;	
-static u16 vavesPerRoundIM = 100;
+static u16 wavesPerRoundCM = 100;	
+static u16 wavesPerRoundIM = 100;
 static u16 filtrType = 0;
 static u16 packType = 0;
 
@@ -93,21 +93,37 @@ const i16 wavelet_Table[32] = {0,-498,-1182,-1320,0,2826,5464,5065,0,-7725,-1274
 
 static void PreProcessDspVars(ReqDsp01 *v)
 {
-	static u16 freq = 0;
-	static u16 st = 0;
+	static u16 mainFreq = 0;
+	static u16 mainSt = 0;
+	static u16 refFreq = 0;
+	static u16 refSt = 0;
 
-	if (v->mode == 1)
+	if (v->mainSens.thr == 0)
 	{
-		if (freq != v->mainSens.freq)
+		if (mainFreq != v->mainSens.freq)
 		{
-			freq = v->mainSens.freq;
+			mainFreq = v->mainSens.freq;
 
-			u16 f = (freq > 400) ? 400 : freq;
+			u16 f = (mainFreq > 400) ? 400 : mainFreq;
 
-			st = (20000/8 + f/2) / f;
+			mainSt = (20000/8 + f/2) / f;
 		};
 
-		v->mainSens.st = st;
+		v->mainSens.st = mainSt;
+	};
+
+	if (v->refSens.thr == 0)
+	{
+		if (refFreq != v->refSens.freq)
+		{
+			refFreq = v->refSens.freq;
+
+			u16 f = (refFreq > 400) ? 400 : refFreq;
+
+			refSt = (20000/8 + f/2) / f;
+		};
+
+		v->refSens.st = refSt;
 	};
 
 	SetDspVars(v);
@@ -121,8 +137,8 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	ReqDsp01 *req = (ReqDsp01*)data;
 
-	if (req->vavesPerRoundCM > 72) { req->vavesPerRoundCM = 72; }
-	if (req->vavesPerRoundIM > 500) { req->vavesPerRoundIM = 500; }
+	if (req->wavesPerRoundCM > 72) { req->wavesPerRoundCM = 72; }
+	if (req->wavesPerRoundIM > 500) { req->wavesPerRoundIM = 500; }
 
 	PreProcessDspVars(req);
 
@@ -136,8 +152,8 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 	refDescr = req->refSens.descr;
 	refDelay = req->refSens.sd;
 
-	vavesPerRoundCM = req->vavesPerRoundCM;	
-	vavesPerRoundIM = req->vavesPerRoundIM;
+	wavesPerRoundCM = req->wavesPerRoundCM;	
+	wavesPerRoundIM = req->wavesPerRoundIM;
 	filtrType = req->filtrType;
 	packType = req->packType;
 
@@ -523,7 +539,9 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 imDescr, u16 imDelay)
 			sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
 		};
 
-		*(d++) = sum /= 16384*4;
+		sum /= 16384*4;
+		
+		d++;//*(d++) = sum;
 
 		if (sum < 0) sum = -sum;
 
@@ -792,7 +810,7 @@ static void ProcessDataCM(DSCPPI &dsc)
 //
 //	if (imdsc == 0)
 //	{
-//		count = vavesPerRoundIM;
+//		count = wavesPerRoundIM;
 //		cmCount = (count + 4) / 8;
 //		i = 0;
 //
@@ -869,7 +887,7 @@ static void ProcessDataCM(DSCPPI &dsc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#pragma optimize_for_speed
+//#pragma optimize_for_speed
 
 static void SendReadyDataIM(DSCPPI *dsc, u16 len)
 {
@@ -899,7 +917,7 @@ static void SendReadyDataIM(DSCPPI *dsc, u16 len)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#pragma optimize_for_speed
+//#pragma optimize_for_speed
 
 static void ProcessDataIM(DSCPPI &dsc)
 {
@@ -908,6 +926,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 	static u32 cmCount = 0;
 	static u32 i = 0;
 	static u16 prevShaftCount = 0;
+	static u16 wpr = 180;
 
 	if (dsc.shaftCount != prevShaftCount)
 	{
@@ -923,8 +942,9 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 	if (imdsc == 0)
 	{
-		count = vavesPerRoundIM*9/8;
-		cmCount = vavesPerRoundIM / 8;
+		wpr = wavesPerRoundIM;
+		count = wpr*9/8; if (count > 512) count = 512;
+		cmCount = (wpr+8) / 16;
 		i = 0;
 
 		imdsc = AllocDscPPI();
@@ -986,7 +1006,7 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 		if (cmCount == 0)
 		{
-			cmCount = vavesPerRoundIM / 8;
+			cmCount = (wpr+4) / 8;
 
 			ProcessDataCM(dsc);
 		}
@@ -1014,31 +1034,34 @@ static void UpdateMode()
 		if (dsc->sensType == 0)
 		{
 			Filtr_Data(*dsc, filtrType);
+
+			if (imThr == 0)
+			{
+				Filtr_Wavelet(*dsc, imDescr, imDelay);
+			}
+			else
+			{
+				GetAmpTimeIM_3(*dsc, imDescr, imDelay, imThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+			};
 			
 			switch (mode)
 			{
-				case 0:  
-
-					GetAmpTimeIM_3(*dsc, imDescr, imDelay, imThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
-
-					ProcessDataCM(*dsc); 
-
-					break;
-
-				case 1:  
-
-					Filtr_Wavelet(*dsc, imDescr, imDelay);
-					
-					ProcessDataIM(*dsc); 
-					
-					break;
+				case 0: ProcessDataCM(*dsc); break;
+				case 1: ProcessDataIM(*dsc); break;
 			};
 		}
 		else
 		{
 			Filtr_Data(*dsc, (filtrType == 2 || filtrType == 3) ? 2 : 0);
 			
-			GetAmpTimeIM_3(*dsc, refDescr, refDelay, refThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+			if (refThr == 0)
+			{
+				Filtr_Wavelet(*dsc, refDescr, refDelay);
+			}
+			else
+			{
+				GetAmpTimeIM_3(*dsc, refDescr, refDelay, refThr, dsc->fi_amp, dsc->fi_time, dsc->maxAmp);
+			};
 
 			refAmp	= dsc->fi_amp;
 			refTime = dsc->fi_time;

@@ -1328,11 +1328,11 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
-	//R01 *r01 = curManVec50;
-	
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
 		curManVec50 = manVec50;
+
+		manVec50.Free();
 
 		if (curManVec50.Valid())
 		{
@@ -1935,7 +1935,7 @@ static void MainMode()
 			}
 			else if (tm.Check(1001))
 			{
-				//cmdWriteStart_20 = true;
+				cmdWriteStart_20 = true;
 			};
 
 			mainModeState = 0;
