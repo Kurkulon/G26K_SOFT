@@ -14,7 +14,7 @@
 //#define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
 
 #ifndef WIN32
-#define IP_MTU				1500
+#define IP_MTU				1480
 #else
 #define IP_MTU				0x4000
 #endif
