@@ -30,52 +30,62 @@
 ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
 
-Stack_Size      EQU     0x00000200
-
-                AREA    STACK, NOINIT, READWRITE, ALIGN=3
-Stack_Mem       SPACE   Stack_Size
-__initial_sp
-
-
-; <h> Heap Configuration
-;   <o>  Heap Size (in Bytes) <0x0-0xFFFFFFFF:8>
-; </h>
-
-Heap_Size       EQU     0x00000000
-
-                AREA    HEAP, NOINIT, READWRITE, ALIGN=3, LINKORDER=STACK
-__heap_base
-Heap_Mem        SPACE   Heap_Size
-__heap_limit
-
-
+Stack_Size			EQU     0x00000800
+Heap_Size			EQU     0x00000000
 VecTableIntSize		EQU		16*4	
 VecTableExtSize		EQU		137*4	
 SCB_VTOR			EQU		0xE000ED08
 SeggerRttCB_size	EQU		0x2000
 
-				AREA	||.ARM.__AT_0x20000000||, DATA, NOINIT, ALIGN=7
-                
+ //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+               AREA    HEAP, NOINIT, READWRITE, ALIGN=3;, LINKORDER=STACK
+__heap_base
+Heap_Mem        SPACE   Heap_Size
+__heap_limit
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+                EXPORT  Stack_Mem
                 EXPORT  VectorTableInt
                 EXPORT  VectorTableExt
-                
-VectorTableInt	SPACE	VecTableIntSize				
-VectorTableExt	SPACE	VecTableExtSize		
-
                 EXPORT  SeggerRttCB
+                EXPORT  __segger_rttcb_end
+
+                IF      :DEF:CPU_XMC48	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                 
-                IF      :DEF:CPU_XMC48
+				AREA	||.ARM.__AT_0x1FFE8000||, DATA, NOINIT, ALIGN=7
+Stack_Mem       SPACE   Stack_Size
+                
+                ALIGN	128
+__initial_sp	
+
+VectorTableInt	SPACE	VecTableIntSize				
+VectorTableExt	SPACE	VecTableExtSize	
 
                 ALIGN	128
 
-SeggerRttCB		SPACE	SeggerRttCB_size - (SeggerRttCB-VectorTableInt)		
+SeggerRttCB		SPACE	SeggerRttCB_size - (SeggerRttCB-VectorTableInt)	
+__segger_rttcb_end	
+				
+				ELIF	:DEF:CPU_SAME53	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+				
+				AREA	||.ARM.__AT_0x20000000||, DATA, NOINIT, ALIGN=7
+Stack_Mem       SPACE   Stack_Size
+                
+                ALIGN	128
+__initial_sp
 
-				ELIF	:DEF:CPU_SAME53
-
+VectorTableInt	SPACE	VecTableIntSize				
+VectorTableExt	SPACE	VecTableExtSize	
+ 
 				AREA	||.ARM.__AT_0x47000000||, DATA, NOINIT, ALIGN=7
 SeggerRttCB		SPACE	SeggerRttCB_size		
-
+__segger_rttcb_end	
+ 
                 ENDIF
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
                 PRESERVE8
                 THUMB
@@ -163,6 +173,14 @@ Reset_Handler   PROC
                 ADDS	R0, #4
                 LDR		R2, =SysTick_Handler
                 STR		R2, [R1,R0]
+
+                LDR		R0, =Stack_Size
+                LDR		R1, =Stack_Mem
+                MOVS	R2, #(0xAAAAAAAA)
+|L1.17|
+                SUBS	R0, #4
+				STR		R2, [R1,R0]
+                BNE		|L1.17|
                 
                 LDR     R0, =SystemInit
                 BLX     R0

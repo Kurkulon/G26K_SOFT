@@ -64,14 +64,15 @@
 	#define GEN_1M		3
 	//#define GEN_500K	4
 
-	#define	NAND_DMACH		0
-	#define	COM1_DMACH		1
-	#define	COM2_DMACH		2
-	#define	COM3_DMACH		3
-	#define	SPI_DMACH_TX	4
-	#define	SPI_DMACH_RX	5
-	#define	DSP_DMACH		30
-	#define	CRC_DMACH		31
+	#define	NAND_DMACH			0
+	#define	COM1_DMACH			1
+	#define	COM2_DMACH			2
+	#define	COM3_DMACH			3
+	#define	SPI_DMACH_TX		4
+	#define	SPI_DMACH_RX		5
+	#define	NAND_MEMCOPY_DMACH	6
+	#define	DSP_DMACH			30
+	#define	CRC_DMACH			31
 
 	#define I2C			HW::I2C3
 	#define PIO_I2C		HW::PIOA 
@@ -137,6 +138,9 @@
 	#define MANR_IRQ		TCC2_1_IRQ
 	//#define MANR_EXTINT		11
 	#define MANR_EXTINT		7
+	#define ManT_SET_PR(v)				{ ManRT->PERBUF = (v); }
+	#define ManT_SET_CR(v)				{ ManRT->CCBUF[0] = (v); ManRT->CCBUF[1] = (v); }
+	#define ManT_SHADOW_SYNC()			
 
 	
 	#define PIO_MANCH		HW::PIOC
@@ -374,6 +378,7 @@
 	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
 	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
 	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
+	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
 	#define ManT1_PSL				(0) 
 	#define ManT1_CHC				(CC8_OCS2 | CC8_OCS3)			
 	#define ManT2_CHC				(CC8_OCS2 | CC8_OCS3)			

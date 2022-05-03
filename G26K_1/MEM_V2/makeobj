@@ -151,7 +151,7 @@ win32_link_options = -NOLOGO -SUBSYSTEM:CONSOLE -DEBUG -MACHINE:X86 kernel32.lib
 ##################################################################################################
 !ifneq version Win32_Debug
 
-$(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cppdir)\G26K2LPC824.BIN.H $(cppdir)\G26K_2_BOOT_BF592.LDR.H $(cpu_obj) $(modules_obj)
+$(objdir)\$(target_name).axf : $(cppdir)\G26K1BF592.LDR.H $(cppdir)\G26K2LPC824.BIN.H $(cppdir)\G26K_2_BOOT_BF592.LDR.H $(cpu_obj) $(modules_obj) $(libname)
 	@echo Linking ...
 	@$(bindir)\armlink	$(link_options) &
 	--feedback "$^*.fed" &

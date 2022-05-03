@@ -140,6 +140,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\hw_nand.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\hw_rtm.cpp"
 				>
 			</File>
@@ -191,6 +195,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\HW_EMAC_DEF.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\hw_nand.h"
 				>
 			</File>
 			<File
