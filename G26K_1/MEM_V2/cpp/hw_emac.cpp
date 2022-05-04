@@ -5,11 +5,11 @@
 #include <conio.h>
 #include <stdio.h>
 
-static SOCKET	lstnSocket;
+//static SOCKET	lstnSocket;
 
-static HANDLE handleTxThread;
+//static HANDLE handleTxThread;
 
-DWORD txThreadCount = 0;
+//DWORD txThreadCount = 0;
 
 #else
 
@@ -95,7 +95,9 @@ void HW_EMAC_StartLink() { linkState = 0; }
 
 #else
 
-	bool CheckStatusUDP(u32 stat) { return true; }
+	//bool CheckStatusUDP(u32 stat) { return true; }
+	u16 HW_EMAC_GetUdpInPort()	{ return udpInPort;		}
+	u16 HW_EMAC_GetUdpOutPort()	{ return udpOutPort;	}
 
 #endif
 
@@ -275,6 +277,7 @@ bool HW_EMAC_UpdateLink()
 	return result;
 }
 
+#endif
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool HW_EMAC_RequestUDP(EthBuf* mb)
@@ -301,7 +304,6 @@ bool HW_EMAC_RequestUDP(EthBuf* mb)
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

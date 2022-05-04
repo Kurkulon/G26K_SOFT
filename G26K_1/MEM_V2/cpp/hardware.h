@@ -6,6 +6,7 @@
 #include "time.h"
 #include "i2c.h"
 #include "spi.h"
+#include "hw_nand.h"
 
 
 #define FRAM_SPI_MAINVARS_ADR 0
@@ -126,8 +127,8 @@ extern void UpdateDisplay();
 extern int PutString(u32 x, u32 y, byte c, const char *str);
 extern int Printf(u32 x, u32 y, byte c, const char *format, ... );
 
-extern void NAND_FlushBlockBuffers();
-extern void NAND_ReqFlushBlockBuffers();
+//extern void NAND_FlushBlockBuffers();
+//extern void NAND_ReqFlushBlockBuffers();
 
 #endif
 

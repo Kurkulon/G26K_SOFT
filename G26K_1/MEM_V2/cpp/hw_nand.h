@@ -4,7 +4,17 @@
 #include "types.h"
 //#include "core.h"
 
-extern void	NAND_Init();
+#define NAND_CHIP_BITS		3
+#define NAND_CHIP_MASK		(NAND_MAX_CHIP-1)
+
+extern void	HW_NAND_Init();
+
+#ifdef WIN32
+
+extern void NAND_FlushBlockBuffers();
+extern void NAND_ReqFlushBlockBuffers();
+
+#endif
 
 
 #endif // HW_NAND_H__03_05_2022__19_36

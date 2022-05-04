@@ -166,8 +166,8 @@ static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10",
 
 #ifdef CPU_SAME53	
 
-	#define NAND_DIR_IN() { PIO_NAND_DATA->DIRCLR = 0xFF; }
-	#define NAND_DIR_OUT() { PIO_NAND_DATA->DIRSET = 0xFF; }
+	#define HW_NAND_DIR_IN() { PIO_NAND_DATA->DIRCLR = 0xFF; }
+	#define HW_NAND_DIR_OUT() { PIO_NAND_DATA->DIRSET = 0xFF; }
 
 #elif defined(CPU_XMC48)
 
@@ -175,13 +175,13 @@ static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10",
 	volatile byte * const FLA = (byte*)0x60000010;	
 	volatile byte * const FLD = (byte*)0x60000000;	
 
-	#define NAND_DIR_IN() {}
-	#define NAND_DIR_OUT() {}
+	#define HW_NAND_DIR_IN() {}
+	#define HW_NAND_DIR_OUT() {}
 
 #elif defined(WIN32)
 
-	#define NAND_DIR_IN() {}
-	#define NAND_DIR_OUT() {}
+	#define HW_NAND_DIR_IN() {}
+	#define HW_NAND_DIR_OUT() {}
 
 #endif
 
@@ -192,7 +192,7 @@ static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10",
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static byte NAND_READ()
+static byte HW_NAND_READ()
 {
 	#ifdef CPU_SAME53	
 		PIO_WE_RE->CLR(RE); 
@@ -233,7 +233,7 @@ void NAND_WRITE(byte data)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_CMD_LATCH(byte cmd)
+static void HW_NAND_CMD_LATCH(byte cmd)
 { 
 	#ifdef CPU_SAME53	
 
@@ -251,7 +251,7 @@ static void NAND_CMD_LATCH(byte cmd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_ADR_LATCH(byte cmd)
+static void HW_NAND_ADR_LATCH(byte cmd)
 {
 	#ifdef CPU_SAME53	
 
@@ -269,7 +269,7 @@ static void NAND_ADR_LATCH(byte cmd)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static byte NAND_ADR_READ()
+static byte HW_NAND_ADR_READ()
 {
 #ifdef CPU_SAME53	
 	PIO_ALE->SET(ALE);
@@ -288,7 +288,7 @@ static byte NAND_ADR_READ()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_ADR_LATCH_COL(u16 col) 
+static void HW_NAND_ADR_LATCH_COL(u16 col) 
 { 
 	#ifdef CPU_SAME53	
 
@@ -307,7 +307,7 @@ static void NAND_ADR_LATCH_COL(u16 col)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_ADR_LATCH_ROW(u32 row) 
+static void HW_NAND_ADR_LATCH_ROW(u32 row) 
 { 
 	#ifdef CPU_SAME53	
 
@@ -327,7 +327,7 @@ static void NAND_ADR_LATCH_ROW(u32 row)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_ADR_LATCH_COL_ROW(u16 col, u32 row)
+static void HW_NAND_ADR_LATCH_COL_ROW(u16 col, u32 row)
 { 
 	#ifdef CPU_SAME53	
 
@@ -380,7 +380,7 @@ bool NAND_BUSY()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void EnableWriteProtect()
+inline void HW_NAND_EnableWriteProtect()
 {
 #ifndef WIN32
 	PIO_WP->CLR(WP);
@@ -389,7 +389,7 @@ inline void EnableWriteProtect()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline void DisableWriteProtect()
+inline void HW_NAND_DisableWriteProtect()
 {
 #ifndef WIN32
 	PIO_WP->SET(WP);
@@ -461,8 +461,8 @@ void NAND_Chip_Disable()
 bool ResetNand()
 {
 	while(NAND_BUSY());
-	NAND_DIR_OUT();
-	NAND_CMD_LATCH(NAND_CMD_RESET);
+	HW_NAND_DIR_OUT();
+	HW_NAND_CMD_LATCH(NAND_CMD_RESET);
 	NAND_CmdReadStatus();
 	u32 count = 1000; while (!NAND_BUSY() && (count-- > 0));
 	while(NAND_BUSY());
@@ -540,11 +540,11 @@ bool NAND_CheckDataComplete()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_Set_Features(byte adr, byte p1, byte p2, byte p3, byte p4)
+static void HW_NAND_Set_Features(byte adr, byte p1, byte p2, byte p3, byte p4)
 {
-	NAND_DIR_OUT();
-	NAND_CMD_LATCH(NAND_CMD_SET_FEATURES);
-	NAND_ADR_LATCH(adr);
+	HW_NAND_DIR_OUT();
+	HW_NAND_CMD_LATCH(NAND_CMD_SET_FEATURES);
+	HW_NAND_ADR_LATCH(adr);
 	NAND_WRITE(p1); 
 	NAND_WRITE(p2); 
 	NAND_WRITE(p3); 
@@ -552,37 +552,37 @@ static void NAND_Set_Features(byte adr, byte p1, byte p2, byte p3, byte p4)
 	while(!NAND_BUSY());
 	while(NAND_BUSY());
 
-	NAND_DIR_IN();
+	HW_NAND_DIR_IN();
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_Get_Features(byte adr, byte* p)
+static void HW_NAND_Get_Features(byte adr, byte* p)
 {
-	NAND_DIR_OUT();
-	NAND_CMD_LATCH(NAND_CMD_GET_FEATURES);
-	NAND_ADR_LATCH(adr);
+	HW_NAND_DIR_OUT();
+	HW_NAND_CMD_LATCH(NAND_CMD_GET_FEATURES);
+	HW_NAND_ADR_LATCH(adr);
 
 	while(!NAND_BUSY());
 
-	NAND_DIR_IN();
+	HW_NAND_DIR_IN();
 
 	while(NAND_BUSY());
 
-	p[0] = NAND_READ(); 
-	p[1] = NAND_READ(); 
-	p[2] = NAND_READ(); 
-	p[3] = NAND_READ(); 
+	p[0] = HW_NAND_READ(); 
+	p[1] = HW_NAND_READ(); 
+	p[2] = HW_NAND_READ(); 
+	p[3] = HW_NAND_READ(); 
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static bool NAND_Read_ID(NandID *id)
+static bool HW_NAND_Read_ID(NandID *id)
 {
-	NAND_DIR_OUT();
-	NAND_CMD_LATCH(NAND_CMD_READ_ID);
-	NAND_ADR_LATCH(0);
-	NAND_DIR_IN();
+	HW_NAND_DIR_OUT();
+	HW_NAND_CMD_LATCH(NAND_CMD_READ_ID);
+	HW_NAND_ADR_LATCH(0);
+	HW_NAND_DIR_IN();
 
 	NAND_ReadDataDMA(id, sizeof(NandID));
 
@@ -593,12 +593,12 @@ static bool NAND_Read_ID(NandID *id)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void NAND_Read_PARAM(NandParamPage *pp)
+static void HW_NAND_Read_PARAM(NandParamPage *pp)
 {
-	NAND_DIR_OUT();
-	NAND_CMD_LATCH(NAND_CMD_READ_PARAM);
-	NAND_ADR_LATCH(0);
-	NAND_DIR_IN();
+	HW_NAND_DIR_OUT();
+	HW_NAND_CMD_LATCH(NAND_CMD_READ_PARAM);
+	HW_NAND_ADR_LATCH(0);
+	HW_NAND_DIR_IN();
 
 	while(!NAND_BUSY());
 	while(NAND_BUSY());
@@ -610,7 +610,7 @@ static void NAND_Read_PARAM(NandParamPage *pp)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-inline u32 NAND_ROW(u32 block, u16 page)
+inline u32 HW_NAND_ROW(u32 block, u16 page)
 {
 	return (block << FLADR::PAGE_BITS) + page;
 }
@@ -619,7 +619,7 @@ inline u32 NAND_ROW(u32 block, u16 page)
 
 #ifdef WIN32
 
-static BlockBuffer* NAND_AllocBlockBuffer()
+static BlockBuffer* HW_NAND_AllocBlockBuffer()
 {
 	BlockBuffer *bb;
 
@@ -638,7 +638,7 @@ static BlockBuffer* NAND_AllocBlockBuffer()
 
 #ifdef WIN32
 
-static void NAND_ReqReadBlock(BlockBuffer* bb)
+static void HW_NAND_ReqReadBlock(BlockBuffer* bb)
 {
 	if (bb != 0)
 	{
@@ -662,7 +662,7 @@ static void NAND_ReqReadBlock(BlockBuffer* bb)
 
 #ifdef WIN32
 
-static void NAND_SetCurAdrFile(u16 col, u32 bl, u16 pg)
+static void HW_NAND_SetCurAdrFile(u16 col, u32 bl, u16 pg)
 {
 	curBlock = bl;
 	curPage = pg;
@@ -691,7 +691,7 @@ static void NAND_SetCurAdrFile(u16 col, u32 bl, u16 pg)
 
 	if (bb == 0)
 	{
-		bb = NAND_AllocBlockBuffer();
+		bb = HW_NAND_AllocBlockBuffer();
 	};
 
 }
@@ -743,7 +743,7 @@ void NAND_CmdEraseBlock(u32 bl)
 
 #else
 
-	NAND_SetCurAdrFile(0, bl, 0);
+	HW_NAND_SetCurAdrFile(0, bl, 0);
 
 	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
 
@@ -787,7 +787,7 @@ void NAND_CmdRandomRead(u16 col)
 
 #else
 
-	NAND_SetCurAdrFile(col, curBlock, curPage);
+	HW_NAND_SetCurAdrFile(col, curBlock, curPage);
 
 	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
 
@@ -795,7 +795,7 @@ void NAND_CmdRandomRead(u16 col)
 	{
 		bb->block = curRawBlock;
 
-		NAND_ReqReadBlock(bb);
+		HW_NAND_ReqReadBlock(bb);
 	};
 
 #endif
@@ -815,7 +815,7 @@ void NAND_CmdReadPage(u16 col, u32 bl, u16 pg)
 
 #else
 
-	NAND_SetCurAdrFile(col, bl, pg);
+	HW_NAND_SetCurAdrFile(col, bl, pg);
 
 	BlockBuffer* &bb = curNandBlockBuffer[curRawBlock&3];
 
@@ -823,7 +823,7 @@ void NAND_CmdReadPage(u16 col, u32 bl, u16 pg)
 	{
 		bb->block = curRawBlock;
 
-		NAND_ReqReadBlock(bb);
+		HW_NAND_ReqReadBlock(bb);
 	};
 
 #endif
@@ -842,7 +842,7 @@ void NAND_CmdWritePage(u16 col, u32 bl, u16 pg)
 
 #else
 
-	NAND_SetCurAdrFile(col, bl, pg);
+	HW_NAND_SetCurAdrFile(col, bl, pg);
 
 #endif
 }
@@ -972,7 +972,7 @@ void NAND_Test_FLADR()
 
 #ifdef WIN32
 
-DWORD WINAPI NAND_WriteThread(LPVOID lpParam) 
+DWORD WINAPI HW_NAND_WriteThread(LPVOID lpParam) 
 {
 	static OVERLAPPED	ovrl;
 	static BlockBuffer *bb = 0; 
@@ -1027,7 +1027,7 @@ DWORD WINAPI NAND_WriteThread(LPVOID lpParam)
 
 #ifdef WIN32
 
-DWORD WINAPI NAND_ReadThread(LPVOID lpParam) 
+DWORD WINAPI HW_NAND_ReadThread(LPVOID lpParam) 
 {
 	while(1)
 	{
@@ -1039,7 +1039,7 @@ DWORD WINAPI NAND_ReadThread(LPVOID lpParam)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void NAND_Init()
+void HW_NAND_Init()
 {
 	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "NAND Flash Init ... \n");
 
@@ -1320,13 +1320,13 @@ void NAND_Init()
 	
 	cputs("Create thread 'writeThread' ... ");
 
-	handleWriteThread = CreateThread(0, 0, NAND_WriteThread, 0, 0, 0);
+	handleWriteThread = CreateThread(0, 0, HW_NAND_WriteThread, 0, 0, 0);
 
 	cputs((handleWriteThread == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
 
 	cputs("Create thread 'readThread' ... ");
 
-	handleReadThread = CreateThread(0, 0, NAND_ReadThread, 0, 0, 0);
+	handleReadThread = CreateThread(0, 0, HW_NAND_ReadThread, 0, 0, 0);
 
 	cputs((handleReadThread == INVALID_HANDLE_VALUE) ? "!!! ERROR !!!\n" : "OK\n");
 

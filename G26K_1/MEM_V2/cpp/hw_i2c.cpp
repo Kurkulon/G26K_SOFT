@@ -56,15 +56,6 @@ static bool fram_spi_WREN = false;
 static u16 crc_ccit_result = 0;
 
 
-struct BlockBuffer { BlockBuffer *next; u32 block; u32 prevBlock; u32 writed; u32 data[((NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS) >> 2]; };
-
-static BlockBuffer _blockBuf[16];
-
-static List<BlockBuffer> freeBlockBuffer;
-static List<BlockBuffer> rdBlockBuffer;
-static List<BlockBuffer> wrBlockBuffer;
-
-static BlockBuffer *curNandBlockBuffer[4] = { 0 };
 
 static volatile bool busyWriteThread = false;
 
