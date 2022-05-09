@@ -14,10 +14,10 @@
 //#define ETH_TX_BUF_SIZE     1536        /* EMAC Transmit buffer size         */
 
 
-#define AT91C_PHY_ADDR      0
+//#define AT91C_PHY_ADDR      0
 
-#define OWNERSHIP_BIT		1
-#define WRAP_BIT			2
+//#define OWNERSHIP_BIT		1
+//#define WRAP_BIT			2
 
 #define ARP_REQUEST			0x0001
 #define ARP_REPLY			0x0002
@@ -52,7 +52,6 @@
 //#define pAIC    AT91C_BASE_AIC
 //#define pPMC    AT91C_BASE_PMC
 
-#define PHYA 0
 
 #define IP32(b1, b2, b3, b4) (((u32)b1&0xFF)|(((u32)b2&0xFF)<<8)|(((u32)b3&0xFF)<<16)|(((u32)b4&0xFF)<<24))
 

@@ -5,12 +5,6 @@
 #include <conio.h>
 #include <stdio.h>
 
-//static SOCKET	lstnSocket;
-
-//static HANDLE handleTxThread;
-
-//DWORD txThreadCount = 0;
-
 #else
 
 #include "core.h"
@@ -25,12 +19,18 @@
 
 #include <emac.h>
 #include <EMAC_DEF.h>
+#include <tftp.h>
 
 //#pragma diag_suppress 546,550,177
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
+#ifndef _DEBUG
+	static const bool __debug = false;
+#else
+	static const bool __debug = true;
+#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -39,65 +39,43 @@
 #define OUR_IP_ADDR   	IP32(192, 168, 3, 234)
 #define OUR_IP_MASK   	IP32(255, 255, 255, 0)
 #define DHCP_IP_ADDR   	IP32(192, 168, 3, 254)
+#define PHYA 0
 
-static const MAC _hwAdr = {0x12345678, 0x9ABC};
-//static const MAC hwBroadCast = {0xFFFFFFFF, 0xFFFF};
-//static const u32 ipAdr = OUR_IP_ADDR;//IP32(192, 168, 10, 1);
-//static const u32 ipMask = IP32(255, 255, 255, 0);
+static const MAC hwAdr = {0x12345678, 0x9ABC};
 
 static const u16 udpInPort = SWAP16(66);
 static const u16 udpOutPort = SWAP16(66);
 
-
-//bool EmacIsConnected() { return emacConnected; }
-
-/* Local variables */
-
-
-//enum	StateEM { LINKING, CONNECTED };	
-
-//StateEM stateEMAC = LINKING;
-
-static byte linkState = 0;
-
-
-//u32 trp[4] = {-1};
-
-//u16  txIpID = 0;
-
-byte		HW_EMAC_GetAdrPHY()		{ return PHYA;			} 
-const MAC&	HW_EMAC_GetHwAdr()		{ return _hwAdr;		}
-u32  		HW_EMAC_GetIpAdr()		{ return OUR_IP_ADDR;	}
-u32  		HW_EMAC_GetIpMask()		{ return OUR_IP_MASK;	}
-u32  		HW_EMAC_GetDhcpIpAdr()	{ return DHCP_IP_ADDR;	}
-
+inline bool HW_EMAC_RequestUDP(EthBuf* mb) { return RequestTrap(mb); }
+//inline bool HW_EMAC_RequestUDP(EthBuf* mb) { return RequestTFTP(mb); }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+List<SysEthBuf> SysEthBuf::freeList;
+List<HugeTx>	HugeTx::freeList;
+
+static SysEthBuf	sysTxBuf[16];
+static HugeTx		hugeTxBuf[8];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #ifndef WIN32
 
+static bool HW_EMAC_Init();
 
 #ifdef CPU_SAME53	
-	inline void EnableMDI() { HW::GMAC->NCR |= GMAC_MPE; }
-	inline void DisableMDI() { HW::GMAC->NCR &= ~GMAC_MPE; }
 	inline void ResetPHY()	{ HW::PIOC->DIRSET = (1 << 15); HW::PIOC->BCLR(15); };
 	inline void EnablePHY() { HW::PIOC->DIRSET = (1 << 15); HW::PIOC->BSET(15); };
 #elif defined(CPU_XMC48)
-	inline void EnableMDI() { /*HW::GMAC->NCR |= GMAC_MPE;*/ }
-	inline void DisableMDI() { /*HW::GMAC->NCR &= ~GMAC_MPE;*/ }
-	inline void ResetPHY() { HW::P2->BCLR(10); };
+	inline void ResetPHY()	{ HW::P2->BCLR(10); };
 	inline void EnablePHY() { HW::P2->BSET(10); };
 #endif
 
-void HW_EMAC_StartLink() { linkState = 0; }
 
 #else
 
 	//bool CheckStatusUDP(u32 stat) { return true; }
-	u16 HW_EMAC_GetUdpInPort()	{ return udpInPort;		}
-	u16 HW_EMAC_GetUdpOutPort()	{ return udpOutPort;	}
+	//u16 HW_EMAC_GetUdpInPort()	{ return udpInPort;		}
+	//u16 HW_EMAC_GetUdpOutPort()	{ return udpOutPort;	}
 
 #endif
 
@@ -109,7 +87,14 @@ void HW_EMAC_StartLink() { linkState = 0; }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool HW_EMAC_Init()
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#include <emac_imp.h>
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool HW_EMAC_Init()
 {
 #ifndef WIN32
 
@@ -178,126 +163,6 @@ bool HW_EMAC_Init()
 	return true;
 }
 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifndef WIN32
-
-bool HW_EMAC_UpdateLink()
-{
-	bool result = false;
-
-	switch(linkState)
-	{
-		case 0:		
-
-			ReqReadPHY(PHY_REG_BMSR);
-
-			linkState++;
-
-			break;
-
-		case 1:
-
-			if (IsReadyPHY())
-			{
-				if (ResultPHY() & BMSR_LINKST)
-				{
-					linkState++;
-				}
-				else
-				{
-					linkState = 0;
-				};
-			};
-
-			break;
-
-		case 2:
-
-			ReqWritePHY(PHY_REG_BMCR, BMCR_ANENABLE|BMCR_FULLDPLX);
-
-			linkState++;
-
-			break;
-
-		case 3:
-
-			if (IsReadyPHY())
-			{
-//				ReqReadPHY(PHY_REG_BMSR);
-				ReqReadPHY(PHY_REG_PHYCON1);
-
-				linkState++;
-			};
-
-			break;
-
-		case 4:
-
-			if (IsReadyPHY())
-			{
-				if (ResultPHY() & PHYCON1_OP_MODE_MASK /*BMSR_LINKST*/)
-				{
-					#ifdef CPU_SAME53	
-						HW::GMAC->NCFGR &= ~(GMAC_SPD|GMAC_FD);
-					#elif defined(CPU_XMC48)
-						HW::ETH0->MAC_CONFIGURATION &= ~(MAC_DM|MAC_FES);
-					#endif
-
-					if (ResultPHY() & PHYCON1_OP_MODE_100BTX /*ANLPAR_100*/)	// Speed 100Mbit is enabled.
-					{
-						#ifdef CPU_SAME53	
-							HW::GMAC->NCFGR |= GMAC_SPD;
-						#elif defined(CPU_XMC48)
-							HW::ETH0->MAC_CONFIGURATION |= MAC_FES;
-						#endif
-					};
-
-					if (ResultPHY() & 4 /*ANLPAR_DUPLEX*/)	//  Full duplex is enabled.
-					{
-						#ifdef CPU_SAME53	
-							HW::GMAC->NCFGR |= GMAC_FD;
-						#elif defined(CPU_XMC48)
-							HW::ETH0->MAC_CONFIGURATION |= MAC_DM;
-						#endif
-					};
-
-					result = true;
-
-					linkState++;
-				}
-				else
-				{
-					linkState = 3;
-				};
-			};
-
-			break;
-	};
-
-	return result;
-}
-
-#endif
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool HW_EMAC_RequestUDP(EthBuf* mb)
-{
-	EthUdp *h = (EthUdp*)&mb->eth;
-
-	bool c = false;
-
-	if (mb != 0)
-	{
-		switch (h->udp.dst)
-		{
-			case udpInPort: c = RequestTrap(mb); break;
-		};
-	};
-
-	return c;
-}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 

@@ -3,8 +3,8 @@
 
 #include "types.h"
 
-extern bool	HW_EMAC_Init();
-extern bool	HW_EMAC_UpdateLink();
+//extern bool	HW_EMAC_Init();
+//extern bool	HW_EMAC_UpdateLink();
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
