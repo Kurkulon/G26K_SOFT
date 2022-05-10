@@ -128,19 +128,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cpp\emac.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\flash.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cpp\hardware.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\hw_emac.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\hw_i2c.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\hw_nand.cpp"
 				>
 			</File>
 			<File
@@ -153,6 +153,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\manch.cpp"
 				>
 			</File>
 			<File
@@ -187,14 +191,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\hw_conf.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\hw_emac.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\HW_EMAC_DEF.h"
 				>
 			</File>
 			<File

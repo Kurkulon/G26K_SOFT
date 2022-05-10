@@ -8,6 +8,14 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define NAND_CHIP_BITS		3
+#define NAND_MAX_CHIP		(1<<NAND_CHIP_BITS)
+#define NAND_CHIP_MASK		(NAND_MAX_CHIP-1)
+
+//static void	HW_NAND_Init();
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifndef WIN32
 
 static u32 chipSelect[NAND_MAX_CHIP] = { FCS0, FCS1, FCS2, FCS3, FCS4, FCS5, FCS6, FCS7 };
@@ -29,13 +37,13 @@ static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10",
 	volatile byte * const FLA = (byte*)0x60000010;	
 	volatile byte * const FLD = (byte*)0x60000000;	
 
-	#define HW_NAND_DIR_IN() {}
-	#define HW_NAND_DIR_OUT() {}
+	#define NAND_DIR_IN() {}
+	#define NAND_DIR_OUT() {}
 
 #elif defined(WIN32)
 
-	#define HW_NAND_DIR_IN() {}
-	#define HW_NAND_DIR_OUT() {}
+	#define NAND_DIR_IN() {}
+	#define NAND_DIR_OUT() {}
 
 #endif
 
@@ -45,3 +53,6 @@ static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10",
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#include <flash_imp.h>
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

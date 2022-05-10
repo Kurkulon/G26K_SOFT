@@ -4,11 +4,6 @@
 #include "types.h"
 //#include "core.h"
 
-#define NAND_CHIP_BITS		3
-#define NAND_MAX_CHIP		(1<<NAND_CHIP_BITS)
-#define NAND_CHIP_MASK		(NAND_MAX_CHIP-1)
-
-extern void	HW_NAND_Init();
 
 #ifdef WIN32
 

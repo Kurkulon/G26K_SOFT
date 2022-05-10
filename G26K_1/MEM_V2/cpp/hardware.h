@@ -7,13 +7,10 @@
 #include "i2c.h"
 #include "spi.h"
 #include "hw_nand.h"
+#include "hw_rtm.h"
+#include "manch.h"
 
 
-#define FRAM_SPI_MAINVARS_ADR 0
-#define FRAM_SPI_SESSIONS_ADR 0x200
-
-#define FRAM_I2C_MAINVARS_ADR 0
-#define FRAM_I2C_SESSIONS_ADR 0x200
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -28,42 +25,6 @@ extern bool CRC_CCITT_DMA_CheckComplete(u16* crc);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-struct MRB
-{
-	bool	ready;
-	bool	OK;
-	u16		len;
-	u16		maxLen;
-	u16		*data;
-};
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-struct MTB
-{
-	bool		ready;
-	u16			baud;
-	u16			len1;
-	const u16	*data1;
-	u16			len2;
-	const u16	*data2;
-};
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-extern bool RcvManData(MRB *mrb);
-extern bool SendManData(MTB *mtb);
-extern bool SendManData2(MTB* mtb);
-//extern void SetTrmBoudRate(byte i);
-extern void ManRcvUpdate();
-//extern void ManRcvStop();
-
-extern bool SendMLT3(MTB *mtb);
-
-inline u16 GetRcvManQuality() { extern u16 rcvManQuality; return rcvManQuality; }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

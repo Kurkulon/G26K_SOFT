@@ -1,6 +1,6 @@
 #include "hardware.h"
 //#include "options.h"
-#include "hw_emac.h"
+//#include "hw_emac.h"
 #include "xtrap.h"
 #include "flash.h"
 #include "CRC16.h"

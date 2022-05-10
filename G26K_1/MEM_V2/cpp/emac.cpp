@@ -11,8 +11,8 @@
 
 #endif
 
-#include "HW_EMAC_DEF.h"
-#include "hw_emac.h"
+//#include "HW_EMAC_DEF.h"
+//#include "hw_emac.h"
 #include "xtrap.h"
 #include "list.h"
 #include "hardware.h"
@@ -33,8 +33,6 @@
 #endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-/* Net_Config.c */
 
 #define OUR_IP_ADDR   	IP32(192, 168, 3, 234)
 #define OUR_IP_MASK   	IP32(255, 255, 255, 0)
