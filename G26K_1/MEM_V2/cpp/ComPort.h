@@ -5,6 +5,7 @@
 #include "core.h"
 //#include "time.h"
 #include "hw_rtm.h"
+#include "usic.h"
 
 #ifdef CPU_XMC48
 	#include "COM_DEF.h"
@@ -13,7 +14,7 @@
 #define COM_RS232 0
 #define COM_RS485 1
 
-class ComPort
+class ComPort : public USIC
 {
   public:
 
@@ -51,7 +52,7 @@ class ComPort
 
   protected:
 
-	enum STATUS485 { WRITEING = 0, WAIT_READ = 1, READING = 2, READ_END = 3 };
+	enum STATUS485 { WRITEING = 0, WAIT_READ, READING, READ_END, REQ_RESET };
 
 //	union CUSART { void *vp; T_HW::S_UART *DU; T_HW::S_USART *SU; };
 
@@ -60,7 +61,7 @@ class ComPort
 		struct ComBase
 		{
 			bool used;
-			T_HW::S_USART* const HU;
+			const byte usic_num;
 			T_HW::S_PORT* const pm;
 			const dword pinRTS;
 			const u32 dmaCh;
@@ -68,8 +69,10 @@ class ComPort
 			const u32 dmaTrgSrcRX;
 		};
 
+		typedef T_HW::S_USART HWUSART;
+
 		T_HW::S_PORT			*_pm;
-		T_HW::S_USART 			*_SU;
+		HWUSART 				*_SU;
 		T_HW::S_DMAC::S_DMAC_CH	*_chdma;
 		T_HW::DMADESC			*_dmadsc;
 		T_HW::DMADESC			*_dmawrb;
@@ -92,20 +95,21 @@ class ComPort
 		{
 			bool used;
 			const byte dsel;
-			T_HW::USIC_CH_Type* const HU;
+			const byte usic_num;
 			T_HW::PORT_Type* const pm;
 			const dword pinRTS;
-			const u32 usic_pid;
 			const u32 inpr_sr;
 			T_HW::GPDMA_Type* const dma;
 			const u32 dmaCh;
 			const u32 dlr;
 		};
 
+		typedef T_HW::USIC_CH_Type HWUSART;
+
 		LLI					_lli[4];
 
 		T_HW::PORT_Type		*_pm;
-		T_HW::USIC_CH_Type 	*_SU;
+		HWUSART 			*_SU;
 		T_HW::GPDMA_Type	*_dma;
 		T_HW::GPDMA_CH_Type	*_chdma;
 		u32					_dmaChMask;
@@ -130,6 +134,7 @@ class ComPort
 	#endif
 
 #ifndef WIN32
+
 	static ComBase	_bases[3];
 
 	ComBase			*_cb;
@@ -182,16 +187,17 @@ class ComPort
 
 
 	bool		Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte stopBits);
-	bool		ConnectAsyn(byte port, dword speed, byte parity, byte stopBits);
-	bool		ConnectSync(byte port, dword speed, byte parity, byte stopBits);
+	//bool		ConnectAsyn(byte port, dword speed, byte parity, byte stopBits);
+	//bool		ConnectSync(byte port, dword speed, byte parity, byte stopBits);
 	bool		Disconnect();
 	bool		Update();
-	void		InitHW();
 
 	bool		Read(ComPort::ReadBuffer *readBuffer, dword preTimeout, dword postTimeout);
 	bool		Write(ComPort::WriteBuffer *writeBuffer);
 
 	void		TransmitByte(byte v);
+
+	virtual void		InitHW();
 
 	//static __irq void _IntHandlerCom1();
 	//static __irq void _IntHandlerCom2();

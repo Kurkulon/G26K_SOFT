@@ -355,8 +355,8 @@
 	#define ManCCU_PID				PID_CCU41
 	#define ManTmr					HW::CCU41_CC41
 	#define ManRT_PSC				3
-	#define MT(v)					((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)/(1<<ManRT_PSC)))
-	#define BAUD2CLK(x)				((u32)((SYSCLK/8.0)/x+0.5))
+	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)>>ManRT_PSC))
+	#define BAUD2CLK(x)				((u32)((SYSCLK*1.0/(1<<ManRT_PSC))/x+0.5))
 
 	#define MANT_IRQ				CCU41_0_IRQn
 	#define MANR_IRQ				CCU41_2_IRQn
@@ -364,7 +364,8 @@
 	#define ManCCU_GIDLC			(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManCCU_GCSS				(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
 	#define ManRT_INS				(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
-	#define ManRT_SRS				CC4_POSR(3)
+	#define ManTmr_INS				(CC4_EV0IS(12+3) | CC4_EV0EM_RISING_EDGE);
+//	#define ManRT_SRS				CC4_POSR(3)
 
 	#define ManT1					HW::CCU80_CC80
 	#define ManT2					HW::CCU80_CC81
@@ -382,8 +383,7 @@
 	#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_CS2I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
-	#define ManT_PSC				3					// 0.04us
-	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
+//	#define ManT_PSC				3					// 0.04us
 	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
 	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
 	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
@@ -505,6 +505,39 @@
 	#define SPI_PID					PID_USIC1
 
 	#define CLOCK_IRQ				SCU_0_IRQn
+
+	#define PIO_URXD0				HW::P1
+	#define PIO_UTXD0				HW::P1
+	#define PIO_RTS0				HW::P1
+
+	#define PIO_URXD1				HW::P4
+	#define PIO_UTXD1				HW::P4
+	#define PIO_RTS1				HW::P1
+
+	#define PIO_URXD2				HW::P6
+	#define PIO_UTXD2				HW::P6
+	#define PIO_RTS2				HW::P1
+
+	#define PIN_URXD0				4 
+	#define PIN_UTXD0				5 
+	#define PIN_RTS0				0 
+	#define PIN_URXD1				6 
+	#define PIN_UTXD1				7
+	#define PIN_RTS1				8 
+	#define PIN_URXD2				3 
+	#define PIN_UTXD2				4
+	#define PIN_RTS2				13 
+
+	#define URXD0					(1<<PIN_URXD0) 
+	#define UTXD0					(1<<PIN_UTXD0) 
+	#define RTS0					(1<<PIN_RTS0) 
+	#define URXD1					(1<<PIN_URXD1) 
+	#define UTXD1					(1<<PIN_UTXD1) 
+	#define RTS1					(1<<PIN_RTS1) 
+	#define URXD2					(1<<PIN_URXD2) 
+	#define UTXD2					(1<<PIN_UTXD2) 
+	#define RTS2					(1<<PIN_RTS2) 
+
 
 	/*******************************************************************************
 	 * MACROS

@@ -3071,7 +3071,7 @@ void InitHardware()
 	InitManRecieve();
 	Init_CRC_CCITT_DMA();
 
-	InitManTransmit2();
+	InitManTransmit();
 
 	Init_Sync_Rot();
 

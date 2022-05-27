@@ -19,10 +19,12 @@ extern dword millisecondsCount;
 
 #ifdef CPU_SAME53	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	ComPort::ComBase	ComPort::_bases[3] = { 
-		{false, HW::USART7,	 HW::PIOC, 1<<21, 1, DMCH_TRIGSRC_SERCOM7_TX, DMCH_TRIGSRC_SERCOM7_RX }, 
-		{false, HW::USART6,	 HW::PIOC, 1<<5,  2, DMCH_TRIGSRC_SERCOM6_TX, DMCH_TRIGSRC_SERCOM6_RX },
-		{false, HW::USART5,	 HW::PIOC, 1<<11, 3, DMCH_TRIGSRC_SERCOM5_TX, DMCH_TRIGSRC_SERCOM5_RX }
+	ComPort::ComBase	ComPort::_bases[3] =
+	{ 
+	//		used	usic_num	pm			pinRTS	dmaCh	dmaTrgSrcTX					dmaTrgSrcRX
+		{	false,		7,		HW::PIOC,	1<<21,	1,		DMCH_TRIGSRC_SERCOM7_TX,	DMCH_TRIGSRC_SERCOM7_RX }, 
+		{	false,		6,		HW::PIOC,	1<<5,	2,		DMCH_TRIGSRC_SERCOM6_TX,	DMCH_TRIGSRC_SERCOM6_RX },
+		{	false,		5,		HW::PIOC,	1<<11,	3,		DMCH_TRIGSRC_SERCOM5_TX,	DMCH_TRIGSRC_SERCOM5_RX }
 	};
 
 	//#define READ_PIN_SET()	HW::PIOC->BSET(27)
@@ -49,11 +51,12 @@ extern dword millisecondsCount;
 
 	#define __TCSR (TDEN(1)|TDSSM(1))
 
-	ComPort::ComBase	ComPort::_bases[3] = { 
-	//		used	dsel	USIC_CH			port_RTS	pin_RTS		USIC PID	INPR_SRx	GPDMA		dmaCh	DLR
-		{	false, 	1, 		HW::USIC0_CH0,	HW::P1, 	1<<0,		PID_USIC0,  0,			HW::DMA0, 	0, 		0 	}, 
-		{	false, 	2, 		HW::USIC0_CH1,	HW::P1, 	1<<13,		PID_USIC0, 	1,			HW::DMA0, 	1, 		2 	},
-		{	false, 	4, 		HW::USIC2_CH1,	HW::P1, 	1<<8,		PID_USIC2,	1,			HW::DMA1, 	0, 		9 	}
+	ComPort::ComBase	ComPort::_bases[3] =
+	{ 
+	//		used	dsel	usic_num	port_RTS	pin_RTS		INPR_SRx	GPDMA		dmaCh	DLR
+		{	false, 	1, 		0,			PIO_RTS0, 	RTS0,		0,			HW::DMA0, 	0, 		0 	}, 
+		{	false, 	2, 		1,			PIO_RTS2, 	RTS2,		1,			HW::DMA0, 	1, 		2 	},
+		{	false, 	4, 		5,			PIO_RTS1, 	RTS1,		1,			HW::DMA1, 	0, 		9 	}
 	};
 
 	static u32 parityMask[3] = { PM(0), PM(3), PM(2) };
@@ -79,8 +82,10 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 
 	ComBase &cb = _bases[port];
 
+	if (!Usic_Connect(cb.usic_num)) return false;
+
 	_cb = &cb;
-	_SU = cb.HU;
+	_SU = (HWUSART*)_uhw;
 	_pm = cb.pm;
 	_pinRTS = cb.pinRTS;
 
@@ -93,6 +98,8 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 		_dma_act_mask = 0x8000|(_dmaCh<<8);
 		_dma_trgsrc_tx = cb.dmaTrgSrcTX;
 		_dma_trgsrc_rx = cb.dmaTrgSrcRX;
+
+		HW::GCLK->PCHCTRL[_ugclk] = GCLK_GEN(GEN_MCK)|GCLK_CHEN;
 
 		_SU->CTRLA = USART_SWRST;
 
@@ -141,19 +148,6 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 				break;
 		};
 
-		while(_SU->SYNCBUSY);
-
-		_SU->CTRLA = _CTRLA;
-		_SU->CTRLB = _CTRLB;
-		_SU->CTRLC = _CTRLC;
-
-		_SU->BAUD = _BaudRateRegister;
-
-		_SU->CTRLA |= USART_ENABLE;
-
-		while(_SU->SYNCBUSY);
-
-
 	#elif defined(CPU_XMC48)
 
 		_dma = cb.dma;
@@ -163,7 +157,6 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 		_inpr_sr = cb.inpr_sr;
 
 		_ModeRegister = __CCR | ((parity < 3) ? parityMask[parity] : parityMask[0]);
-
 
 		switch (ct)
 		{
@@ -193,9 +186,9 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 
 		};
 
-		InitHW();
-
 	#endif
+
+	InitHW();
 
 	_status485 = READ_END;
 
@@ -212,24 +205,38 @@ bool ComPort::Connect(CONNECT_TYPE ct, byte port, dword speed, byte parity, byte
 
 void ComPort::InitHW()
 {
-	#ifdef CPU_XMC48	
+#ifdef CPU_SAME53
 
-		HW::Peripheral_Enable(_cb->usic_pid);
+	while(_SU->SYNCBUSY);
 
-		_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+	_SU->CTRLA = _CTRLA;
+	_SU->CTRLB = _CTRLB;
+	_SU->CTRLC = _CTRLC;
 
-		_SU->BRG = _brg;		
-		_SU->PCR_ASCMode = _pcr;
+	_SU->BAUD = _BaudRateRegister;
 
-		_SU->FDR			= _BaudRateRegister;
-		_SU->SCTR			= __SCTR;
-		_SU->DX0CR			= DSEL(_cb->dsel);//__DX0CR;
-		_SU->DX1CR			= DPOL(1);
-		_SU->TCSR			= __TCSR;
-		_SU->PSCR			= ~0;
-		_SU->CCR			= _ModeRegister;
+	_SU->CTRLA |= USART_ENABLE;
 
-	#endif
+	while(_SU->SYNCBUSY);
+
+#elif	defined(CPU_XMC48)
+
+	HW::Peripheral_Enable(_upid);
+
+	_SU->KSCFG = MODEN|BPMODEN|BPNOM|NOMCFG(0);
+
+	_SU->BRG = _brg;		
+	_SU->PCR_ASCMode = _pcr;
+
+	_SU->FDR			= _BaudRateRegister;
+	_SU->SCTR			= __SCTR;
+	_SU->DX0CR			= DSEL(_cb->dsel);//__DX0CR;
+	_SU->DX1CR			= DPOL(1);
+	_SU->TCSR			= __TCSR;
+	_SU->PSCR			= ~0;
+	_SU->CCR			= _ModeRegister;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -681,6 +688,12 @@ bool ComPort::Update()
 		break;
 
 		case READ_END: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			r = false;
+
+			break;
+
+		case REQ_RESET: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 			r = false;
 

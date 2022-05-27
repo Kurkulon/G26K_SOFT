@@ -28,8 +28,8 @@ static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10",
 
 #ifdef CPU_SAME53	
 
-	#define HW_NAND_DIR_IN() { PIO_NAND_DATA->DIRCLR = 0xFF; }
-	#define HW_NAND_DIR_OUT() { PIO_NAND_DATA->DIRSET = 0xFF; }
+	#define NAND_DIR_IN() { PIO_NAND_DATA->DIRCLR = 0xFF; }
+	#define NAND_DIR_OUT() { PIO_NAND_DATA->DIRSET = 0xFF; }
 
 #elif defined(CPU_XMC48)
 

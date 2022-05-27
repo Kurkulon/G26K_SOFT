@@ -9,6 +9,7 @@
 #include "hw_conf.h"
 #include "hardware.h"
 
+#define MAN_TRANSMIT_V2
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

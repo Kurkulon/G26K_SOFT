@@ -80,7 +80,7 @@ libname = $(libdir)\$(targetcpu)_$(libsuffix).a
 .cpp:	$(cppdir)
 .o:	$(objdir)
 .h:	$(hdir)
-.s: $(cppdir)
+.s: $(libdir)\cpp
 .d:	$(objdir)
 
 

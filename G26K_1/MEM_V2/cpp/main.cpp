@@ -1824,7 +1824,7 @@ static void UpdateMan()
 				//manTrmData[1] = 0;
 				//mtb.len1 = 2;
 				//mtb.data1 = manTrmData;
-				SendManData2(&mtb);
+				SendManData(&mtb);
 
 				i++;
 			};
