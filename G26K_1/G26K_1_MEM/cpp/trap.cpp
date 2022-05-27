@@ -848,7 +848,7 @@ static bool UpdateSendVector()
 
 				flashFullSize = FLASH_Full_Size_Get();
 
-				if (size > flashFullSize)
+				if (size > flashFullSize || size == 0)
 				{
 					size = flashFullSize;
 				};

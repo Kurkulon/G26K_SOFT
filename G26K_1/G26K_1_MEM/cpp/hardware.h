@@ -241,6 +241,8 @@ struct FLADR
 
 	void	AddRaw(u32 v) { raw += v; raw += chipOffsetNext[GetChip()]; }
 	void	SubRaw(u32 v) { raw -= v; raw -= chipOffsetPrev[GetChip()]; }
+
+	bool	CheckOverflow() { return (raw & ~RAWADR_MASK); }
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
