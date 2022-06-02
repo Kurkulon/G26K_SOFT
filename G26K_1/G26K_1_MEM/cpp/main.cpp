@@ -27,7 +27,7 @@ static const bool __WIN32__ = false;
 
 #endif
 
-enum { VERSION = 0x104 };
+enum { VERSION = 0x105 };
 
 //#pragma O3
 //#pragma Otime

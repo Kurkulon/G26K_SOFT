@@ -4025,6 +4025,7 @@ static u16 twi_wrCount2 = 0;
 static byte twi_adr = 0;
 static DSCI2C* twi_dsc = 0;
 static DSCI2C* twi_lastDsc = 0;
+static volatile u32 twi_timestamp = 0;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4152,6 +4153,8 @@ static __irq void I2C_Handler()
 
 	if(a & ACK)
 	{
+		twi_timestamp = GetMilliseconds();
+
 		if (twi_wrCount > 0)
 		{
 			I2C->TBUF[0] = TDF_MASTER_SEND | *twi_wrPtr++;
@@ -4185,6 +4188,8 @@ static __irq void I2C_Handler()
 	}
 	else if (a & (RIF|AIF))
 	{
+		twi_timestamp = GetMilliseconds();
+
 		byte t = I2C->RBUF;
 
 		if (twi_rdCount > 0)
@@ -4197,6 +4202,8 @@ static __irq void I2C_Handler()
 	}
 	else if ((a & PCR) == 0)
 	{
+		twi_timestamp = GetMilliseconds();
+
 		I2C->TBUF[0] = TDF_MASTER_STOP; 
 	}
 	else
@@ -4233,6 +4240,8 @@ static __irq void I2C_Handler()
 			I2C->PSCR = ~0;
 
 			I2C->TBUF[0] = TDF_MASTER_START | (twi_dsc->adr << 1) | ((twi_wrCount == 0) ? 1 : 0);
+
+			twi_timestamp = GetMilliseconds();
 		}
 		else
 		{
@@ -4300,6 +4309,8 @@ bool I2C_Write(DSCI2C *d)
 
 		I2C->CCR |= RIEN|AIEN;
 		I2C->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
+
+		twi_timestamp = GetMilliseconds();
 
 	#endif
 		
@@ -4417,67 +4428,58 @@ bool I2C_Update()
 
 	using namespace HW;
 
-	static TM32 tm;
+	//static TM32 tm;
 
 	__disable_irq();
 
-	if (twi_dsc != 0)
+	if (twi_dsc != 0 && ((u32)(GetMilliseconds() - twi_timestamp)) > 10)
 	{
-		if (I2C->PSR_IICMode & (PCR|NACK|ACK|RIF|AIF))
+		result = true;
+
+		HW::Peripheral_Disable(I2C_PID);
+
+		I2C_Init();
+
+		twi_dsc->ready = true;
+		twi_dsc->readedLen = twi_dsc->rlen - twi_rdCount;
+
+		DSCI2C *ndsc = twi_dsc->next;
+
+		if (ndsc != 0)
 		{
-			tm.Reset();
+			twi_dsc->next = 0;
+			twi_dsc = ndsc;
+
+			twi_dsc->ready = false;
+			twi_dsc->ack = false;
+			twi_dsc->readedLen = 0;
+
+			twi_wrPtr = (byte*)twi_dsc->wdata;	
+			twi_rdPtr = (byte*)twi_dsc->rdata;	
+			twi_wrPtr2 = (byte*)twi_dsc->wdata2;	
+			twi_wrCount = twi_dsc->wlen;
+			twi_wrCount2 = twi_dsc->wlen2;
+			twi_rdCount = twi_dsc->rlen;
+			twi_adr = twi_dsc->adr;
+
+			if (twi_wrPtr2 == 0) twi_wrCount2 = 0;
+
+			I2C->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
+
+			I2C->CCR |= RIEN|AIEN;
+			I2C->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
+
+			I2C->TBUF[0] = TDF_MASTER_START | (twi_dsc->adr << 1) | ((twi_wrCount == 0) ? 1 : 0);
+
+			twi_timestamp = GetMilliseconds();
 		}
-		else if (tm.Check(10))
+		else
 		{
-			result = true;
+			I2C->CCR = I2C__CCR;
+			I2C->PCR_IICMode = I2C__PCR;
 
-			HW::Peripheral_Disable(I2C_PID);
-
-			I2C_Init();
-
-			twi_dsc->ready = true;
-			twi_dsc->readedLen = twi_dsc->rlen - twi_rdCount;
-
-			DSCI2C *ndsc = twi_dsc->next;
-
-			if (ndsc != 0)
-			{
-				twi_dsc->next = 0;
-				twi_dsc = ndsc;
-
-				twi_dsc->ready = false;
-				twi_dsc->ack = false;
-				twi_dsc->readedLen = 0;
-
-				twi_wrPtr = (byte*)twi_dsc->wdata;	
-				twi_rdPtr = (byte*)twi_dsc->rdata;	
-				twi_wrPtr2 = (byte*)twi_dsc->wdata2;	
-				twi_wrCount = twi_dsc->wlen;
-				twi_wrCount2 = twi_dsc->wlen2;
-				twi_rdCount = twi_dsc->rlen;
-				twi_adr = twi_dsc->adr;
-
-				if (twi_wrPtr2 == 0) twi_wrCount2 = 0;
-
-				I2C->PSCR = ~0;//RIF|AIF|TBIF|ACK|NACK|PCR;
-
-				I2C->CCR |= RIEN|AIEN;
-				I2C->PCR_IICMode |= PCRIEN|NACKIEN|ARLIEN|SRRIEN|ERRIEN|ACKIEN;
-
-				I2C->TBUF[0] = TDF_MASTER_START | (twi_dsc->adr << 1) | ((twi_wrCount == 0) ? 1 : 0);
-			}
-			else
-			{
-				I2C->CCR = I2C__CCR;
-				I2C->PCR_IICMode = I2C__PCR;
-
-				twi_lastDsc = twi_dsc = 0;
-			};
+			twi_lastDsc = twi_dsc = 0;
 		};
-	}
-	else
-	{
-		tm.Reset();
 	};
 	
 	__enable_irq();
@@ -5727,8 +5729,8 @@ static bool SPI_WriteRead(DSCSPI *d)
 
 		if (spi_wrCount2 != 0)
 		{
-			SPI_DMACH->CTLL = DINC(2)|SINC(0)|TT_FC(1)|DEST_MSIZE(0)|SRC_MSIZE(0);
-			SPI_DMACH->CTLH = BLOCK_TS(spi_dsc->wlen);
+			SPI_DMACH->CTLL = DST_NOCHANGE|SRC_INC|TT_FC_M2P_GPDMA|DEST_MSIZE_1|SRC_MSIZE_1;
+			SPI_DMACH->CTLH = (spi_dsc->wlen > BLOCK_TS(~0)) ? BLOCK_TS(~0) : spi_dsc->wlen;
 
 			SPI_DMACH->SAR = (u32)spi_dsc->wdata;
 			SPI_DMACH->DAR = (u32)&SPI->IN[4];
@@ -5773,8 +5775,8 @@ static bool SPI_WriteRead(DSCSPI *d)
 		{
 			volatile u32 t;
 
-			SPI_DMACH->CTLL = DINC(0)|SINC(2)|TT_FC(2)|DEST_MSIZE(0)|SRC_MSIZE(0);
-			SPI_DMACH->CTLH = BLOCK_TS(spi_dsc->rlen);
+			SPI_DMACH->CTLL = DST_INC|SRC_NOCHANGE|TT_FC_P2M_GPDMA|DEST_MSIZE_1|SRC_MSIZE_1;
+			SPI_DMACH->CTLH = (spi_dsc->rlen > BLOCK_TS(~0)) ? BLOCK_TS(~0) : spi_dsc->rlen;
 
 			SPI_DMACH->SAR = (u32)&SPI->RBUF;
 			SPI_DMACH->DAR = (u32)spi_dsc->rdata;

@@ -121,7 +121,7 @@ static bool testWriteFlash = false;
 static const bool verifyWritePage = true; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
 
 #ifndef WIN32
-static const bool forceEraseWrite = false;
+static const bool forceEraseWrite = true;
 #else
 static const bool forceEraseWrite = true;
 #endif
@@ -2117,6 +2117,7 @@ static bool UpdateBlackBoxSendSessions()
 	static byte state = 0;
 
 	static FLADR rd;
+	static FLADR adr;
 
 	static u32 bs;
 	static u32 be;
@@ -2178,6 +2179,7 @@ static bool UpdateBlackBoxSendSessions()
 	static TM32 tm;
 
 	static u32 count = 0;
+	static u32 countFindVec = 0;
 
 	static bool findVector = false;
 
@@ -2265,7 +2267,7 @@ static bool UpdateBlackBoxSendSessions()
 
 							findFileNum = curFileNum;
 							findFileStartAdr = curFileStartAdr;
-							findFileEndAdr = rd.GetRawAdr();
+							//findFileEndAdr = rd.GetRawAdr();
 							findFileLastBlock = lastSessionBlock;
 
 							curFileStartAdr	= rd.GetRawAdr();
@@ -2340,7 +2342,9 @@ static bool UpdateBlackBoxSendSessions()
 					start_rtc = flrb.hdr.rtc;
 				};
 
-				FLADR adr;
+				adr.SetRawBlock(findFileLastBlock+1);
+
+				findFileEndAdr = adr.GetRawAdr();
 
 				adr.SetRawBlock(findFileLastBlock);
 
@@ -2351,6 +2355,8 @@ static bool UpdateBlackBoxSendSessions()
 				flrb.adr = adr.GetRawAdr();
 
 				RequestFlashRead(&flrb);
+
+				countFindVec = 10;
 
 				state++;
 			};
@@ -2373,9 +2379,29 @@ static bool UpdateBlackBoxSendSessions()
 				if (flrb.ready && flrb.hdr.session == findFileNum && flrb.hdr.crc == 0)
 				{
 					stop_rtc = flrb.hdr.rtc;
-				};
 
-				state++;
+					state++;
+				}
+				else if (countFindVec > 0)
+				{
+					countFindVec--;
+	
+					adr.PrevBlock(); 
+
+					flrb.data = 0;
+					flrb.maxLen = 0;
+					flrb.vecStart = true;
+					flrb.useAdr = true;
+					flrb.adr = adr.GetRawAdr();
+					
+					RequestFlashRead(&flrb);
+
+					state--;
+				}
+				else
+				{
+					state++;
+				};
 			};
 				
 			break;
@@ -3814,6 +3840,12 @@ static void SaveVars()
 						nvsi[n].timeStamp = 0;
 						nvsi[n].f.size = 0;
 						nvsi[n].crc = 0;
+					};
+
+					for (u16 n = 0; n < ArraySize(nvv.badBlocks); n++)
+					{
+						nvv.badBlocks[n] = 0;
+						nvv.pageError[n] = 0;
 					};
 
 					nvv.f.session += 1;
