@@ -10,6 +10,7 @@
 #include "hw_conf.h"
 #include "hw_rtm.h"
 #include "manch.h"
+#include "DMA.h"
 
 #ifdef WIN32
 
@@ -1094,7 +1095,23 @@ void SetClock(const RTC &t)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifndef WIN32
+#ifdef CPU_SAME53
+
+static __irq void Clock_IRQ()
+{
+	//if (HW::SCU_HIBERNATE->HDSTAT & SCU_HIBERNATE_HDSTAT_ULPWDG_Msk)
+	//{
+	//	if ((HW::SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCLR_Msk) == 0)	HW::SCU_HIBERNATE->HDCLR = SCU_HIBERNATE_HDCLR_ULPWDG_Msk;
+	//}
+	//else
+	//{
+	//	timeBDC.msec = (timeBDC.msec < 500) ? 0 : 999;
+	//};
+
+	//HW::SCU_GCU->SRCLR = SCU_INTERRUPT_SRCLR_PI_Msk;
+}
+
+#elif defined(CPU_XMC48)
 
 static __irq void Clock_IRQ()
 {
@@ -1110,6 +1127,8 @@ static __irq void Clock_IRQ()
 	HW::SCU_GCU->SRCLR = SCU_INTERRUPT_SRCLR_PI_Msk;
 }
 
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void InitClock()
@@ -1120,6 +1139,24 @@ static void InitClock()
 	byte buf[10];
 	
 	RTC t;
+
+	buf[0] = 0x0F;
+	buf[1] = 0x88;
+	dsc.adr = 0x68;
+	dsc.wdata = buf;
+	dsc.wlen = 2;
+	dsc.rdata = 0;
+	dsc.rlen = 0;
+	dsc.wdata2 = 0;
+	dsc.wlen2 = 0;
+
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Init DS3232 ... ");
+
+	I2C_AddRequest(&dsc);
+
+	while (!dsc.ready) { I2C_Update(); };
+
+	SEGGER_RTT_WriteString(0, (dsc.ready && dsc.ack) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "!!! ERROR !!!\n"));
 
 	dsc.adr = 0x68;
 	dsc.wdata = &reg;
@@ -1159,6 +1196,10 @@ static void InitClock()
 	CM4::NVIC->CLR_PR(CLOCK_IRQ);
 	CM4::NVIC->SET_ER(CLOCK_IRQ);	
 
+#ifdef CPU_SAME53
+
+#elif defined(CPU_XMC48)
+
 	HW::RTC->CTR = (0x7FFFUL << RTC_CTR_DIV_Pos) | RTC_CTR_ENB_Msk;
 
 	while (HW::SCU_GCU->MIRRSTS & SCU_GENERAL_MIRRSTS_RTC_MSKSR_Msk);
@@ -1166,10 +1207,11 @@ static void InitClock()
 	HW::RTC->MSKSR = RTC_MSKSR_MPSE_Msk;
 	HW::SCU_GCU->SRMSK = SCU_INTERRUPT_SRMSK_PI_Msk;
 
+#endif
+
 	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
-#endif
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #ifdef CPU_XMC48
@@ -1201,25 +1243,11 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
 	HW::P6->BSET(5);
 
-	byte *s = (byte*)data;
-
 	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
 
-	CRC_DMACH->SAR = (u32)s;
+	CRC_DMA.MemCopySrcInc(data, &CRC_FCE->IR, len);
 
-	while (len > 0)
-	{
-		u32 l = (len > BLOCK_TS(~0)) ? BLOCK_TS(~0) : len;
-
-		CRC_DMACH->CTLH = l;
-
-		CRC_DMA->CHENREG = CRC_DMA_CHEN;
-
-		while(CRC_DMA->CHENREG & (1<<2));
-
-		//s += l;
-		len -= l;
-	};
+	while (!CRC_DMA.CheckMemCopyComplete());
 
 	HW::P6->BCLR(5);
 
@@ -1234,38 +1262,16 @@ void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
 	HW::P6->BSET(5);
 
-	byte* s = (byte*)data;
-
 	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
 
-//	if ((u32)s & 1) { CRC_FCE->IR = *s++; len--; };
-
-	if (len > 0)
-	{
-		CRC_DMACH->CTLH = BLOCK_TS(len);
-
-		CRC_DMACH->SAR = (u32)s;
-
-		CRC_DMA->CHENREG = CRC_DMA_CHEN;
-	};
+	CRC_DMA.MemCopySrcInc(data, &CRC_FCE->IR, len);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 {
-	if ((CRC_DMA->CHENREG & (1 << 2)) == 0)
-	{
-		*crc = (byte)CRC_FCE->RES;
-
-		HW::P6->BCLR(5);
-
-		return true;
-	}
-	else
-	{
-		return false;
-	};
+	return CRC_DMA.CheckMemCopyComplete();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1278,13 +1284,6 @@ static void Init_CRC_CCITT_DMA()
 
 	HW::FCE->CLC = 0;
 	CRC_FCE->CFG = 0;
-
-	CRC_DMA->DMACFGREG = 1;
-
-	CRC_DMACH->CTLL = DST_NOCHANGE|SRC_INC|DST_TR_WIDTH_8|SRC_TR_WIDTH_8|TT_FC_M2M_GPDMA|DEST_MSIZE_1|SRC_MSIZE_1;
-	CRC_DMACH->DAR = (u32)&CRC_FCE->IR;
-	CRC_DMACH->CFGL = 0;
-	CRC_DMACH->CFGH = PROTCTL(1);
 
 	SEGGER_RTT_WriteString(0, "OK\n");
 }
@@ -1804,21 +1803,7 @@ void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 	#elif defined(CPU_XMC48)
 
-//		register u32 t __asm("r0");
-
-		if (len > BLOCK_TS(~0)) { len = BLOCK_TS(~0); };
-
-		DSP_DMA->DMACFGREG = 1;
-
-		DSP_DMACH->CTLL = DST_INC|SRC_INC|TT_FC(0)|DEST_MSIZE(0)|SRC_MSIZE(0);
-		DSP_DMACH->CTLH = BLOCK_TS(len);
-
-		DSP_DMACH->SAR = (u32)src;
-		DSP_DMACH->DAR = (u32)dst;
-		DSP_DMACH->CFGL = 0;
-		DSP_DMACH->CFGH = PROTCTL(1);
-
-		DSP_DMA->CHENREG = DSP_DMA_CHEN;
+		DSP_DMA.MemCopy(src, dst, len);
 
 	#endif
 #else
@@ -1830,19 +1815,19 @@ void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 bool DSP_CheckDataComplete()
 {
-	#ifdef CPU_SAME53
+#ifdef CPU_SAME53
 
 	return (HW::DMAC->CH[DSP_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[DSP_DMACH].INTFLAG & DMCH_TCMPL);
 	
-	#elif defined(CPU_XMC48)
+#elif defined(CPU_XMC48)
 
-		return (DSP_DMA->CHENREG & DSP_DMA_CHST) == 0;
+	return DSP_DMA.CheckMemCopyComplete();
 
-	#elif defined(WIN32)
+#elif defined(WIN32)
 
-		return true;
+	return true;
 		
-	#endif
+#endif
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3035,13 +3020,17 @@ void InitHardware()
 
 //	HW::PIOA->BSET(13);
 
-	HW::GCLK->GENCTRL[GEN_32K]	= GCLK_DIV(1)	|GCLK_SRC_OSCULP32K	|GCLK_GENEN;
+	HW::GCLK->GENCTRL[GEN_32K]		= GCLK_DIV(1)	|GCLK_SRC_OSCULP32K	|GCLK_GENEN;
 
-	HW::GCLK->GENCTRL[GEN_1M]	= GCLK_DIV(25)	|GCLK_SRC_XOSC1		|GCLK_GENEN		|GCLK_OE;
+	HW::GCLK->GENCTRL[GEN_1M]		= GCLK_DIV(25)	|GCLK_SRC_XOSC1		|GCLK_GENEN		|GCLK_OE;
 
-	HW::GCLK->GENCTRL[GEN_25M]	= GCLK_DIV(1)	|GCLK_SRC_XOSC1		|GCLK_GENEN;
+	HW::GCLK->GENCTRL[GEN_25M]		= GCLK_DIV(1)	|GCLK_SRC_XOSC1		|GCLK_GENEN;
 
-//	HW::GCLK->GENCTRL[GEN_500K] = GCLK_DIV(50)	|GCLK_SRC_XOSC1		|GCLK_GENEN;
+//	HW::GCLK->GENCTRL[GEN_500K] 	= GCLK_DIV(50)	|GCLK_SRC_XOSC1		|GCLK_GENEN;
+
+	PIO_32kHz->SetWRCONFIG(1UL<<PIN_32kHz, PORT_PMUX_M|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_PULLEN);
+
+	HW::GCLK->GENCTRL[GEN_EXT32K]	= GCLK_DIV(1)	|GCLK_SRC_GCLKIN	|GCLK_GENEN		;
 
 
 	HW::MCLK->APBAMASK |= APBA_EIC;

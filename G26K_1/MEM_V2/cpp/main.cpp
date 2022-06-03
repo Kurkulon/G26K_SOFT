@@ -11,6 +11,7 @@
 #include "PointerCRC.h"
 
 #include "SEGGER_RTT.h"
+#include "DMA.h"
 
 #ifdef WIN32
 
@@ -3018,13 +3019,15 @@ static void Update()
 
 //static ComPort com1;
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "main() start ...\n");
 
 //	static bool c = true;
 
-	//static byte buf[8192];
+	static byte buf[16384];
 
 	//volatile byte * const FLD = (byte*)0x60000000;	
 	

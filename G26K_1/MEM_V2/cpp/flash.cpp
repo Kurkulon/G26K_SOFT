@@ -1,28 +1,46 @@
 #include <types.h>
 #include <core.h>
 #include <SEGGER_RTT.h>
+#include <list.h>
+#include <flash.h>
 
 #include "hw_conf.h"
 #include "hw_rtm.h"
 #include "hw_nand.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//#define NAND_SAMSUNG
+#define NAND_MICRON
 
-#define NAND_CHIP_BITS		3
-#define NAND_MAX_CHIP		(1<<NAND_CHIP_BITS)
-#define NAND_CHIP_MASK		(NAND_MAX_CHIP-1)
+#define NAND_CHIP_BITS			3
+#define NAND_MAX_CHIP			(1<<NAND_CHIP_BITS)
+#define NAND_CHIP_MASK			(NAND_MAX_CHIP-1)
+
+#define LIST_ITEMS_NUM			128
+#define FLASH_WRITE_BUFFER_NUM	8
+#define FLASH_READ_BUFFER_NUM	8
 
 //static void	HW_NAND_Init();
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static const bool verifyWritePage = true; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifndef WIN32
+
+static const bool forceEraseWrite = true;
 
 static u32 chipSelect[NAND_MAX_CHIP] = { FCS0, FCS1, FCS2, FCS3, FCS4, FCS5, FCS6, FCS7 };
 
 #define maskChipSelect (FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7)
 
 static const char* chipRefDes[NAND_MAX_CHIP] = { "DD7 ", "DD8 ", "DD9 ", "DD10", "DD11", "DD12", "DD13", "DD14" };
+
+#else
+
+static const bool forceEraseWrite = true;
 
 #endif
 
