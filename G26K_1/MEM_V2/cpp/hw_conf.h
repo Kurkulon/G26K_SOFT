@@ -73,16 +73,16 @@
 	//#define GEN_500K	4
 	#define GEN_EXT32K	5
 
-	#define	NAND_DMACH			0
-	#define	COM1_DMACH			1
-	#define	COM2_DMACH			2
-	#define	COM3_DMACH			3
+	#define	NAND_DMA			DMA_CH0
+	#define	COM1_DMA			DMA_CH1
+	#define	COM2_DMA			DMA_CH2
+	#define	COM3_DMA			DMA_CH3
 	#define	SPI_DMACH_TX		4
 	#define	SPI_DMACH_RX		5
-	#define	NAND_MEMCOPY_DMACH	6
-	#define	I2C_DMACH			7
-	#define	DSP_DMACH			30
-	#define	CRC_DMACH			31
+	#define	NAND_MEMCOPY_DMA	DMA_CH6
+	#define	I2C_DMA				DMA_CH7
+	#define	DSP_DMA				DMA_CH30
+	#define	CRC_DMA				DMA_CH31
 
 	#define I2C					HW::I2C3
 	#define PIO_I2C				HW::PIOA 
@@ -93,8 +93,8 @@
 	#define I2C_TRIGSRC_RX		DMCH_TRIGSRC_SERCOM3_RX
 	#define I2C_TRIGSRC_TX		DMCH_TRIGSRC_SERCOM3_TX
 
-	__align(16) T_HW::DMADESC DmaTable[32];
-	__align(16) T_HW::DMADESC DmaWRB[32];
+	//__align(16) T_HW::DMADESC DmaTable[32];
+	//__align(16) T_HW::DMADESC DmaWRB[32];
 
 	#define SPI				HW::SPI0
 	#define PIO_SPCK		HW::PIOA
@@ -143,7 +143,7 @@
 	#define RotTmr			HW::TCC4
 	//#define MltTmr			HW::TCC4
 
-	#define MT(v)			(v)
+	#define US2MT(v)		(v)
 	#define BAUD2CLK(x)		((u32)(1000000/x+0.5))
 
 	#define MANT_IRQ		TC0_IRQ

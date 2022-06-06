@@ -71,8 +71,8 @@ static volatile bool busyWriteThread = false;
 
 #else
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
 #endif 
 
@@ -1296,68 +1296,27 @@ static void Init_CRC_CCITT_DMA()
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	//HW::PIOC->BSET(26);
+	CRC_DMA.CRC_CCITT(data, len, init);
 
-	T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
-	T_HW::S_DMAC::S_DMAC_CH	&dmach = HW::DMAC->CH[CRC_DMACH];
+	while (!CRC_DMA.CheckComplete());
 
-	dmadsc.DESCADDR = 0;
-	dmadsc.DSTADDR = (void*)init;
-	dmadsc.SRCADDR = (byte*)data+len;
-	dmadsc.BTCNT = len;
-	dmadsc.BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
-
-	HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE|DMAC_CRCPOLY_CRC16|DMAC_CRCMODE_CRCGEN|DMAC_CRCSRC(0x20+CRC_DMACH);
-
-	dmach.INTENCLR = ~0;
-	dmach.INTFLAG = ~0;
-	dmach.CTRLA = DMCH_ENABLE/*|DMCH_TRIGACT_TRANSACTION*/;
-
-	HW::DMAC->SWTRIGCTRL = 1UL << CRC_DMACH;
-
-	while (((dmach.CTRLA & DMCH_ENABLE) != 0) && (dmach.INTFLAG & DMCH_TCMPL) == 0);
-
-	//HW::PIOC->BCLR(26);
-
-	return ReverseWord(HW::DMAC->CRCCHKSUM);
+	return CRC_DMA.Get_CRC_CCITT_Result();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
-//	HW::PIOC->BSET(26);
-
-	T_HW::DMADESC& dmadsc = DmaTable[CRC_DMACH];
-	T_HW::S_DMAC::S_DMAC_CH& dmach = HW::DMAC->CH[CRC_DMACH];
-
-	dmadsc.DESCADDR = 0;
-	dmadsc.DSTADDR = (void*)init;
-	dmadsc.SRCADDR = (byte*)data + len;
-	dmadsc.BTCNT = len;
-	dmadsc.BTCTRL = DMDSC_VALID | DMDSC_BEATSIZE_BYTE | DMDSC_SRCINC;
-
-	HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE | DMAC_CRCPOLY_CRC16 | DMAC_CRCMODE_CRCGEN | DMAC_CRCSRC(0x20 + CRC_DMACH);
-
-	dmach.INTENCLR = ~0;
-	dmach.INTFLAG = ~0;
-	dmach.CTRLA = DMCH_ENABLE/*|DMCH_TRIGACT_TRANSACTION*/;
-
-	HW::DMAC->SWTRIGCTRL = 1UL << CRC_DMACH;
+	CRC_DMA.CRC_CCITT(data, len, init);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 {
-	//T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
-	T_HW::S_DMAC::S_DMAC_CH& dmach = HW::DMAC->CH[CRC_DMACH];
-
-	if ((dmach.CTRLA & DMCH_ENABLE) == 0 || (dmach.INTFLAG & DMCH_TCMPL))
+	if (CRC_DMA.CheckComplete())
 	{
-		*crc = ReverseWord(HW::DMAC->CRCCHKSUM);
-
-		//HW::PIOC->BCLR(26);
+		*crc = CRC_DMA.Get_CRC_CCITT_Result();
 
 		return true;
 	}
@@ -1786,26 +1745,8 @@ void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 {
 #ifndef WIN32
 
-	using namespace HW;
+	DSP_DMA.MemCopy(src, dst, len);
 
-	#ifdef CPU_SAME53	
-
-		DmaTable[DSP_DMACH].SRCADDR = (byte*)src+len;
-		DmaTable[DSP_DMACH].DSTADDR = (byte*)dst+len;
-		DmaTable[DSP_DMACH].DESCADDR = 0;
-		DmaTable[DSP_DMACH].BTCNT = len;
-		DmaTable[DSP_DMACH].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC|DMDSC_SRCINC;
-
-		DMAC->CH[DSP_DMACH].INTENCLR = ~0;
-		DMAC->CH[DSP_DMACH].INTFLAG = ~0;
-		DMAC->CH[DSP_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_TRANSACTION;
-		DMAC->SWTRIGCTRL = 1UL<<DSP_DMACH;
-
-	#elif defined(CPU_XMC48)
-
-		DSP_DMA.MemCopy(src, dst, len);
-
-	#endif
 #else
 
 #endif
@@ -1815,15 +1756,11 @@ void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 bool DSP_CheckDataComplete()
 {
-#ifdef CPU_SAME53
-
-	return (HW::DMAC->CH[DSP_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[DSP_DMACH].INTFLAG & DMCH_TCMPL);
-	
-#elif defined(CPU_XMC48)
+#ifndef WIN32
 
 	return DSP_DMA.CheckMemCopyComplete();
 
-#elif defined(WIN32)
+#else
 
 	return true;
 		

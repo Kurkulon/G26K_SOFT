@@ -9,8 +9,11 @@
 #include "hw_conf.h"
 #include "hardware.h"
 
+#ifdef CPU_SAME53	
+#define MAN_TRANSMIT_V1
+#elif defined(CPU_XMC48)
 #define MAN_TRANSMIT_V2
-
+#endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #include <manch_imp.h>

@@ -5,6 +5,7 @@
 #include "CRC16_8005.h"
 #include "list.h"
 #include "PointerCRC.h"
+#include "DMA.h"
 
 #include "hardware.h"
 #include "SEGGER_RTT.h"
@@ -275,6 +276,7 @@ bool I2C_Update()
 
 				dsc.ready = false;
 				dsc.ack = false;
+				dsc.readedLen = 0;
 
 				wrPtr = (byte*)dsc.wdata;	
 				rdPtr = (byte*)dsc.rdata;	
@@ -291,54 +293,48 @@ bool I2C_Update()
 
 				I2C->INTFLAG = ~0;
 
-				T_HW::DMADESC &dmadsc = DmaTable[I2C_DMACH];
+				//T_HW::DMADESC &dmadsc = DmaTable[I2C_DMACH];
 
 				if (wrCount == 0)
 				{
-					dmadsc.SRCADDR	= &I2C->DATA;
-					dmadsc.DSTADDR	= rdPtr + rdCount;
-					dmadsc.DESCADDR = 0;
-					dmadsc.BTCNT	= rdCount;
-					dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
+					I2C_DMA.ReadPeripheral(&I2C->DATA, rdPtr, rdCount, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_RX, DMDSC_BEATSIZE_BYTE);
 
-					__disable_irq();
+					//dmadsc.SRCADDR	= &I2C->DATA;
+					//dmadsc.DSTADDR	= rdPtr + rdCount;
+					//dmadsc.DESCADDR = 0;
+					//dmadsc.BTCNT	= rdCount;
+					//dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
 
-					HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
-					HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
-					HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|I2C_TRIGSRC_RX;
-
-					__enable_irq();
+					//HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_RX;
 
 					I2C->ADDR = ((rdCount <= 255) ? (I2C_LEN(rdCount)|I2C_LENEN) : 0) | (adr << 1) | 1;
 					state = READ; 
 				}
 				else
 				{
-					dmadsc.SRCADDR	= wrPtr + wrCount;
-					dmadsc.DSTADDR	= &I2C->DATA;
-					dmadsc.BTCNT	= wrCount;
-					dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
+					I2C_DMA.WritePeripheral(wrPtr, &I2C->DATA, wrCount, wrPtr2, wrCount2, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_TX, DMDSC_BEATSIZE_BYTE);
 
-					if (wrCount2 == 0)
-					{
-						dmadsc.DESCADDR = 0;
-					}
-					else
-					{
-						wr_dmadsc.SRCADDR	= wrPtr2 + wrCount2;
-						wr_dmadsc.DSTADDR	= &I2C->DATA;
-						wr_dmadsc.BTCNT		= wrCount2;
-						wr_dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
-						dmadsc.DESCADDR		= &wr_dmadsc;
-					};
+					//dmadsc.SRCADDR	= wrPtr + wrCount;
+					//dmadsc.DSTADDR	= &I2C->DATA;
+					//dmadsc.BTCNT	= wrCount;
+					//dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
 
-					__disable_irq();
+					//if (wrCount2 == 0)
+					//{
+					//	dmadsc.DESCADDR = 0;
+					//}
+					//else
+					//{
+					//	wr_dmadsc.SRCADDR	= wrPtr2 + wrCount2;
+					//	wr_dmadsc.DSTADDR	= &I2C->DATA;
+					//	wr_dmadsc.BTCNT		= wrCount2;
+					//	wr_dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
+					//	dmadsc.DESCADDR		= &wr_dmadsc;
+					//};
 
-					HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
-					HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
-					HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|I2C_TRIGSRC_TX;
-
-					__enable_irq();
+					//HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
+					//HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
+					//HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_TX;
 
 					I2C->ADDR = (adr << 1);
 					state = WRITE; 
@@ -361,7 +357,7 @@ bool I2C_Update()
 
 				__disable_irq();
 
-				bool c = ((HW::DMAC->CH[I2C_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[I2C_DMACH].INTFLAG & DMCH_TCMPL)) && (I2C->INTFLAG & I2C_MB);
+				bool c = I2C_DMA.CheckComplete() && (I2C->INTFLAG & I2C_MB);
 				
 				__enable_irq();
 
@@ -371,21 +367,19 @@ bool I2C_Update()
 
 					if (rdCount > 0)
 					{
-						T_HW::DMADESC &dmadsc = DmaTable[I2C_DMACH];
+						I2C_DMA.ReadPeripheral(&I2C->DATA, rdPtr, rdCount, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_RX, DMDSC_BEATSIZE_BYTE);
 
-						dmadsc.SRCADDR	= &I2C->DATA;
-						dmadsc.DSTADDR	= rdPtr + rdCount;
-						dmadsc.DESCADDR = 0;
-						dmadsc.BTCNT	= rdCount;
-						dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
+						//T_HW::DMADESC &dmadsc = DmaTable[I2C_DMACH];
 
-						__disable_irq();
+						//dmadsc.SRCADDR	= &I2C->DATA;
+						//dmadsc.DSTADDR	= rdPtr + rdCount;
+						//dmadsc.DESCADDR = 0;
+						//dmadsc.BTCNT	= rdCount;
+						//dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
 
-						HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
-						HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
-						HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|I2C_TRIGSRC_RX;
-
-						__enable_irq();
+						//HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
+						//HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
+						//HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_RX;
 
 						I2C->ADDR = ((rdCount <= 255) ? (I2C_LEN(rdCount)|I2C_LENEN) : 0) | (adr << 1) | 1;
 		
@@ -416,7 +410,7 @@ bool I2C_Update()
 
 				__disable_irq();
 
-				bool c = (HW::DMAC->CH[I2C_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[I2C_DMACH].INTFLAG & DMCH_TCMPL);
+				bool c = I2C_DMA.CheckComplete();
 				
 				__enable_irq();
 
@@ -424,13 +418,13 @@ bool I2C_Update()
 				{
 					dsc.ack = true;
 
-					dsc.readedLen = rdCount;
-
 					I2C->CTRLB = I2C_SMEN|I2C_ACKACT|I2C_CMD_STOP;
 						
 					state = STOP; 
 				};
 			};
+
+			i2c_dsc->readedLen = I2C_DMA.GetBytesReady(); //i2c_dsc->rlen - DmaWRB[I2C_DMACH].BTCNT;
 
 			break;
 
@@ -537,14 +531,13 @@ bool I2C_AddRequest(DSCI2C *d)
 
 	d->next = 0;
 	d->ready = false;
+	if (d->wdata2 == 0) d->wlen2 = 0;
 
 #ifdef CPU_SAME53
 
 	i2c_ReqList.Add(d);
 
 #elif defined(CPU_XMC48)
-
-	if (d->wdata2 == 0) d->wlen2 = 0;
 
 	__disable_irq();
 
