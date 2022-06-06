@@ -355,7 +355,7 @@ struct MTB
 
 extern bool RcvManData(MRB *mrb);
 extern bool SendManData(MTB *mtb);
-extern bool SendManData2(MTB* mtb);
+//extern bool SendManData2(MTB* mtb);
 //extern void SetTrmBoudRate(byte i);
 extern void ManRcvUpdate();
 //extern void ManRcvStop();

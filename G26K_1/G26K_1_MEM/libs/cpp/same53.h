@@ -19,6 +19,7 @@
 #define MCK (MCK_MHz*1000000)
 #define NS2CLK(x) (((x)*MCK_MHz+500)/1000)
 
+#define CPUCLK (MCK_MHz*1000000)
 
 #ifndef WIN32
 #define MK_PTR(n,p)  T_HW::S_##n * const n = ((T_HW::S_##n*)(p))
@@ -1087,6 +1088,12 @@ namespace T_HW
 	#define I2C_CMD_2		(2<<16)           	/**< \brief (SERCOM_I2CM_CTRLB) Command */
 	#define I2C_CMD_STOP	(3<<16)           	/**< \brief (SERCOM_I2CM_CTRLB) Command */
 	#define I2C_ACKACT		(1<<18)           	/**< \brief (SERCOM_I2CM_CTRLB) Acknowledge Action */
+
+	#define I2C_ADDR(value) ((value)&0x7FF)
+	#define I2C_LENEN       (1<<13)          	/**< (SERCOM_I2CM_ADDR) Length Enable Position */
+	#define I2C_HS          (1<<14)          	/**< (SERCOM_I2CM_ADDR) High Speed Mode Position */
+	#define I2C_TENBITEN    (1<<15)          	/**< (SERCOM_I2CM_ADDR) Ten Bit Addressing Enable Position */
+	#define I2C_LEN(value)  (((value)&0xFF)<<16)
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	

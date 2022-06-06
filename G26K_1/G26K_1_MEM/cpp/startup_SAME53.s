@@ -30,34 +30,53 @@
 ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
 
-Stack_Size      EQU     0x00000200
+Stack_Size      	EQU     0x00000800
+Heap_Size       	EQU     0x00000000
+VecTableIntSize		EQU		16*4	
+VecTableExtSize		EQU		137*4	
+SCB_VTOR			EQU		0xE000ED08
+SeggerRttCB_size	EQU		0x2000
 
-                AREA    STACK, NOINIT, READWRITE, ALIGN=3
-Stack_Mem       SPACE   Stack_Size
-__initial_sp
+;                AREA    STACK, NOINIT, READWRITE, ALIGN=3
+;Stack_Mem       SPACE   Stack_Size
+;__initial_sp
 
 
 ; <h> Heap Configuration
 ;   <o>  Heap Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
 
-Heap_Size       EQU     0x00000000
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
                 AREA    HEAP, NOINIT, READWRITE, ALIGN=3
 __heap_base
 Heap_Mem        SPACE   Heap_Size
 __heap_limit
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-VecTableIntSize	EQU		16*4	
-VecTableExtSize	EQU		137*4	
-SCB_VTOR		EQU		0xE000ED08
-
-				AREA	||.ARM.__AT_0x20000000||, DATA, NOINIT, ALIGN=7
+                EXPORT  Stack_Mem
                 EXPORT  VectorTableInt
                 EXPORT  VectorTableExt
+                EXPORT  SeggerRttCB
+                EXPORT  __segger_rttcb_end
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+				AREA	||.ARM.__AT_0x20000000||, DATA, NOINIT, ALIGN=7
+Stack_Mem       SPACE   Stack_Size
+                
+                ALIGN	128
+__initial_sp
+
 VectorTableInt	SPACE	VecTableIntSize				
-VectorTableExt	SPACE	VecTableExtSize				
+VectorTableExt	SPACE	VecTableExtSize	
+ 
+				AREA	||.ARM.__AT_0x47000000||, DATA, NOINIT, ALIGN=7
+SeggerRttCB		SPACE	SeggerRttCB_size		
+__segger_rttcb_end	
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
                 PRESERVE8
                 THUMB

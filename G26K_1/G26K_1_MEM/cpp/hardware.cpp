@@ -7,6 +7,7 @@
 #include "hardware.h"
 
 #include "SEGGER_RTT.h"
+#include "list.h"
 
 #ifdef WIN32
 
@@ -66,8 +67,8 @@ static volatile bool busyWriteThread = false;
 
 #else
 
-#pragma O3
-#pragma Otime
+//#pragma O3
+//#pragma Otime
 
 #endif 
 
@@ -110,14 +111,16 @@ static void I2C_Init();
 	#define GEN_1M		3
 	//#define GEN_500K	4
 
-	#define	NAND_DMACH		0
-	#define	COM1_DMACH		1
-	#define	COM2_DMACH		2
-	#define	COM3_DMACH		3
-	#define	SPI_DMACH_TX	4
-	#define	SPI_DMACH_RX	5
-	#define	DSP_DMACH		30
-	#define	CRC_DMACH		31
+	#define	NAND_DMACH			0
+	#define	COM1_DMACH			1
+	#define	COM2_DMACH			2
+	#define	COM3_DMACH			3
+	#define	SPI_DMACH_TX		4
+	#define	SPI_DMACH_RX		5
+	#define	NAND_MEMCOPY_DMACH	6
+	#define	I2C_DMACH			7
+	#define	DSP_DMACH			30
+	#define	CRC_DMACH			31
 
 	#define I2C			HW::I2C3
 	#define PIO_I2C		HW::PIOA 
@@ -176,6 +179,8 @@ static void I2C_Init();
 	#define RotTmr			HW::TCC4
 	//#define MltTmr			HW::TCC4
 
+	#define MAN_TRANSMIT_V1
+
 	#define MT(v)			(v)
 	#define BAUD2CLK(x)		((u32)(1000000/x+0.5))
 
@@ -183,6 +188,9 @@ static void I2C_Init();
 	#define MANR_IRQ		TCC2_1_IRQ
 	//#define MANR_EXTINT		11
 	#define MANR_EXTINT		7
+	#define ManT_SET_PR(v)				{ ManRT->PERBUF = (v); }
+	#define ManT_SET_CR(v)				{ ManRT->CCBUF[0] = (v); ManRT->CCBUF[1] = (v); }
+	#define ManT_SHADOW_SYNC()			
 
 	
 	#define PIO_MANCH		HW::PIOC
@@ -383,6 +391,8 @@ static void I2C_Init();
 	#define I2C_IRQ					USIC2_0_IRQn
 	#define I2C_PID					PID_USIC2
 
+	#define MAN_TRANSMIT_V2
+
 	#define ManRT					HW::CCU41_CC43		//HW::CCU41_CC42
 	#define ManTT					HW::CCU41_CC40
 	#define ManCCU					HW::CCU41
@@ -420,6 +430,7 @@ static void I2C_Init();
 	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+((1<<(ManT_PSC))/2))/(1<<(ManT_PSC))))
 	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
 	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
+	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
 	#define ManT1_PSL				(0) 
 	#define ManT1_CHC				(CC8_OCS2 | CC8_OCS3)			
 	#define ManT2_CHC				(CC8_OCS2 | CC8_OCS3)			
@@ -2286,7 +2297,9 @@ static void NAND_Init()
 
 		for (byte i = 0; i < ArraySize(checkBuf); i++)
 		{
+			NAND_DIR_OUT();
 			NAND_ADR_LATCH(checkBuf[i]);
+			NAND_DIR_IN();
 			readBuf[i] = NAND_ADR_READ();
 		};
 
@@ -2829,16 +2842,16 @@ void NAND_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
 
 	#ifdef CPU_SAME53	
 
-		DmaTable[NAND_DMACH].SRCADDR = (byte*)src+len;
-		DmaTable[NAND_DMACH].DSTADDR = (byte*)dst+len;
-		DmaTable[NAND_DMACH].DESCADDR = 0;
-		DmaTable[NAND_DMACH].BTCNT = len;
-		DmaTable[NAND_DMACH].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC|DMDSC_SRCINC;
+		DmaTable[NAND_MEMCOPY_DMACH].SRCADDR = (byte*)src+len;
+		DmaTable[NAND_MEMCOPY_DMACH].DSTADDR = (byte*)dst+len;
+		DmaTable[NAND_MEMCOPY_DMACH].DESCADDR = 0;
+		DmaTable[NAND_MEMCOPY_DMACH].BTCNT = len;
+		DmaTable[NAND_MEMCOPY_DMACH].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC|DMDSC_SRCINC;
 
-		DMAC->CH[NAND_DMACH].INTENCLR = ~0;
-		DMAC->CH[NAND_DMACH].INTFLAG = ~0;
-		DMAC->CH[NAND_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_TRANSACTION;
-		DMAC->SWTRIGCTRL = 1UL<<NAND_DMACH;
+		DMAC->CH[NAND_MEMCOPY_DMACH].INTENCLR = ~0;
+		DMAC->CH[NAND_MEMCOPY_DMACH].INTFLAG = ~0;
+		DMAC->CH[NAND_MEMCOPY_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_TRANSACTION;
+		DMAC->SWTRIGCTRL = 1UL<<NAND_MEMCOPY_DMACH;
 
 	#elif defined(CPU_XMC48)
 
@@ -3003,6 +3016,12 @@ inline u16 CheckParity(u16 x)
 	return (y ^ (y >> 8))^1;
 }
 
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef MAN_TRANSMIT_V1
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static __irq void ManTrmIRQ()
@@ -3151,7 +3170,6 @@ static __irq void ManTrmIRQ()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3171,7 +3189,6 @@ bool SendManData(MTB *mtb)
 	stateManTrans = 0;
 
 	#ifdef CPU_SAME53	
-
 
 		ManTT->CTRLA = TC_MODE_COUNT8;
 		ManTT->WAVE = TC_WAVEGEN_NPWM;
@@ -3278,7 +3295,15 @@ static void InitManTransmit()
 	ManDisable();
 }
 
+#endif
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#else // #ifdef MAN_TRANSMIT_V1
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static __irq void ManTrmIRQ2()
 {
@@ -3333,7 +3358,7 @@ static __irq void ManTrmIRQ2()
 					stateManTrans++;
 				};
 
-				ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+				ManT_SHADOW_SYNC(); //ManT_CCU8->GCSS = ManT_CCU8_GCSS;
 
 				tw <<= 1;
 				count--;
@@ -3380,7 +3405,7 @@ static __irq void ManTrmIRQ2()
 				count--;
 			};
 
-			ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+			ManT_SHADOW_SYNC(); //ManT_CCU8->GCSS = ManT_CCU8_GCSS;
 
 			break;
 
@@ -3439,7 +3464,7 @@ static __irq void ManTrmIRQ2()
 				};
 			};
 
-			ManT_CCU8->GCSS = ManT_CCU8_GCSS;
+			ManT_SHADOW_SYNC(); //ManT_CCU8->GCSS = ManT_CCU8_GCSS;
 
 			break;
 
@@ -3452,8 +3477,11 @@ static __irq void ManTrmIRQ2()
 
 			stateManTrans = 0;
 
-			HW::SCU_GENERAL->CCUCON &= ~ManT_CCUCON;
+#ifdef CPU_SAME53
 
+#elif defined(CPU_XMC48)
+
+			HW::SCU_GENERAL->CCUCON &= ~ManT_CCUCON;
 
 			ManT1->TCCLR = CC8_TRBC;
 			ManT1->INTE = 0;
@@ -3463,7 +3491,7 @@ static __irq void ManTrmIRQ2()
 			ManT_CCU8->GCSS = ManT_OUT_GCSS;
 			ManT_CCU8->GCSC = ManT_OUT_GCSC;
 			//ManT_CCU8->GIDLS = ManT_CCU8_GIDLS;
-
+#endif
 			manTB->ready = true;
 			trmBusy = false;
 
@@ -3479,7 +3507,7 @@ static __irq void ManTrmIRQ2()
 #endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool SendManData2(MTB* mtb)
+bool SendManData(MTB* mtb)
 {
 #ifndef WIN32
 	if (trmBusy || rcvBusy || mtb == 0 || mtb->data1 == 0 || mtb->len1 == 0)
@@ -3581,9 +3609,8 @@ bool SendManData2(MTB* mtb)
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifndef WIN32
 
-static void InitManTransmit2()
+static void InitManTransmit()
 {
 	using namespace HW;
 
@@ -3645,7 +3672,9 @@ static void InitManTransmit2()
 	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
-#endif
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#endif // #else // #ifdef MAN_TRANSMIT_V1
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4031,6 +4060,11 @@ static volatile u32 twi_timestamp = 0;
 
 #ifdef CPU_SAME53	
 
+List<DSCI2C>	i2c_ReqList;
+DSCI2C*			i2c_dsc = 0;
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static __irq void I2C_Handler()
 {
 	using namespace HW;
@@ -4328,12 +4362,16 @@ bool I2C_AddRequest(DSCI2C *d)
 	if (d == 0) { return false; };
 	if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
 
-#ifndef WIN32
-
 	d->next = 0;
 	d->ready = false;
 
 	if (d->wdata2 == 0) d->wlen2 = 0;
+
+#ifdef CPU_SAME53
+
+	i2c_ReqList.Add(d);
+
+#elif defined(CPU_XMC48)
 
 	__disable_irq();
 
@@ -4423,6 +4461,196 @@ bool I2C_Update()
 	bool result = false;
 
 #ifdef CPU_SAME53
+
+	enum STATE { WAIT = 0, WRITE, READ, STOP };
+
+	static STATE state = WAIT;
+	static byte *wrPtr = 0;
+	static byte *rdPtr = 0;
+	static u16 	wrCount = 0;
+	static u16 	rdCount = 0;
+	static byte *wrPtr2 = 0;
+	static u16	wrCount2 = 0;
+	static byte adr = 0;
+	static __align(16) T_HW::DMADESC wr_dmadsc;
+
+	switch (state)
+	{
+		case WAIT:
+
+			i2c_dsc = i2c_ReqList.Get();
+
+			if (i2c_dsc != 0)
+			{
+				DSCI2C &dsc = *i2c_dsc;
+
+				dsc.ready = false;
+				dsc.ack = false;
+				dsc.readedLen = 0;
+
+				wrPtr = (byte*)dsc.wdata;	
+				rdPtr = (byte*)dsc.rdata;	
+				wrPtr2 = (byte*)dsc.wdata2;	
+				wrCount = dsc.wlen;
+				wrCount2 = dsc.wlen2;
+				rdCount = dsc.rlen;
+				adr = dsc.adr;
+
+				if (wrPtr2 == 0) wrCount2 = 0;
+
+				I2C->CTRLB = I2C_SMEN;
+				I2C->STATUS.BUSSTATE = BUSSTATE_IDLE;
+
+				I2C->INTFLAG = ~0;
+
+				T_HW::DMADESC &dmadsc = DmaTable[I2C_DMACH];
+
+				if (wrCount == 0)
+				{
+					dmadsc.SRCADDR	= &I2C->DATA;
+					dmadsc.DSTADDR	= rdPtr + rdCount;
+					dmadsc.DESCADDR = 0;
+					dmadsc.BTCNT	= rdCount;
+					dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
+
+					HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_RX;
+
+					I2C->ADDR = ((rdCount <= 255) ? (I2C_LEN(rdCount)|I2C_LENEN) : 0) | (adr << 1) | 1;
+					state = READ; 
+				}
+				else
+				{
+					dmadsc.SRCADDR	= wrPtr + wrCount;
+					dmadsc.DSTADDR	= &I2C->DATA;
+					dmadsc.BTCNT	= wrCount;
+					dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
+
+					if (wrCount2 == 0)
+					{
+						dmadsc.DESCADDR = 0;
+					}
+					else
+					{
+						wr_dmadsc.SRCADDR	= wrPtr2 + wrCount2;
+						wr_dmadsc.DSTADDR	= &I2C->DATA;
+						wr_dmadsc.BTCNT		= wrCount2;
+						wr_dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
+						dmadsc.DESCADDR		= &wr_dmadsc;
+					};
+
+					HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
+					HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
+					HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_TX;
+
+					I2C->ADDR = (adr << 1);
+					state = WRITE; 
+				};
+			};
+
+			break;
+
+		case WRITE:
+
+			if((I2C->INTFLAG & I2C_ERROR) || I2C->STATUS.RXNACK)
+			{
+				I2C->CTRLB = I2C_SMEN|I2C_CMD_STOP;
+				
+				state = STOP; 
+			}
+			else
+			{
+				DSCI2C &dsc = *i2c_dsc;
+
+				__disable_irq();
+
+				bool c = ((HW::DMAC->CH[I2C_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[I2C_DMACH].INTFLAG & DMCH_TCMPL)) && (I2C->INTFLAG & I2C_MB);
+				
+				__enable_irq();
+
+				if (c)
+				{
+					dsc.ack = true;
+
+					if (rdCount > 0)
+					{
+						T_HW::DMADESC &dmadsc = DmaTable[I2C_DMACH];
+
+						dmadsc.SRCADDR	= &I2C->DATA;
+						dmadsc.DSTADDR	= rdPtr + rdCount;
+						dmadsc.DESCADDR = 0;
+						dmadsc.BTCNT	= rdCount;
+						dmadsc.BTCTRL	= DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
+
+						HW::DMAC->CH[I2C_DMACH].INTENCLR = ~0;
+						HW::DMAC->CH[I2C_DMACH].INTFLAG = ~0;
+						HW::DMAC->CH[I2C_DMACH].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM3_RX;
+
+						I2C->ADDR = ((rdCount <= 255) ? (I2C_LEN(rdCount)|I2C_LENEN) : 0) | (adr << 1) | 1;
+		
+						state = READ; 
+					}
+					else
+					{
+						I2C->CTRLB = I2C_SMEN|I2C_ACKACT|I2C_CMD_STOP;
+						
+						state = STOP; 
+					};
+				};
+			};
+
+			break;
+
+		case READ:
+
+			if((I2C->INTFLAG & I2C_ERROR) || I2C->STATUS.RXNACK)
+			{
+				I2C->CTRLB = I2C_SMEN|I2C_ACKACT|I2C_CMD_STOP;
+				
+				state = STOP; 
+			}
+			else
+			{
+				DSCI2C &dsc = *i2c_dsc;
+
+				__disable_irq();
+
+				bool c = (HW::DMAC->CH[I2C_DMACH].CTRLA & DMCH_ENABLE) == 0 || (HW::DMAC->CH[I2C_DMACH].INTFLAG & DMCH_TCMPL);
+				
+				__enable_irq();
+
+				if (c)
+				{
+					dsc.ack = true;
+
+					I2C->CTRLB = I2C_SMEN|I2C_ACKACT|I2C_CMD_STOP;
+						
+					state = STOP; 
+				};
+			};
+
+			i2c_dsc->readedLen = i2c_dsc->rlen - DmaWRB[I2C_DMACH].BTCNT;
+
+			break;
+
+		case STOP:
+
+			if (I2C->STATUS.BUSSTATE == BUSSTATE_IDLE)
+			{
+				i2c_dsc->ready = true;
+				
+				i2c_dsc = 0;
+				
+				I2C->CTRLB = I2C_SMEN;
+
+				state = WAIT; 
+			}
+			else if (I2C->SYNCBUSY == 0)
+			{
+				I2C->CTRLB = I2C_SMEN|I2C_ACKACT|I2C_CMD_STOP;
+			};
+
+			break;
+	};
 
 #elif defined(CPU_XMC48)
 
@@ -4514,7 +4742,7 @@ static void I2C_Init()
 		I2C->CTRLA = SERCOM_MODE_I2C_MASTER;
 
 		I2C->CTRLA = SERCOM_MODE_I2C_MASTER|I2C_INACTOUT_205US|I2C_SPEED_SM;
-		I2C->CTRLB = 0;
+		I2C->CTRLB = I2C_SMEN;
 		I2C->BAUD = 0x0018;
 
 		I2C->CTRLA |= I2C_ENABLE;
@@ -4524,15 +4752,15 @@ static void I2C_Init()
 		I2C->STATUS = 0;
 		I2C->STATUS.BUSSTATE = BUSSTATE_IDLE;
 
-		VectorTableExt[SERCOM3_0_IRQ] = I2C_Handler;
-		VectorTableExt[SERCOM3_1_IRQ] = I2C_Handler;
-		VectorTableExt[SERCOM3_3_IRQ] = I2C_Handler;
-		CM4::NVIC->CLR_PR(SERCOM3_0_IRQ);
-		CM4::NVIC->CLR_PR(SERCOM3_1_IRQ);
-		CM4::NVIC->CLR_PR(SERCOM3_3_IRQ);
-		CM4::NVIC->SET_ER(SERCOM3_0_IRQ);
-		CM4::NVIC->SET_ER(SERCOM3_1_IRQ);
-		CM4::NVIC->SET_ER(SERCOM3_3_IRQ);
+		//VectorTableExt[SERCOM3_0_IRQ] = I2C_Handler;
+		//VectorTableExt[SERCOM3_1_IRQ] = I2C_Handler;
+		//VectorTableExt[SERCOM3_3_IRQ] = I2C_Handler;
+		//CM4::NVIC->CLR_PR(SERCOM3_0_IRQ);
+		//CM4::NVIC->CLR_PR(SERCOM3_1_IRQ);
+		//CM4::NVIC->CLR_PR(SERCOM3_3_IRQ);
+		//CM4::NVIC->SET_ER(SERCOM3_0_IRQ);
+		//CM4::NVIC->SET_ER(SERCOM3_1_IRQ);
+		//CM4::NVIC->SET_ER(SERCOM3_3_IRQ);
 
 	#elif defined(CPU_XMC48)
 
@@ -4653,7 +4881,7 @@ void SetClock(const RTC &t)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifndef WIN32
+#ifdef CPU_XMC48
 
 static __irq void Clock_IRQ()
 {
@@ -4669,7 +4897,11 @@ static __irq void Clock_IRQ()
 	HW::SCU_GCU->SRCLR = SCU_INTERRUPT_SRCLR_PI_Msk;
 }
 
+#endif
+
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifndef WIN32
 
 static void InitClock()
 {
@@ -4712,6 +4944,8 @@ static void InitClock()
 		SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_RED "!!! ERROR !!!\n");
 	};
 
+#ifdef CPU_XMC48
+
 	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE "Clock Init ... ");
 
 	VectorTableExt[CLOCK_IRQ] = Clock_IRQ;
@@ -4726,6 +4960,8 @@ static void InitClock()
 	HW::SCU_GCU->SRMSK = SCU_INTERRUPT_SRMSK_PI_Msk;
 
 	SEGGER_RTT_WriteString(0, "OK\n");
+
+#endif
 }
 
 #endif
@@ -6619,11 +6855,10 @@ void InitHardware()
 
 	InitClock();
 
-	//InitManTransmit();
 	InitManRecieve();
 	Init_CRC_CCITT_DMA();
 
-	InitManTransmit2();
+	InitManTransmit();
 
 	Init_Sync_Rot();
 

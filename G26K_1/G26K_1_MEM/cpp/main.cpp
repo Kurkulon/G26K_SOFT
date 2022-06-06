@@ -1817,7 +1817,7 @@ static void UpdateMan()
 				//manTrmData[1] = 0;
 				//mtb.len1 = 2;
 				//mtb.data1 = manTrmData;
-				SendManData2(&mtb);
+				SendManData(&mtb);
 
 				i++;
 			};
@@ -2305,6 +2305,12 @@ static void UpdateTemp()
 
 static void UpdateI2C()
 {
+#ifdef CPU_SAME53	
+
+	I2C_Update();
+
+#elif defined(CPU_XMC48)
+
 	if (!comdsp.Update())
 	{
 		if (I2C_Update())
@@ -2314,6 +2320,9 @@ static void UpdateI2C()
 			i2cResetCount++;
 		};
 	};
+
+#endif
+
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
