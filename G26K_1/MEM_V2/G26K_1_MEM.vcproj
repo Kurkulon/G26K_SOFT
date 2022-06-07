@@ -230,14 +230,6 @@
 			RelativePath=".\cpp\startup_CM4.s"
 			>
 		</File>
-		<File
-			RelativePath=".\cpp\startup_SAME53.s"
-			>
-		</File>
-		<File
-			RelativePath=".\cpp\startup_XMC4800.s"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

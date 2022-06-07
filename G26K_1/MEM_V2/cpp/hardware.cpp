@@ -142,8 +142,23 @@ extern "C" void SystemInit()
 		HW::PIOC->DIRSET = (1<<5)|(1<<10)|(1<<11)|(1<<12)|(1<<13)|(1<<14)|(1<<15)|(1<<17)|(1<<18)|(1<<19)|(1<<21);
 		HW::PIOC->SET((1<<15));
 
-		HW::PIOA->BCLR(25);
 		HW::PIOA->BSET(25);
+
+		HW::SUPC->BOD33 = 0;
+		HW::SUPC->BOD33 = BOD33_HYST(15) | BOD33_ACTION_INT| BOD33_LEVEL(200); // Vbod = 1.5 + 6mV * BOD33_LEVEL
+		HW::SUPC->BOD33 |= BOD33_ENABLE;
+
+		HW::PIOA->BCLR(25);
+
+		while ((HW::SUPC->STATUS & (SUPC_BOD33RDY|SUPC_B33SRDY)) != (SUPC_BOD33RDY|SUPC_B33SRDY));
+		while ((HW::SUPC->STATUS & SUPC_BOD33DET) != 0);
+
+		HW::PIOA->BSET(25);
+
+		HW::SUPC->BOD33 = 0;
+		HW::SUPC->BOD33 = BOD33_HYST(15) | BOD33_ACTION_RESET | BOD33_LEVEL(200); // Vbod = 1.5 + 6mV * BOD33_LEVEL
+		HW::SUPC->BOD33 |= BOD33_ENABLE;
+
 		HW::PIOA->BCLR(25);
 
 		OSCCTRL->XOSC[1] = XOSC_ENABLE|XOSC_ONDEMAND; // RUNSTDBY|ENABLE
@@ -2949,7 +2964,7 @@ i32	Get_FRAM_I2C_SessionsAdr() { return FRAM_I2C_SESSIONS_ADR; }
 
 void InitHardware()
 {
-	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Hardware Init ... \n");
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Hardware Init ... ");
 
 #ifdef CPU_SAME53	
 	
@@ -2982,10 +2997,12 @@ void InitHardware()
 
 	HW::MCLK->APBDMASK |= APBD_SERCOM5|APBD_SERCOM6|APBD_SERCOM7;
 
-
 #endif
 
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n");
+
 	Init_time(MCK);
+	RTT_Init();
 	I2C_Init();
 	SPI_Init();
 

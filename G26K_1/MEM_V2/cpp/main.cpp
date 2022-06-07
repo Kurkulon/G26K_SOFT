@@ -2975,6 +2975,7 @@ static void UpdateMisc()
 	{
 		CALL( UpdateEMAC();		);
 		CALL( UpdateDSP();		);
+		CALL( SPI_Update();		);
 		CALL( UpdateParams();	);
 	};
 

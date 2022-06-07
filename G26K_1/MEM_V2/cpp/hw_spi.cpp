@@ -1,7 +1,9 @@
-#include "core.h"
-#include "time.h"
-#include "spi.h"
-#include "SEGGER_RTT.h"
+#include <core.h>
+#include <time.h>
+#include <spi.h>
+#include <SEGGER_RTT.h>
+#include <list.h>
+#include <DMA.h>
 #include "hw_conf.h"
 #include "COM_DEF.h"
 
@@ -52,12 +54,10 @@ static u16 crc_ccit_result = 0;
 
 #elif defined(CPU_SAME53)
 
+List<DSCSPI>	spi_ReqList;
+DSCSPI*			spi_dsc = 0;
+
 #elif defined(CPU_XMC48)
-
-#endif 
-
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static byte *spi_wrPtr = 0;
 static byte *spi_rdPtr = 0;
@@ -69,6 +69,12 @@ static u16 spi_wrCount2 = 0;
 static u32 spi_adr = 0;
 static DSCSPI* spi_dsc = 0;
 static DSCSPI* spi_lastDsc = 0;
+
+#endif 
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 #ifndef WIN32
 static u32 SPI_CS_MASK[2] = { CS0, CS1 };
@@ -84,85 +90,85 @@ static bool SPI_WriteRead(DSCSPI *d);
 
 #ifdef CPU_SAME53	
 
-static __irq void SPI_Handler()
-{
-	using namespace HW;
-
-	byte state = SPI->INTFLAG & SPI->INTENSET;
-
-	if (state & SPI_DRE)
-	{
-		Pin_SPI_IRQ_Set();
-
-		if (spi_wrCount == 0)
-		{
-			if (spi_wrCount2 != 0)
-			{
-				HW::DMAC->CH[SPI_DMACH_TX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX;
-				spi_wrCount2 = 0;
-				spi_rdCount = 0;
-			};
-
-			SPI->INTENCLR = ~0;
-			SPI->INTENSET = SPI_TXC;
-		}
-		else
-		{
-			SPI->DATA = *(spi_wrPtr++); 
-			spi_wrCount--;
-		};
-	}
-	else if (state & SPI_TXC)
-	{
-		Pin_SPI_IRQ_Set();
-		Pin_SPI_IRQ_Clr();
-		Pin_SPI_IRQ_Set();
-
-		if (spi_rdCount != 0)
-		{
-			spi_rdCount = 0;
-
-			//SPI->DATA = 0; 
-			SPI->INTFLAG = SPI_TXC;
-
-			HW::DMAC->CH[SPI_DMACH_TX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX;
-			HW::DMAC->CH[SPI_DMACH_RX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_RX;
-
-			SPI->CTRLB |= SPI_RXEN;
-		}
-		else
-		{
-			HW::DMAC->CH[SPI_DMACH_TX].CTRLA = 0;
-			HW::DMAC->CH[SPI_DMACH_RX].CTRLA = 0;
-
-			SPI->INTENCLR = ~0;
-			SPI->INTFLAG = ~0;
-
-			DSCSPI *ndsc = spi_dsc->next;
-				
-			spi_dsc->next = 0;
-
-			spi_dsc->ready = true;
-
-			SPI->CTRLB &= ~SPI_RXEN;
-
-			PIO_CS->SET(CS0|CS1);
-			
-			spi_dsc = 0;
-
-			if (ndsc != 0)
-			{
-				SPI_WriteRead(ndsc);
-			}
-			else
-			{
-				spi_lastDsc = 0;
-			};
-		};
-	};
-
-	Pin_SPI_IRQ_Clr();
-}
+//static __irq void SPI_Handler()
+//{
+//	using namespace HW;
+//
+//	byte state = SPI->INTFLAG & SPI->INTENSET;
+//
+//	if (state & SPI_DRE)
+//	{
+//		Pin_SPI_IRQ_Set();
+//
+//		if (spi_wrCount == 0)
+//		{
+//			if (spi_wrCount2 != 0)
+//			{
+//				HW::DMAC->CH[SPI_DMACH_TX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX;
+//				spi_wrCount2 = 0;
+//				spi_rdCount = 0;
+//			};
+//
+//			SPI->INTENCLR = ~0;
+//			SPI->INTENSET = SPI_TXC;
+//		}
+//		else
+//		{
+//			SPI->DATA = *(spi_wrPtr++); 
+//			spi_wrCount--;
+//		};
+//	}
+//	else if (state & SPI_TXC)
+//	{
+//		Pin_SPI_IRQ_Set();
+//		Pin_SPI_IRQ_Clr();
+//		Pin_SPI_IRQ_Set();
+//
+//		if (spi_rdCount != 0)
+//		{
+//			spi_rdCount = 0;
+//
+//			//SPI->DATA = 0; 
+//			SPI->INTFLAG = SPI_TXC;
+//
+//			HW::DMAC->CH[SPI_DMACH_TX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX;
+//			HW::DMAC->CH[SPI_DMACH_RX].CTRLA = DMCH_ENABLE|DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_RX;
+//
+//			SPI->CTRLB |= SPI_RXEN;
+//		}
+//		else
+//		{
+//			HW::DMAC->CH[SPI_DMACH_TX].CTRLA = 0;
+//			HW::DMAC->CH[SPI_DMACH_RX].CTRLA = 0;
+//
+//			SPI->INTENCLR = ~0;
+//			SPI->INTFLAG = ~0;
+//
+//			DSCSPI *ndsc = spi_dsc->next;
+//				
+//			spi_dsc->next = 0;
+//
+//			spi_dsc->ready = true;
+//
+//			SPI->CTRLB &= ~SPI_RXEN;
+//
+//			PIO_CS->SET(CS0|CS1);
+//			
+//			spi_dsc = 0;
+//
+//			if (ndsc != 0)
+//			{
+//				SPI_WriteRead(ndsc);
+//			}
+//			else
+//			{
+//				spi_lastDsc = 0;
+//			};
+//		};
+//	};
+//
+//	Pin_SPI_IRQ_Clr();
+//}
 
 #elif defined(CPU_XMC48)
 
@@ -317,61 +323,34 @@ static bool SPI_WriteRead(DSCSPI *d)
 	if (spi_dsc != 0 || d == 0) { return false; };
 	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
 
-	spi_dsc = d;
-
-	spi_dsc->ready = false;
-
-	u32 alen = (spi_dsc->alen > 4) ? 4 : spi_dsc->alen; 
-
-	spi_wrPtr = (byte*)&spi_dsc->adr;	
-	spi_wrCount = spi_count = alen;
-
-	spi_wrPtr2 = (byte*)spi_dsc->wdata;	
-	spi_wrCount2 = spi_dsc->wlen;
-
-	spi_rdPtr = (byte*)spi_dsc->rdata;	
-	spi_rdCount = spi_dsc->rlen;
-
-	spi_timestamp = GetMilliseconds();
-
-	u32 adr = spi_dsc->adr;
-
-	__disable_irq();
-
-	PIO_CS->CLR(SPI_CS_MASK[spi_dsc->csnum]);
-
 	#ifdef CPU_SAME53
 
-		SPI->INTFLAG = ~0;
-		SPI->INTENSET = SPI_DRE;
-		SPI->CTRLB &= ~SPI_RXEN;
-
-		if (spi_wrCount2 != 0)
-		{
-			spi_rdCount = 0;
-
-			DmaTable[SPI_DMACH_TX].SRCADDR = spi_wrPtr2 + spi_wrCount2;
-			DmaTable[SPI_DMACH_TX].DSTADDR = &SPI->DATA;
-			DmaTable[SPI_DMACH_TX].DESCADDR = 0;
-			DmaTable[SPI_DMACH_TX].BTCNT = spi_wrCount2;
-			DmaTable[SPI_DMACH_TX].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_SRCINC;
-		}
-		else if (spi_rdCount != 0)
-		{
-			DmaTable[SPI_DMACH_TX].SRCADDR = spi_wrPtr;
-			DmaTable[SPI_DMACH_TX].DSTADDR = &SPI->DATA;
-			DmaTable[SPI_DMACH_TX].DESCADDR = 0;
-			DmaTable[SPI_DMACH_TX].BTCNT = spi_rdCount+1;
-			DmaTable[SPI_DMACH_TX].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE;
-
-			DmaTable[SPI_DMACH_RX].SRCADDR = &SPI->DATA;
-			DmaTable[SPI_DMACH_RX].DSTADDR = spi_rdPtr + spi_rdCount;
-			DmaTable[SPI_DMACH_RX].DESCADDR = 0;
-			DmaTable[SPI_DMACH_RX].BTCNT = spi_rdCount;
-			DmaTable[SPI_DMACH_RX].BTCTRL = DMDSC_VALID|DMDSC_BEATSIZE_BYTE|DMDSC_DSTINC;
-		};
+		spi_ReqList.Add(d);
 
 	#elif defined(CPU_XMC48)
+
+		spi_dsc = d;
+
+		spi_dsc->ready = false;
+
+		u32 alen = (spi_dsc->alen > 4) ? 4 : spi_dsc->alen; 
+
+		spi_wrPtr = (byte*)&spi_dsc->adr;	
+		spi_wrCount = spi_count = alen;
+
+		spi_wrPtr2 = (byte*)spi_dsc->wdata;	
+		spi_wrCount2 = spi_dsc->wlen;
+
+		spi_rdPtr = (byte*)spi_dsc->rdata;	
+		spi_rdCount = spi_dsc->rlen;
+
+		spi_timestamp = GetMilliseconds();
+
+		u32 adr = spi_dsc->adr;
+
+		__disable_irq();
+
+		PIO_CS->CLR(SPI_CS_MASK[spi_dsc->csnum]);
 
 		//SPI->CCR = 0;
 
@@ -522,10 +501,15 @@ bool SPI_AddRequest(DSCSPI *d)
 	if (d == 0) { return false; };
 	//if ((d->wdata == 0 || d->wlen == 0) && (d->rdata == 0 || d->rlen == 0)) { return false; }
 
-#ifndef WIN32
-
 	d->next = 0;
 	d->ready = false;
+
+#ifdef CPU_SAME53
+
+		spi_ReqList.Add(d);
+
+#elif defined(CPU_XMC48)
+
 
 	u32 t = __disable_irq();
 
@@ -633,6 +617,114 @@ bool SPI_Update()
 
 #ifdef CPU_SAME53
 
+	enum STATE { WAIT = 0, WRITE, READ, STOP };
+
+	static STATE state = WAIT;
+
+	switch (state)
+	{
+		case WAIT:
+
+			spi_dsc = spi_ReqList.Get();
+
+			if (spi_dsc != 0)
+			{
+				PIO_CS->CLR(SPI_CS_MASK[spi_dsc->csnum]);
+
+				SPI->INTFLAG = ~0;
+				SPI->INTENCLR = ~0;
+				SPI->CTRLB &= ~SPI_RXEN;
+
+				DSCSPI &dsc = *spi_dsc;
+
+				dsc.ready = false;
+
+				if (dsc.alen == 0)
+				{
+					if (dsc.wdata != 0 && dsc.wlen > 0)
+					{
+						SPI_DMA_TX.WritePeripheral(dsc.wdata, &SPI->DATA, dsc.wlen, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX, DMDSC_BEATSIZE_BYTE);
+
+						state = WRITE; 
+					}
+					else if (dsc.rdata != 0 && dsc.rlen > 0)
+					{
+						SPI->CTRLB |= SPI_RXEN;
+						SPI_DMA_RX.ReadPeripheral(&SPI->DATA, dsc.rdata, dsc.rlen, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_RX, DMDSC_BEATSIZE_BYTE);
+						SPI_DMA_TX.WritePeripheral(dsc.rdata, &SPI->DATA, dsc.rlen+1, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX, DMDSC_BEATSIZE_BYTE);
+
+						state = READ; 
+					};
+				}
+				else
+				{
+					SPI_DMA_TX.WritePeripheral(&dsc.adr, &SPI->DATA, dsc.alen, dsc.wdata, dsc.wlen, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX, DMDSC_BEATSIZE_BYTE);
+
+					state = WRITE; 
+				};
+			};
+
+			break;
+
+		case WRITE:
+		{
+			DSCSPI &dsc = *spi_dsc;
+
+			if (SPI_DMA_TX.CheckComplete() && (SPI->INTFLAG & SPI_TXC))
+			{
+				SPI->INTFLAG = ~0;
+
+				if (dsc.rdata != 0 && dsc.rlen > 0)
+				{
+					SPI->CTRLB |= SPI_RXEN;
+
+					SPI_DMA_RX.ReadPeripheral(&SPI->DATA, dsc.rdata, dsc.rlen, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_RX, DMDSC_BEATSIZE_BYTE);
+					SPI_DMA_TX.WritePeripheral(dsc.rdata, &SPI->DATA, dsc.rlen+1, DMCH_TRIGACT_BURST|DMCH_TRIGSRC_SERCOM0_TX, DMDSC_BEATSIZE_BYTE);
+
+					state = READ; 
+				}
+				else
+				{
+					state = STOP; 
+				};
+			};
+
+			break;
+		};
+
+		case READ:
+		{
+			DSCSPI &dsc = *spi_dsc;
+
+			if (SPI_DMA_RX.CheckComplete())
+			{
+				state = STOP; 
+			};
+
+			break;
+		};
+
+		case STOP:
+		{
+			if (SPI_DMA_TX.CheckComplete() && SPI_DMA_RX.CheckComplete())
+			{
+				spi_dsc->ready = true;
+				
+				spi_dsc = 0;
+				
+				PIO_CS->SET(CS0|CS1);
+
+				SPI->CTRLB &= ~SPI_RXEN;
+				SPI->INTFLAG = ~0;
+				SPI->INTENCLR = ~0;
+
+				state = WAIT; 
+			};
+
+			break;
+		};
+	};
+
 #elif defined(CPU_XMC48)
 
 	using namespace HW;
@@ -695,7 +787,7 @@ void SPI_Init()
 
 		SPI->CTRLA = SERCOM_MODE_SPI_MASTER;
 
-		SPI->CTRLA = SERCOM_MODE_SPI_MASTER|SPI_CPHA|SPI_DIPO(2)|SPI_DOPO(0);
+		SPI->CTRLA = SERCOM_MODE_SPI_MASTER|SPI_DIPO(2)|SPI_DOPO(0);
 		SPI->CTRLB = 0;
 		SPI->CTRLC = 1;
 		SPI->BAUD = 12;
@@ -708,15 +800,15 @@ void SPI_Init()
 
 		SPI->STATUS = ~0;
 
-		VectorTableExt[SERCOM0_0_IRQ] = SPI_Handler;
-		VectorTableExt[SERCOM0_1_IRQ] = SPI_Handler;
-		VectorTableExt[SERCOM0_3_IRQ] = SPI_Handler;
-		CM4::NVIC->CLR_PR(SERCOM0_0_IRQ);
-		CM4::NVIC->CLR_PR(SERCOM0_1_IRQ);
-		CM4::NVIC->CLR_PR(SERCOM0_3_IRQ);
-		CM4::NVIC->SET_ER(SERCOM0_0_IRQ);
-		CM4::NVIC->SET_ER(SERCOM0_1_IRQ);
-		CM4::NVIC->SET_ER(SERCOM0_3_IRQ);
+		//VectorTableExt[SERCOM0_0_IRQ] = SPI_Handler;
+		//VectorTableExt[SERCOM0_1_IRQ] = SPI_Handler;
+		//VectorTableExt[SERCOM0_3_IRQ] = SPI_Handler;
+		//CM4::NVIC->CLR_PR(SERCOM0_0_IRQ);
+		//CM4::NVIC->CLR_PR(SERCOM0_1_IRQ);
+		//CM4::NVIC->CLR_PR(SERCOM0_3_IRQ);
+		//CM4::NVIC->SET_ER(SERCOM0_0_IRQ);
+		//CM4::NVIC->SET_ER(SERCOM0_1_IRQ);
+		//CM4::NVIC->SET_ER(SERCOM0_3_IRQ);
 
 	#elif defined(CPU_XMC48)
 

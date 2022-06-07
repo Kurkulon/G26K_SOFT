@@ -77,8 +77,8 @@
 	#define	COM1_DMA			DMA_CH1
 	#define	COM2_DMA			DMA_CH2
 	#define	COM3_DMA			DMA_CH3
-	#define	SPI_DMACH_TX		4
-	#define	SPI_DMACH_RX		5
+	#define	SPI_DMA_TX			DMA_CH4
+	#define	SPI_DMA_RX			DMA_CH5
 	#define	NAND_MEMCOPY_DMA	DMA_CH6
 	#define	I2C_DMA				DMA_CH7
 	#define	DSP_DMA				DMA_CH30

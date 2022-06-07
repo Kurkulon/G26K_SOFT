@@ -56,7 +56,7 @@ void RTT_Init()
 
 	#endif
 
-	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "RTT Init ... \n");
+	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "RTT Init ... OK\n");
 
 #else
 

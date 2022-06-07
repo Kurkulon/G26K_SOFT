@@ -262,7 +262,6 @@ bool I2C_Update()
 	static byte *wrPtr2 = 0;
 	static u16	wrCount2 = 0;
 	static byte adr = 0;
-	static __align(16) T_HW::DMADESC wr_dmadsc;
 
 	switch (state)
 	{
