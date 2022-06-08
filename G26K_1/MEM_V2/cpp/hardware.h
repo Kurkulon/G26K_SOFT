@@ -19,8 +19,8 @@ extern void Hardware_Init();
 extern void UpdateHardware();
 
 extern u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init);
-extern u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init);
-extern void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init);
+//extern u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init);
+extern bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init);
 extern bool CRC_CCITT_DMA_CheckComplete(u16* crc);
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

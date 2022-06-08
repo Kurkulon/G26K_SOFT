@@ -202,10 +202,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cpp\list.h"
-				>
-			</File>
-			<File
 				RelativePath=".\cpp\main.h"
 				>
 			</File>

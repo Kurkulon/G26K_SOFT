@@ -3086,30 +3086,19 @@ int main()
 
 	u32 fc = 0;
 
-	//ComPort::WriteBuffer wb;
-
-	//for (u32 i = 0; i < ArraySize(buf); i++) buf[i] = i;
-
-	//fps = CRC_CCITT_DMA(buf, 8000, 0xFFFF);
-	//fc = CRC_CCITT_PIO(buf, 8000, 0xFFFF);
-
-	//fps = CRC_CCITT_DMA(buf, 6000, 0xFFFF);
-	//fps = CRC_CCITT_DMA(buf+6000, 2000, fps);
-
-	//fc = CRC_CCITT_PIO(buf, 6000, 0xFFFF);
-	//fc = CRC_CCITT_PIO(buf+6000, 2000, fc);
-
 	while (1)
 	{
 		FPS_PIN_SET();
 
 		Update();
 
+		//__disable_irq();
+		//CRC_CCITT_DMA(buf, 0x414, 0xFFFF);
+		//__enable_irq();
+
 		FPS_PIN_CLR();
 
 		fc++;
-
-		//commem.Update();
 
 		if (tm.Check(1000))
 		{ 

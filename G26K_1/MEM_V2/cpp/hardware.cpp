@@ -89,6 +89,8 @@ static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
 volatile u16 curShaftCounter = 0;
 
+static bool busy_CRC_CCITT_DMA = false;
+
 //static void I2C_Init();
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1273,7 +1275,7 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
+bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
 	HW::P6->BSET(5);
 
@@ -1286,7 +1288,18 @@ void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 
 bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 {
-	return CRC_DMA.CheckMemCopyComplete();
+	if (CRC_DMA.CheckMemCopyComplete())
+	{
+		__dsb(15);
+
+		*crc = (byte)CRC_FCE->RES;
+
+		return true;
+	}
+	else
+	{
+		return false;
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1311,17 +1324,25 @@ static void Init_CRC_CCITT_DMA()
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
+	if (HW::DMAC->CH[31].STATUS & DMCH_BUSY) __breakpoint(0);
+
 	CRC_DMA.CRC_CCITT(data, len, init);
 
 	while (!CRC_DMA.CheckComplete());
+
+	__dsb(15);
 
 	return CRC_DMA.Get_CRC_CCITT_Result();
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
+bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
+	if (busy_CRC_CCITT_DMA) return false;
+
+	busy_CRC_CCITT_DMA = true;
+
 	CRC_DMA.CRC_CCITT(data, len, init);
 }
 
@@ -1331,7 +1352,11 @@ bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 {
 	if (CRC_DMA.CheckComplete())
 	{
+		__dsb(15);
+
 		*crc = CRC_DMA.Get_CRC_CCITT_Result();
+
+		busy_CRC_CCITT_DMA = false;
 
 		return true;
 	}
@@ -1364,7 +1389,7 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
+bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
 	crc_ccit_result = 0;//GetCRC16_CCIT(data, len, init);
 }

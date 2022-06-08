@@ -4,6 +4,7 @@
 #include <list.h>
 #include <flash.h>
 
+#include "hardware.h"
 #include "hw_conf.h"
 #include "hw_rtm.h"
 #include "hw_nand.h"
