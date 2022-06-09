@@ -475,29 +475,30 @@ Ptr<UNIBUF> CreateTestDspReq01()
 	RspDsp01 &rsp = *((RspDsp01*)(rq->GetDataPtr()));
 
 	rsp.rw = manReqWord|0x40;
-	rsp.CM.time += 1;
-	rsp.CM.hallTime += 1;
-	rsp.CM.motoCount += 1;
-	rsp.CM.headCount += 1;
-	rsp.CM.ax += 1;
-	rsp.CM.ay += 1;
-	rsp.CM.az += 1;
-	rsp.CM.at += 1;
+	rsp.CM.time = 1;
+	rsp.CM.hallTime = 2;
+	rsp.CM.motoCount = 3;
+	rsp.CM.headCount = 4;
+	rsp.CM.ax = 5;
+	rsp.CM.ay = 6;
+	rsp.CM.az = 7;
+	rsp.CM.at = 8;
 	rsp.CM.sensType = 0;
-	rsp.CM.angle += 1;
-	rsp.CM.maxAmp += 1;
-	rsp.CM.fi_amp += 1;
-	rsp.CM.fi_time += 1;
-	rsp.CM.gain += 1;
-	rsp.CM.st = 1;
-	rsp.CM.sl = 4;
+	rsp.CM.angle = 9;
+	rsp.CM.maxAmp = 10;
+	rsp.CM.fi_amp = 11;
+	rsp.CM.fi_time = 12;
+	rsp.CM.gain = 13;
+	rsp.CM.st = 14;
+	rsp.CM.sl = 1500;
 	rsp.CM.sd = 0;
 	rsp.CM.pakType = 0;
 	rsp.CM.pakLen = 0;
-	rsp.CM.data[0] += 1;
-	rsp.CM.data[1] += 1;
-	rsp.CM.data[2] += 1;
-	rsp.CM.data[3] += 1;
+
+	for (u32 i = 0; i < 1500; i++)
+	{
+		rsp.CM.data[i] = 0;
+	};
 
 	rq->dataLen = (22+1500)*2;
 	

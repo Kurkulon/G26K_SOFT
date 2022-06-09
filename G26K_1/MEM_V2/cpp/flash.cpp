@@ -25,7 +25,8 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static const bool verifyWritePage = true; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+static const bool verifyWritePage = false; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+static const bool verifySpare = true;	// Проверка записаной страницы, путём чтения страницы и сравнения с буфером
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -58,6 +59,9 @@ static const bool forceEraseWrite = true;
 
 	#define NAND_DIR_IN() {}
 	#define NAND_DIR_OUT() {}
+
+	#define NAND_WAITRDC	NS2EBUCLK(60)	
+	#define NAND_WAITWRC	NS2EBUCLK(45)	
 
 #elif defined(WIN32)
 

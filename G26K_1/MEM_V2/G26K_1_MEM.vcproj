@@ -222,10 +222,6 @@
 			RelativePath=".\makeobj"
 			>
 		</File>
-		<File
-			RelativePath=".\cpp\startup_CM4.s"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

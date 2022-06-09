@@ -1324,8 +1324,6 @@ static void Init_CRC_CCITT_DMA()
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	if (HW::DMAC->CH[31].STATUS & DMCH_BUSY) __breakpoint(0);
-
 	CRC_DMA.CRC_CCITT(data, len, init);
 
 	while (!CRC_DMA.CheckComplete());
