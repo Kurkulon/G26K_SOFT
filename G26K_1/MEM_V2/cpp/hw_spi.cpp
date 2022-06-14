@@ -72,9 +72,7 @@ static DSCSPI* spi_lastDsc = 0;
 
 #endif 
 
-
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 #ifndef WIN32
 static u32 SPI_CS_MASK[2] = { CS0, CS1 };

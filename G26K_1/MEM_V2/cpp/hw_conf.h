@@ -320,15 +320,42 @@
 	// 138	- P0.12
 
 
-	#define	NAND_DMA				DMA_CH7
-	//#define	NAND_DMACH				HW::GPDMA0_CH7
-	//#define	NAND_DMA_CHEN			(0x101<<7)
-	//#define	NAND_DMA_CHST			(1<<7)
+	// GPDMA0 DLR_SRSEL0
+	#define DRL_RS0					DRL0_USIC0_SR0	// UART0
+	#define DRL_RS1					DRL1_USIC1_SR0	// SPI
+	#define DRL_RS2					DRL2_USIC0_SR1	// UART1			
+	#define DRL_RS3					15					
+	#define DRL_RS4					15					
+	#define DRL_RS5					15					
+	#define DRL_RS6					15					
+	#define DRL_RS7					15
 
+	// GPDMA1 DLR_SRSEL1
+	#define DRL_RS8					DRL8_USIC2_SR0	// I2C					
+	#define DRL_RS9					DRL9_USIC2_SR1	// UART2				
+	#define DRL_RS10				15				
+	#define DRL_RS11				15					
+
+	#define UART0					HW::USIC0_CH0
+	#define UART1					HW::USIC0_CH1
+	#define SPI						HW::USIC1_CH0
+	//#define 						HW::USIC1_CH1
+	#define I2C						HW::USIC2_CH0
+	#define UART2					HW::USIC2_CH1
+
+	#define	UART0_DMA				DMA_CH0
+	#define	UART1_DMA				DMA_CH1
+	//#define						DMA_CH2
+	//#define						DMA_CH3
+	#define	NAND_MEMCOPY_DMA		DMA_CH4
 	#define	DSP_DMA					DMA_CH6
-	//#define	DSP_DMACH				HW::GPDMA0_CH6
-	//#define	DSP_DMA_CHEN			(0x101<<6)
-	//#define	DSP_DMA_CHST			(1<<6)
+	#define	NAND_DMA				DMA_CH7
+
+	#define	I2C_DMA					DMA_CH8
+	#define	UART2_DMA				DMA_CH9
+	#define	CRC_DMA					DMA_CH10
+	//#define						DMA_CH11
+
 
 	#define	SPI_DMA					HW::GPDMA0
 	#define	SPI_DMACH				HW::GPDMA0_CH5
@@ -338,14 +365,6 @@
 	#define	SPI_DLR					(1)
 	#define	SPI_DLR_LNEN			(1<<SPI_DLR)
 
-	#define	NAND_MEMCOPY_DMA		DMA_CH4
-	//#define	NAND_MEMCOPY_DMACH		HW::GPDMA0_CH4
-	//#define	NAND_MEMCOPY_DMA_CHEN	(0x101<<4)
-	//#define	NAND_MEMCOPY_DMA_CHST	(1<<4)
-
-	#define	CRC_DMA					DMA_CH10
-	//#define	CRC_DMACH				HW::GPDMA1_CH2
-	//#define	CRC_DMA_CHEN			(0x101<<2)
 	#define	CRC_FCE					HW::FCE_KE3
 
 	#define I2C						HW::USIC2_CH0
