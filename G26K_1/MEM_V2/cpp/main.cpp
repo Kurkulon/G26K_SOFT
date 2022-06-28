@@ -4,14 +4,12 @@
 #include "xtrap.h"
 #include "flash.h"
 #include "CRC16.h"
-#include "ComPort.h"
 #include "CRC16_CCIT.h"
 #include "req.h"
 #include "list.h"
 #include "PointerCRC.h"
-
 #include "SEGGER_RTT.h"
-#include "DMA.h"
+#include "hw_com.h"
 
 #ifdef WIN32
 
@@ -105,8 +103,8 @@ static u16 memTrmBaud = 0;
 
 u16 txbuf[128 + 512 + 16];
 
-static ComPort comdsp;
-static ComPort commoto;
+//static ComPort comdsp;
+//static ComPort commoto;
 
 static RequestQuery qmoto(&commoto);
 static RequestQuery qdsp(&comdsp);
@@ -3071,8 +3069,8 @@ int main()
 
 #ifndef WIN32
 
-	commoto.Connect(ComPort::ASYNC, 0, 1562500, 0, 1);
-	comdsp.Connect(ComPort::ASYNC, 2, 6250000, 2, 1);
+	commoto.Connect(ComPort::ASYNC, 1562500, 0, 1);
+	comdsp.Connect(ComPort::ASYNC, 6250000, 2, 1);
 	//commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
 
 	EnableDSP();

@@ -18,6 +18,16 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define __CONCAT1(s1)			s1
+#define __CONCAT2(s1,s2)		s1##s2
+#define __CONCAT3(s1,s2,s3)		s1##s2##s3
+
+#define CONCAT1(s1)			__CONCAT1(s1)
+#define CONCAT2(s1,s2)		__CONCAT2(s1,s2)
+#define CONCAT3(s1,s2,s3)	__CONCAT3(s1,s2,s3)
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifdef CPU_XMC48
 
 #define CPUCLK_MHz MCK_MHz
@@ -74,12 +84,28 @@
 	//#define GEN_500K	4
 	#define GEN_EXT32K	5
 
+	#define GEN_MCK_CLK			MCK
+	#define GEN_32K_CLK			32768
+	#define GEN_25M_CLK			25000000
+	#define GEN_1M_CLK			1000000
+
+	// ++++++++++++++	SERCOM	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define SPI_SERCOM_NUM		0
+//	#define SERCOM_1			1
+//	#define SERCOM_2			2
+	#define I2C_SERCOM_NUM		3
+	#define DSP_SERCOM_NUM		4
+	#define UART2_DSP			5
+	//#define SERCOM_6			6
+	#define UART0_LPC			7
+
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define	NAND_DMA			DMA_CH0
-	#define	COM1_DMA			DMA_CH1
-	#define	COM2_DMA			DMA_CH2
-	#define	COM3_DMA			DMA_CH3
+	#define	UART0_DMA			DMA_CH1
+	//#define	COM2_DMA			DMA_CH2
+	#define	UART2_DMA			DMA_CH3
 	#define	SPI_DMA_TX			DMA_CH4
 	#define	SPI_DMA_RX			DMA_CH5
 	#define	NAND_MEMCOPY_DMA	DMA_CH6
@@ -97,23 +123,85 @@
 
 	// ++++++++++++++	TC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define ManTT			HW::TC0
-	#define ManIT			HW::TC1
-	//#define 				HW::TC2
-	//#define 				HW::TC3
-	//#define 				HW::TC4
-	//#define 				HW::TC5
-	//#define 				HW::TC6
-	//#define 				HW::TC7
+	#define MANT_TC			TC0
+	#define MANI_TC			TC1
+	//#define 				TC2
+	//#define 				TC3
+	//#define 				TC4
+	//#define 				TC5
+	//#define 				TC6
+	//#define 				TC7
+
+	#define GEN_TC0_TC1			GEN_MCK
+	#define GEN_TC2_TC3			GEN_MCK
+	#define GEN_TC4_TC5			GEN_MCK
+	#define GEN_TC6_TC7			GEN_MCK
+
+	#define CLK_TC0_TC1			GEN_MCK_CLK
+	#define CLK_TC2_TC3			GEN_MCK_CLK
+	#define CLK_TC4_TC5			GEN_MCK_CLK
+	#define CLK_TC6_TC7			GEN_MCK_CLK
+
+	#define GEN_TC0				GEN_TC0_TC1
+	#define GEN_TC1				GEN_TC0_TC1
+	#define GEN_TC2				GEN_TC2_TC3
+	#define GEN_TC3				GEN_TC2_TC3
+	#define GEN_TC4				GEN_TC4_TC5
+	#define GEN_TC5				GEN_TC4_TC5
+	#define GEN_TC6				GEN_TC6_TC7
+	#define GEN_TC7				GEN_TC6_TC7
+
+	#define GCLK_TC0			GCLK_TC0_TC1
+	#define GCLK_TC1			GCLK_TC0_TC1
+	#define GCLK_TC2			GCLK_TC2_TC3
+	#define GCLK_TC3			GCLK_TC2_TC3
+	#define GCLK_TC4			GCLK_TC4_TC5
+	#define GCLK_TC5			GCLK_TC4_TC5
+	#define GCLK_TC6			GCLK_TC6_TC7
+	#define GCLK_TC7			GCLK_TC6_TC7
+
+	#define CLK_TC0				CLK_TC0_TC1
+	#define CLK_TC1				CLK_TC0_TC1
+	#define CLK_TC2				CLK_TC2_TC3
+	#define CLK_TC3				CLK_TC2_TC3
+	#define CLK_TC4				CLK_TC4_TC5
+	#define CLK_TC5				CLK_TC4_TC5
+	#define CLK_TC6				CLK_TC6_TC7
+	#define CLK_TC7				CLK_TC6_TC7
 
 	// ++++++++++++++	TCC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define RotTmr			HW::TCC0
-	//#define				HW::TCC1
-	#define ManRT			HW::TCC2
+	//#define				TCC1
+	#define MANR_TCC		TCC2
 	#define SyncTmr			HW::TCC3
-	#define nandTCC			HW::TCC4
-	//#define MltTmr			HW::TCC4
+	#define NAND_TCC		TCC4
+	//#define MltTmr		TCC4
+
+	#define GEN_TCC0_TCC1		GEN_MCK
+	#define GEN_TCC2_TCC3		GEN_MCK
+	#define GEN_TCC4			GEN_MCK
+
+	#define CLK_TCC0_TCC1		GEN_MCK_CLK
+	#define CLK_TCC2_TCC3		GEN_MCK_CLK
+	#define CLK_TCC4			GEN_MCK_CLK
+
+	#define GEN_TCC0			GEN_TCC0_TCC1
+	#define GEN_TCC1			GEN_TCC0_TCC1
+	#define GEN_TCC2			GEN_TCC2_TCC3
+	#define GEN_TCC3			GEN_TCC2_TCC3
+
+
+	#define GCLK_TCC0			GCLK_TCC0_TCC1
+	#define GCLK_TCC1			GCLK_TCC0_TCC1
+	#define GCLK_TCC2			GCLK_TCC2_TCC3
+	#define GCLK_TCC3			GCLK_TCC2_TCC3
+
+
+	#define CLK_TCC0			CLK_TCC0_TCC1
+	#define CLK_TCC1			CLK_TCC0_TCC1
+	#define CLK_TCC2			CLK_TCC2_TCC3
+	#define CLK_TCC3			CLK_TCC2_TCC3
 
 	// ++++++++++++++	I2C	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -155,40 +243,43 @@
 
 	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define MAN_GEN			GEN_1M
-	#define MAN_GEN_CLK		1000000
-	#define US2MT(v)		(((v)*MAN_GEN_CLK+500000)/1000000)
-	#define BAUD2CLK(x)		((u32)(MAN_GEN_CLK/(x)+0.5))
-
-	#define MANT_IRQ		TC0_IRQ
-	#define MANR_IRQ		TCC2_1_IRQ
-	//#define MANR_EXTINT		11
-	#define MANR_EXTINT		7
-	#define ManT_SET_PR(v)				{ ManRT->PERBUF = (v); }
-	#define ManT_SET_CR(v)				{ ManRT->CCBUF[0] = (v); ManRT->CCBUF[1] = (v); }
-	#define ManT_SHADOW_SYNC()			
-
-	inline void MANTT_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TC0_TC1]	= GCLK_GEN(GEN_1M)|GCLK_CHEN;	HW::MCLK->ClockEnable(PID_TC0); }
-	inline void MANRT_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3]= GCLK_GEN(MAN_GEN)|GCLK_CHEN;	HW::MCLK->ClockEnable(PID_TCC2); }
-	inline void MANIT_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TC0_TC1]	= GCLK_GEN(MAN_GEN)|GCLK_CHEN;	HW::MCLK->ClockEnable(PID_TC1); }
-	
 	#define PIO_MANCH		HW::PIOC
 	#define PIN_L1			25 
 	#define PIN_H1			24 
 	#define PIN_L2			27 
 	#define PIN_H2			26
+	#define MANCH_PMUX		PORT_PMUX_F
+	#define L1_WO_NUM		3
+	#define L2_WO_NUM		4
 
 	#define L1				(1UL<<PIN_L1)
 	#define H1				(1UL<<PIN_H1)
 	#define L2				(1UL<<PIN_L2)
 	#define H2				(1UL<<PIN_H2)
 
-	#define PIO_MANCHRX		HW::PIOA
 	#define PIO_RXD			HW::PIOB
-	#define PIN_MANCHRX		11
 	#define PIN_RXD			23
-	#define MANCHRX			(1UL<<PIN_MANCHRX)
 	#define RXD				(1UL<<PIN_RXD)
+
+	//#define MAN_GEN			GEN_1M
+	//#define MAN_GEN_CLK		1000000
+	//#define US2MT(v)		(((v)*MAN_GEN_CLK+500000)/1000000)
+	//#define BAUD2CLK(x)		((u32)(MAN_GEN_CLK/(x)+0.5))
+
+	//#define MANT_IRQ		TC0_IRQ
+	//#define MANR_IRQ		TCC2_1_IRQ
+	////#define MANR_EXTINT		11
+	//#define MANR_EXTINT		7
+	//#define ManT_SET_PR(v)				{ ManRT->PERBUF = (v); }
+	//#define ManT_SET_CR(v)				{ ManRT->CCBUF[0] = (v); ManRT->CCBUF[1] = (v); }
+	//#define ManT_SHADOW_SYNC()			
+
+	//inline void MANTT_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TC0_TC1]	= GCLK_GEN(GEN_1M)|GCLK_CHEN;	HW::MCLK->ClockEnable(PID_TC0); }
+	//inline void MANRT_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3]= GCLK_GEN(MAN_GEN)|GCLK_CHEN;	HW::MCLK->ClockEnable(PID_TCC2); }
+	//inline void MANIT_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TC0_TC1]	= GCLK_GEN(MAN_GEN)|GCLK_CHEN;	HW::MCLK->ClockEnable(PID_TC1); }
+	
+
+
 
 
 
@@ -243,27 +334,51 @@
 	#define ALE				(1UL<<PIN_ALE) 
 	#define CLE				(1UL<<PIN_CLE) 
 
-	#define WE_PORT_PMUX	(PORT_PMUX_F) 
-	#define RE_PORT_PMUX	(PORT_PMUX_F) 
-
 	#define PIN_WE_CFG		0 //PINGFG_DRVSTR 
 	#define PIN_RE_CFG		0 //PINGFG_DRVSTR 
-
-	#define NAND_RE_PER		NS2CLK(60)-1	
-	#define NAND_RE_CC0		NS2CLK(35) 
-	#define NAND_RE_CC1		NS2CLK(30)
 
 	#define NAND_WE_PER		NS2CLK(60)-1	
 	#define NAND_WE_CC0		NS2CLK(30) 
 	#define NAND_WE_CC1		NS2CLK(30)
 
-	inline void NAND_ClockEnable()  { HW::GCLK->PCHCTRL[GCLK_TCC4] = GCLK_GEN(GEN_MCK)|GCLK_CHEN; HW::MCLK->ClockEnable(PID_TCC4); }
+	#define nandTCC			HW::NAND_TCC
+	//#define nandTC			HW::NAND_TC
 
-	#define NAND_TRIGSRC_MC0  DMCH_TRIGSRC_TCC4_MC0
-	#define NAND_TRIGSRC_MC1  DMCH_TRIGSRC_TCC4_MC1
+	#ifdef nandTCC
+	
+		#define NAND_RE_PER		(NS2CLK(60)-1)
+		#define NAND_RE_CC0		NS2CLK(35) 
+		#define NAND_RE_CC1		NS2CLK(30)
 
-	#define NAND_EVENT_GEN		EVGEN_DMAC_CH_0
-	#define NAND_EVSYS_USER		EVSYS_USER_TCC4_EV_1
+		#define WE_PORT_PMUX	(PORT_PMUX_F) 
+		#define RE_PORT_PMUX	(PORT_PMUX_F) 
+
+		inline void NAND_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,NAND_TCC)] = GCLK_GEN(CONCAT2(GEN_,NAND_TCC))|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,NAND_TCC)); }
+
+		#define NAND_TRIGSRC_MC0  CONCAT3(DMCH_TRIGSRC_,NAND_TCC,_MC0)
+		#define NAND_TRIGSRC_MC1  CONCAT3(DMCH_TRIGSRC_,NAND_TCC,_MC1)
+
+		#define NAND_EVENT_GEN		EVGEN_DMAC_CH_0
+		#define NAND_EVSYS_USER		CONCAT3(EVSYS_USER_,NAND_TCC,_EV_1)
+
+	#else
+
+		#define NAND_RE_PER		250	
+		//#define NAND_RE_CC0		NS2CLK(35) 
+		#define NAND_RE_CC1		NS2CLK(25)
+
+		#define WE_PORT_PMUX	(PORT_PMUX_E) 
+		#define RE_PORT_PMUX	(PORT_PMUX_E) 
+
+		inline void NAND_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,NAND_TC)] = GCLK_GEN(CONCAT2(GEN_,NAND_TCC))|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,NAND_TC)); }
+
+		#define NAND_TRIGSRC_MC0	CONCAT3(DMCH_TRIGSRC_,NAND_TC,_MC0)
+		#define NAND_TRIGSRC_MC1	CONCAT3(DMCH_TRIGSRC_,NAND_TC,_MC1)
+
+		#define NAND_EVENT_GEN		EVGEN_DMAC_CH_0
+		#define NAND_EVSYS_USER		CONCAT3(EVSYS_USER_,NAND_TC,_EVU)
+
+	#endif
 
 	// ++++++++++++++	VCORE	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -302,23 +417,49 @@
 
 	// ++++++++++++++	USART	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define PIO_USART0		HW::PIOB 
-	#define PIO_USART1		HW::PIOB 
-	#define PIO_USART2		HW::PIOC 
+
+	#define PIO_UTXD0			HW::PIOB 
+	#define PIO_URXD0			HW::PIOB 
+	#define PIO_UTXD2			HW::PIOC 
+	#define PIO_URXD2			HW::PIOC 
+
+	#define PMUX_UTXD0			PORT_PMUX_D
+	#define PMUX_URXD0			PORT_PMUX_D 
+	#define PMUX_UTXD2			PORT_PMUX_C 
+	#define PMUX_URXD2			PORT_PMUX_C 
+
+	#define UART0_TXPO			USART_TXPO_0 
+	#define UART0_RXPO			USART_RXPO_1 
+
+	#define UART2_TXPO			USART_TXPO_0 
+	#define UART2_RXPO			USART_RXPO_1 
 
 	#define PIN_UTXD0		21 
 	#define PIN_URXD0		20 
-	#define PIN_UTXD1		16
-	#define PIN_URXD1		17
 	#define PIN_UTXD2		7 
 	#define PIN_URXD2		6 
 
-	#define UTXD0			(1<<PIN_UTXD0) 
-	#define URXD0			(1<<PIN_URXD0) 
-	#define UTXD1			(1<<PIN_UTXD1) 
-	#define URXD1			(1<<PIN_URXD1) 
-	#define UTXD2			(1<<PIN_UTXD2) 
-	#define URXD2			(1<<PIN_URXD2) 
+	#define UTXD0				(1<<PIN_UTXD0) 
+	#define URXD0				(1<<PIN_URXD0) 
+	#define UTXD2				(1<<PIN_UTXD2) 
+	#define URXD2				(1<<PIN_URXD2) 
+
+	#define UART0_GEN_SRC		GEN_MCK
+	#define UART0_GEN_CLK		GEN_MCK_CLK
+
+	#define UART2_GEN_SRC		GEN_MCK
+	#define UART2_GEN_CLK		GEN_MCK_CLK
+
+	//#define PIO_USART0		HW::PIOB 
+	//#define PIO_USART1		HW::PIOB 
+	//#define PIO_USART2		HW::PIOC 
+
+	//#define UTXD0			(1<<PIN_UTXD0) 
+	//#define URXD0			(1<<PIN_URXD0) 
+	//#define UTXD1			(1<<PIN_UTXD1) 
+	//#define URXD1			(1<<PIN_URXD1) 
+	//#define UTXD2			(1<<PIN_UTXD2) 
+	//#define URXD2			(1<<PIN_URXD2) 
 
 	// ++++++++++++++	CLOCK	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
