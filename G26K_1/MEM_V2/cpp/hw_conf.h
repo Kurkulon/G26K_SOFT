@@ -560,6 +560,8 @@
 	#define I2C_IRQ					USIC2_0_IRQn
 	#define I2C_PID					PID_USIC2
 
+	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define ManRT					HW::CCU41_CC43		//HW::CCU41_CC42
 	#define ManTT					HW::CCU41_CC40
 	#define ManCCU					HW::CCU41
@@ -595,9 +597,9 @@
 	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
 	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
 //	#define ManT_PSC				3					// 0.04us
-	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
-	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
-	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
+//	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
+//	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
+//	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
 	#define ManT1_PSL				(0) 
 	#define ManT1_CHC				(CC8_OCS2 | CC8_OCS3)			
 	#define ManT2_CHC				(CC8_OCS2 | CC8_OCS3)			
@@ -628,6 +630,8 @@
 	#define Pin_ManRcvSync_Set()			
 	#define Pin_ManRcvSync_Clr()			
 
+	// ++++++++++++++	NAND Flash	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define PIO_WP					HW::P5 
 	#define PIO_FLREADY				HW::P15
 	#define PIO_FCS					HW::P3
@@ -653,6 +657,14 @@
 	#define FCS5					(1<<PIN_FCS5) 
 	#define FCS6					(1<<PIN_FCS6) 
 	#define FCS7					(1<<PIN_FCS7) 
+
+	#define NAND_DELAY_WP()		{ delay(4);		}
+	#define NAND_DELAY_WH()		{ delay(4);		}
+	#define NAND_DELAY_RP()		{ delay(2);		}
+	#define NAND_DELAY_REH()	{ delay(2);		}
+	#define NAND_DELAY_WHR()	{ delay(10);	}
+	#define NAND_DELAY_ADL()	{ delay(20);	}
+	#define NAND_DELAY_PR()		{ delay(4);		}
 
 	#define PIO_ENVCORE				HW::P2
 	#define PIN_ENVCORE				11 
@@ -1006,7 +1018,7 @@
 
 	#define SPI__TCSR (TDEN(1)|HPCMD(0))
 
-	static void delay(u32 cycles) { for(volatile u32 i = 0UL; i < cycles ;++i) { __nop(); }}
+//	static void delay(u32 cycles) { for(volatile u32 i = 0UL; i < cycles ;++i) { __nop(); }}
 
 #elif defined(WIN32) //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

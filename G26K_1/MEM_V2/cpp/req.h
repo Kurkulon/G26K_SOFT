@@ -332,6 +332,8 @@ union ReqUnion
 
 struct REQ : public PtrItem<REQ>
 {
+	PTR_LIST_FRIENDS(REQ);
+
 	bool	ready;
 	bool	crcOK;
 	bool	checkCRC;
@@ -344,7 +346,7 @@ struct REQ : public PtrItem<REQ>
 	//REQ *next;
 
 	tRsp		*CallBack;
-	Ptr<UNIBUF>	rsp;
+	Ptr<MB>	rsp;
 
 	ComPort::WriteBuffer wb;
 	ComPort::ReadBuffer rb;

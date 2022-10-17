@@ -112,11 +112,11 @@ static RequestQuery qdsp(&comdsp);
 
 //static R01 r02[8];
 
-static Ptr<UNIBUF> manVec40[2];
+static Ptr<MB> manVec40[2];
 
-static Ptr<UNIBUF> curManVec40;
-static Ptr<UNIBUF> manVec50;
-static Ptr<UNIBUF> curManVec50;
+static Ptr<MB> curManVec40;
+static Ptr<MB> manVec50;
+static Ptr<MB> curManVec50;
 
 //static RspMan60 rspMan60;
 
@@ -331,7 +331,7 @@ void CallBackDspReq01(Ptr<REQ> &q)
 		if (rsp.rw == (dspReqWord|0x40))
 		{
 			q->crcOK = (q->rb.len == (rsp.CM.sl*2 + 2 + sizeof(rsp.CM)-sizeof(rsp.CM.data)));
-			q->rsp->dataLen = q->rb.len;
+			q->rsp->len = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv40++;
@@ -343,7 +343,7 @@ void CallBackDspReq01(Ptr<REQ> &q)
 		else if (rsp.rw == (dspReqWord|0x50))
 		{
 			q->crcOK = (q->rb.len == (rsp.IM.dataLen*4 + 2 + sizeof(rsp.IM)-sizeof(rsp.IM.data)));
-			q->rsp->dataLen = q->rb.len;
+			q->rsp->len = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv50++;
@@ -398,14 +398,14 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocFlashWriteBuffer(sizeof(RspDsp01));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
 	ReqDsp01 &req = *((ReqDsp01*)rq->reqData);
 	RspDsp01 &rsp = *((RspDsp01*)(rq->rsp->GetDataPtr()));
 
-	rq->rsp->dataLen = 0;
+	rq->rsp->len = 0;
 	
 	REQ &q = *rq;
 
@@ -462,11 +462,11 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Ptr<UNIBUF> CreateTestDspReq01()
+Ptr<MB> CreateTestDspReq01()
 {
-	Ptr<UNIBUF> rq;
+	Ptr<MB> rq;
 	
-	rq.Alloc();
+	rq = AllocFlashWriteBuffer(sizeof(RspDsp01));
 
 	if (!rq.Valid()) { return rq; };
 
@@ -498,7 +498,7 @@ Ptr<UNIBUF> CreateTestDspReq01()
 		rsp.CM.data[i] = 0;
 	};
 
-	rq->dataLen = (22+1500)*2;
+	rq->len = (22+1500)*2;
 	
 	return rq;
 }
@@ -528,7 +528,7 @@ Ptr<REQ> CreateDspReq05(u16 tryCount)
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocMemBuffer(sizeof(RspDsp05));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
@@ -596,7 +596,7 @@ Ptr<REQ> CreateDspReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocMemBuffer(sizeof(RspDsp06));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
@@ -678,9 +678,9 @@ Ptr<REQ> CreateDspReq07()
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	//rq->rsp.Alloc();
 
-	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
+	//if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
 	ReqDsp07 &req = *((ReqDsp07*)rq->reqData);
 	//RspDsp06 &rsp = *((RspDsp06*)(rq->rsp->GetDataPtr()));
@@ -752,7 +752,7 @@ static Ptr<REQ> CreateMotoReq()
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocMemBuffer(sizeof(RspMoto));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
@@ -811,7 +811,7 @@ Ptr<REQ> CreateBootMotoReq01(u16 flashLen, u16 tryCount)
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocMemBuffer(sizeof(RspBootMoto));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
@@ -869,7 +869,7 @@ Ptr<REQ> CreateBootMotoReq02(u16 stAdr, u16 count, const u32* data, u16 tryCount
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocMemBuffer(sizeof(RspBootMoto));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
@@ -939,7 +939,7 @@ Ptr<REQ> CreateBootMotoReq03()
 
 	if (!rq.Valid()) return rq;
 
-	rq->rsp.Alloc();
+	rq->rsp = AllocMemBuffer(sizeof(RspBootMoto));
 
 	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
 
@@ -999,13 +999,13 @@ static u32 InitRspMan_00(__packed u16 *data)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestFlashWrite_00(Ptr<UNIBUF> &flwb)
+static void RequestFlashWrite_00(Ptr<MB> &flwb)
 {
 	__packed u16* data = (__packed u16*)(flwb->data+flwb->dataOffset);
 
-	flwb->dataLen = InitRspMan_00(data) * 2;
+	flwb->len = InitRspMan_00(data) * 2;
 
-	RequestFlashWrite(flwb, data[0]);
+	RequestFlashWrite(flwb, data[0], true);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1058,13 +1058,13 @@ static u32 InitRspMan_10(__packed u16 *data)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestFlashWrite_10(Ptr<UNIBUF> &flwb)
+static void RequestFlashWrite_10(Ptr<MB> &flwb)
 {
 	__packed u16* data = (__packed u16*)(flwb->data+flwb->dataOffset);
 
-	flwb->dataLen = InitRspMan_10(data) * 2;
+	flwb->len = InitRspMan_10(data) * 2;
 
-	RequestFlashWrite(flwb, data[0]);
+	RequestFlashWrite(flwb, data[0], true);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1124,13 +1124,13 @@ static u32 InitRspMan_20(__packed u16 *data)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void RequestFlashWrite_20(Ptr<UNIBUF> &flwb)
+static void RequestFlashWrite_20(Ptr<MB> &flwb)
 {
 	__packed u16* data = (__packed u16*)(flwb->data+flwb->dataOffset);
 
-	flwb->dataLen = InitRspMan_20(data) * 2;
+	flwb->len = InitRspMan_20(data) * 2;
 
-	RequestFlashWrite(flwb, data[0]);
+	RequestFlashWrite(flwb, data[0], true);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1196,7 +1196,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
-	//Ptr<UNIBUF> &r01 = curManVec40;
+	//Ptr<MB> &r01 = curManVec40;
 	
 	//u16 sz = 18 + r01->rsp.CM.sl;
 
@@ -1848,7 +1848,7 @@ static void UpdateMan()
 static void MainMode()
 {
 	static Ptr<REQ> rq;
-	//static Ptr<UNIBUF> flwb;
+	//static Ptr<MB> flwb;
 	static TM32 tm;
 	static RspDsp01 *rsp = 0;
 
@@ -1862,7 +1862,7 @@ static void MainMode()
 			{
 				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
 
-				RequestFlashWrite(rq->rsp, rsp->rw);
+				RequestFlashWrite(rq->rsp, rsp->rw, false);
 
 				mainModeState++;
 			};
@@ -1909,7 +1909,7 @@ static void MainMode()
 
 			if (cmdWriteStart_00)
 			{
-				Ptr<UNIBUF> b; b.Alloc();
+				Ptr<MB> b; b = AllocFlashWriteBuffer(6);
 
 				if (b.Valid())
 				{
@@ -1920,7 +1920,7 @@ static void MainMode()
 			}
 			else if (cmdWriteStart_10)
 			{
-				Ptr<UNIBUF> b; b.Alloc();
+				Ptr<MB> b; b = AllocFlashWriteBuffer(44);
 
 				if (b.Valid())
 				{
@@ -1931,7 +1931,7 @@ static void MainMode()
 			}
 			else if (cmdWriteStart_20)
 			{
-				Ptr<UNIBUF> b; b.Alloc();
+				Ptr<MB> b; b = AllocFlashWriteBuffer(60);
 
 				if (b.Valid())
 				{
@@ -2380,7 +2380,7 @@ static void UpdateMoto()
 
 static void UpdateTestFlashWrite()
 {
-	static Ptr<UNIBUF> ptr;
+	static Ptr<MB> ptr;
 	static u32 count = 0;
 
 	static RTM rtm;
@@ -2401,7 +2401,7 @@ static void UpdateTestFlashWrite()
 			count--;
 
 			RspDsp01 *rsp = (RspDsp01*)(ptr->GetDataPtr());
-			RequestFlashWrite(ptr, rsp->rw);
+			RequestFlashWrite(ptr, rsp->rw, true);
 
 		};
 	};

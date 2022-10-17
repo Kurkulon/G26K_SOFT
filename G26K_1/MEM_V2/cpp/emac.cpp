@@ -44,15 +44,20 @@ static const MAC hwAdr = {0x12345678, 0x9ABC};
 static const u16 udpInPort = SWAP16(66);
 static const u16 udpOutPort = SWAP16(66);
 
-inline bool HW_EMAC_RequestUDP(EthBuf* mb) { return RequestTrap(mb); }
+inline bool HW_EMAC_RequestUDP(Ptr<MB> &mb) { return RequestTrap(mb); }
 //inline bool HW_EMAC_RequestUDP(EthBuf* mb) { return RequestTFTP(mb); }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-List<SysEthBuf> SysEthBuf::freeList;
-List<HugeTx>	HugeTx::freeList;
+//List<SysEthBuf> SysEthBuf::freeList;
+//List<HugeTx>	HugeTx::freeList;
+//
+//static SysEthBuf	sysTxBuf[16];
+//static HugeTx		hugeTxBuf[8];
 
-static SysEthBuf	sysTxBuf[16];
-static HugeTx		hugeTxBuf[8];
+#define NUM_RX_DSC          8          
+#define ETH_RX_DRBS			8
+#define ETH_RX_BUF_SIZE     (ETH_RX_DRBS * 64)       
+#define NUM_TX_DSC          16        
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
