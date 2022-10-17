@@ -12,6 +12,20 @@
 #include "manch.h"
 #include "DMA.h"
 
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define SMALL_BUF_LEN	512
+#define MEDIUM_BUF_LEN	1536
+#define HUGE_BUF_LEN	3072    
+
+#define	NUM_SMALL_BUF	16       
+#define	NUM_MEDIUM_BUF	8
+#define	NUM_HUGE_BUF	8
+
+#include <mem_imp.h>
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #ifdef WIN32
 
 #include <windows.h>

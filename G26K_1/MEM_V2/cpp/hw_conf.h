@@ -21,10 +21,12 @@
 #define __CONCAT1(s1)			s1
 #define __CONCAT2(s1,s2)		s1##s2
 #define __CONCAT3(s1,s2,s3)		s1##s2##s3
+#define __CONCAT4(s1,s2,s3,s4)	s1##s2##s3##s4
 
-#define CONCAT1(s1)			__CONCAT1(s1)
-#define CONCAT2(s1,s2)		__CONCAT2(s1,s2)
-#define CONCAT3(s1,s2,s3)	__CONCAT3(s1,s2,s3)
+#define CONCAT1(s1)				__CONCAT1(s1)
+#define CONCAT2(s1,s2)			__CONCAT2(s1,s2)
+#define CONCAT3(s1,s2,s3)		__CONCAT3(s1,s2,s3)
+#define CONCAT4(s1,s2,s3,s4)	__CONCAT4(s1,s2,s3,s4)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -503,6 +505,7 @@
 	// 137	- P0.13
 	// 138	- P0.12
 
+	// ++++++++++++++	DLR	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	// GPDMA0 DLR_SRSEL0
 	#define DRL_RS0					DRL0_USIC0_SR0	// UART0
@@ -520,12 +523,16 @@
 	#define DRL_RS10				15				
 	#define DRL_RS11				15					
 
+	// ++++++++++++++	USIC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define UART0					HW::USIC0_CH0
 	#define UART1					HW::USIC0_CH1
 	#define SPI						HW::USIC1_CH0
 	//#define 						HW::USIC1_CH1
 	#define I2C						HW::USIC2_CH0
 	#define UART2					HW::USIC2_CH1
+
+	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define	UART0_DMA				DMA_CH0
 	#define	UART1_DMA				DMA_CH1
@@ -540,6 +547,28 @@
 	#define	CRC_DMA					DMA_CH10
 	//#define						DMA_CH11
 
+	// ++++++++++++++	CCU4x	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	//#define						CCU40
+
+	#define MAN_CCU					CCU41
+	#define MANT_CC					0
+	#define MANR_CC					1
+	//#define						2
+	#define MANI_CC					3
+
+	//#define						CCU42
+
+	//#define						CCU43
+
+
+	// ++++++++++++++	CCU8x	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	//#define						CCU80
+	//#define						CCU81
+
+
+	// ++++++++++++++		++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define	SPI_DMA					HW::GPDMA0
 	#define	SPI_DMACH				HW::GPDMA0_CH5
@@ -562,20 +591,20 @@
 
 	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define ManRT					HW::CCU41_CC43		//HW::CCU41_CC42
-	#define ManTT					HW::CCU41_CC40
-	#define ManCCU					HW::CCU41
-	#define ManCCU_PID				PID_CCU41
-	#define ManTmr					HW::CCU41_CC41
-	#define ManRT_PSC				3
-	#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)>>ManRT_PSC))
-	#define BAUD2CLK(x)				((u32)((SYSCLK*1.0/(1<<ManRT_PSC))/x+0.5))
+	//#define ManRT					HW::CCU41_CC43		//HW::CCU41_CC42
+	//#define ManTT					HW::CCU41_CC40
+	//#define ManCCU					HW::CCU41
+	//#define ManCCU_PID				PID_CCU41
+	//#define ManTmr					HW::CCU41_CC41
+	//#define ManRT_PSC				3
+	//#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)>>ManRT_PSC))
+	//#define BAUD2CLK(x)				((u32)((SYSCLK*1.0/(1<<ManRT_PSC))/x+0.5))
 
-	#define MANT_IRQ				CCU41_0_IRQn
-	#define MANR_IRQ				CCU41_2_IRQn
+	//#define MANT_IRQ				CCU41_0_IRQn
+	//#define MANR_IRQ				CCU41_2_IRQn
 
-	#define ManCCU_GIDLC			(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	#define ManCCU_GCSS				(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
+	//#define ManCCU_GIDLC			(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	//#define ManCCU_GCSS				(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
 	#define ManRT_INS				(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
 	#define ManTmr_INS				(CC4_EV0IS(12+3) | CC4_EV0EM_RISING_EDGE);
 //	#define ManRT_SRS				CC4_POSR(3)
