@@ -525,12 +525,12 @@
 
 	// ++++++++++++++	USIC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define UART0					HW::USIC0_CH0
-	#define UART1					HW::USIC0_CH1
-	#define SPI						HW::USIC1_CH0
-	//#define 						HW::USIC1_CH1
-	#define I2C						HW::USIC2_CH0
-	#define UART2					HW::USIC2_CH1
+	#define UART0					0
+	#define UART1					1
+	#define SPI						2
+	//#define 						3
+	#define I2C						4
+	#define UART2					5
 
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -539,6 +539,7 @@
 	//#define						DMA_CH2
 	//#define						DMA_CH3
 	#define	NAND_MEMCOPY_DMA		DMA_CH4
+	#define	SPI_DMA					DMA_CH5
 	#define	DSP_DMA					DMA_CH6
 	#define	NAND_DMA				DMA_CH7
 
@@ -570,24 +571,27 @@
 
 	// ++++++++++++++		++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define	SPI_DMA					HW::GPDMA0
-	#define	SPI_DMACH				HW::GPDMA0_CH5
-	#define	SPI_DMA_CHEN			(0x101<<5)
-	#define	SPI_DMA_CHDIS			(0x100<<5)
-	#define	SPI_DMA_CHST			(1<<5)
-	#define	SPI_DLR					(1)
-	#define	SPI_DLR_LNEN			(1<<SPI_DLR)
+	//#define	SPI_DMA					HW::GPDMA0
+	//#define	SPI_DMACH				HW::GPDMA0_CH5
+	//#define	SPI_DMA_CHEN			(0x101<<5)
+	//#define	SPI_DMA_CHDIS			(0x100<<5)
+	//#define	SPI_DMA_CHST			(1<<5)
+	//#define	SPI_DLR					(1)
+	//#define	SPI_DLR_LNEN			(1<<SPI_DLR)
 
 	#define	CRC_FCE					HW::FCE_KE3
 
-	#define I2C						HW::USIC2_CH0
+	//#define I2C						HW::USIC2_CH0
 	#define PIO_I2C					HW::P5
 	#define PIN_SDA					0 
 	#define PIN_SCL					2 
-	#define SDA						(1<<PIN_SDA) 
-	#define SCL						(1<<PIN_SCL) 
-	#define I2C_IRQ					USIC2_0_IRQn
-	#define I2C_PID					PID_USIC2
+	#define I2C_BAUDRATE			400000
+	#define I2C_DX0CR 		(USIC_DSEL(1) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	#define I2C_DX1CR 		(USIC_DSEL(0) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	//#define SDA						(1<<PIN_SDA) 
+	//#define SCL						(1<<PIN_SCL) 
+	//#define I2C_IRQ					USIC2_0_IRQn
+	//#define I2C_PID					PID_USIC2
 
 	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -731,8 +735,8 @@
 	#define Pin_ShaftIRQ_Set()		HW::P6->BSET(6);
 	#define Pin_ShaftIRQ_Clr()		HW::P6->BCLR(6);
 
-	#define SPI						HW::USIC1_CH0
-	#define	SPI_INPR				(0)
+//	#define SPI						HW::USIC1_CH0
+//	#define	SPI_INPR				(0)
 	#define PIO_SPCK				HW::P5
 	#define PIO_MOSI				HW::P2
 	#define PIO_MISO				HW::P2
@@ -746,6 +750,11 @@
 	#define PIN_MISO				15 
 	#define PIN_CS0					9 
 	#define PIN_CS1					11
+
+	#define SPI_DX0CR 				(USIC_DSEL(2) | USIC_INSW(1) | USIC_DFEN(0) | USIC_DSEN(0) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	#define SPI_DX1CR 				(USIC_DSEL(0) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	
+	#define SPI_BAUDRATE			4000000
 
 	#define SPCK					(1<<PIN_SPCK) 
 	#define MOSI					(1<<PIN_MOSI) 

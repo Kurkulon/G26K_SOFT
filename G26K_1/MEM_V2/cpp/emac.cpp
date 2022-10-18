@@ -42,7 +42,7 @@
 static const MAC hwAdr = {0x12345678, 0x9ABC};
 
 static const u16 udpInPort = SWAP16(66);
-static const u16 udpOutPort = SWAP16(66);
+//static const u16 udpOutPort = SWAP16(66);
 
 inline bool HW_EMAC_RequestUDP(Ptr<MB> &mb) { return RequestTrap(mb); }
 //inline bool HW_EMAC_RequestUDP(EthBuf* mb) { return RequestTFTP(mb); }
@@ -104,7 +104,7 @@ static bool HW_EMAC_Init()
 	using namespace HW;
 	
 	/* Initialize the GMAC ethernet controller. */
-	u32 id1,id2;
+//	u32 id1,id2;
 
 #ifdef CPU_SAME53	
 

@@ -392,7 +392,7 @@ class RequestQuery
 
 public:
 
-				RequestQuery(ComPort *p) : _run(true), _state(0), com(p) {}
+				RequestQuery(ComPort *p) : _state(0), com(p), _run(true) {}
 	void		Add(const Ptr<REQ>& req)	{ reqList.Add(req); }
 	Ptr<REQ>	Get()						{ return reqList.Get(); }
 	//bool Empty() { return reqList.Empty(); }

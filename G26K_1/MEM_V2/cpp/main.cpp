@@ -3035,7 +3035,7 @@ int main()
 
 //	static bool c = true;
 
-	static byte buf[16384];
+//	static byte buf[16384];
 
 	//volatile byte * const FLD = (byte*)0x60000000;	
 	

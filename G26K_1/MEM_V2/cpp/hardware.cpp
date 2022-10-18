@@ -94,7 +94,7 @@ static volatile bool busyWriteThread = false;
 
 const u16 pulsesPerHeadRoundFix4 = GEAR_RATIO * 6 * 16;
 
-const u16 testNandChipMask = 0xFFFF;
+//const u16 testNandChipMask = 0xFFFF;
 
 static volatile u32 shaftCounter = 0;
 static volatile u32 shaftPrevTime = 0;
@@ -103,7 +103,7 @@ static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
 volatile u16 curShaftCounter = 0;
 
-static bool busy_CRC_CCITT_DMA = false;
+//static bool busy_CRC_CCITT_DMA = false;
 
 //static void I2C_Init();
 
@@ -1095,8 +1095,8 @@ void SetClock(const RTC &t)
 {
 	static DSCI2C dsc;
 
-	static byte reg = 0;
-	static u16 rbuf = 0;
+//	static byte reg = 0;
+//	static u16 rbuf = 0;
 	static byte buf[10];
 
 	buf[0] = 0;
@@ -1296,6 +1296,8 @@ bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
 
 	CRC_DMA.MemCopySrcInc(data, &CRC_FCE->IR, len);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1482,30 +1484,30 @@ static void WDT_Init()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static u32 rotCount = 0;
+//static u32 rotCount = 0;
 
-static __irq void RotTrmIRQ()
-{
-#ifdef CPU_SAME53
-
-	//PIO_SYNCROT->WBIT(ROT, !(PIO_SYNCROT->ODSR & ROT));
-	rotCount++;
-
-	HW::PIOA->BCLR(15);
-
-	//if (rotCount >= pulsesPerHeadRound)
-	//{
-	//	SyncTmr.CCR = SWTRG;
-	//	rotCount = 0;
-	//	
-	//	HW::PIOA->BSET(15);
-	//};
-
-//	u32 tmp = RotTmr.SR;
-
-#elif defined(CPU_XMC48)
-#endif
-}
+//static __irq void RotTrmIRQ()
+//{
+//#ifdef CPU_SAME53
+//
+//	//PIO_SYNCROT->WBIT(ROT, !(PIO_SYNCROT->ODSR & ROT));
+//	rotCount++;
+//
+//	HW::PIOA->BCLR(15);
+//
+//	//if (rotCount >= pulsesPerHeadRound)
+//	//{
+//	//	SyncTmr.CCR = SWTRG;
+//	//	rotCount = 0;
+//	//	
+//	//	HW::PIOA->BSET(15);
+//	//};
+//
+////	u32 tmp = RotTmr.SR;
+//
+//#elif defined(CPU_XMC48)
+//#endif
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1707,7 +1709,7 @@ static __irq void ShaftIRQ()
 		shaftCounter = 0;
 	};
 
-	rotCount = 0;
+//	rotCount = 0;
 
 	Pin_ShaftIRQ_Clr();
 }
