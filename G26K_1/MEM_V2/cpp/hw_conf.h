@@ -18,15 +18,24 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define __CONCAT1(s1)			s1
-#define __CONCAT2(s1,s2)		s1##s2
-#define __CONCAT3(s1,s2,s3)		s1##s2##s3
-#define __CONCAT4(s1,s2,s3,s4)	s1##s2##s3##s4
+#define __CONCAT1(s1)						s1
+#define __CONCAT2(s1,s2)					s1##s2
+#define __CONCAT3(s1,s2,s3)					s1##s2##s3
+#define __CONCAT4(s1,s2,s3,s4)				s1##s2##s3##s4
+#define __CONCAT5(s1,s2,s3,s4,s5)			s1##s2##s3##s4##s5
+#define __CONCAT6(s1,s2,s3,s4,s5,s6)		s1##s2##s3##s4##s5##s6
+#define __CONCAT7(s1,s2,s3,s4,s5,s6,s7)		s1##s2##s3##s4##s5##s6##s7
+#define __CONCAT8(s1,s2,s3,s4,s5,s6,s7,s8)	s1##s2##s3##s4##s5##s6##s7##s8
 
-#define CONCAT1(s1)				__CONCAT1(s1)
-#define CONCAT2(s1,s2)			__CONCAT2(s1,s2)
-#define CONCAT3(s1,s2,s3)		__CONCAT3(s1,s2,s3)
-#define CONCAT4(s1,s2,s3,s4)	__CONCAT4(s1,s2,s3,s4)
+
+#define CONCAT1(s1)							__CONCAT1(s1)
+#define CONCAT2(s1,s2)						__CONCAT2(s1,s2)
+#define CONCAT3(s1,s2,s3)					__CONCAT3(s1,s2,s3)
+#define CONCAT4(s1,s2,s3,s4)				__CONCAT4(s1,s2,s3,s4)
+#define CONCAT5(s1,s2,s3,s4,s5)				__CONCAT4(s1,s2,s3,s4,s5)
+#define CONCAT6(s1,s2,s3,s4,s5,s6)			__CONCAT6(s1,s2,s3,s4,s5,s6)		
+#define CONCAT7(s1,s2,s3,s4,s5,s6,s7)		__CONCAT7(s1,s2,s3,s4,s5,s6,s7)		
+#define CONCAT8(s1,s2,s3,s4,s5,s6,s7,s8)	__CONCAT8(s1,s2,s3,s4,s5,s6,s7,s8)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -525,12 +534,12 @@
 
 	// ++++++++++++++	USIC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define UART0					0
-	#define UART1					1
-	#define SPI						2
+	#define UART0_USIC_NUM			0
+	#define UART1_USIC_NUM			1
+	#define SPI_USIC_NUM			2
 	//#define 						3
-	#define I2C						4
-	#define UART2					5
+	#define I2C_USIC_NUM			4
+	#define UART2_USIC_NUM			5
 
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -581,13 +590,18 @@
 
 	#define	CRC_FCE					HW::FCE_KE3
 
-	//#define I2C						HW::USIC2_CH0
-	#define PIO_I2C					HW::P5
+	//#define I2C					HW::USIC2_CH0
+	#define PORT_SDA				P5
+	#define PORT_SCL				P5
+	#define PIO_SDA					HW::PORT_SDA
+	#define PIO_SCL					HW::PORT_SCL
 	#define PIN_SDA					0 
 	#define PIN_SCL					2 
+	#define MUX_SDA					A1OD
+	#define MUX_SCL					A1PP
 	#define I2C_BAUDRATE			400000
-	#define I2C_DX0CR 		(USIC_DSEL(1) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
-	#define I2C_DX1CR 		(USIC_DSEL(0) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	#define I2C_DX0CR 				(CONCAT6(USIC,I2C_USIC_NUM,_DX0_,PORT_SDA,_,PIN_SDA) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	#define I2C_DX1CR 				(CONCAT6(USIC,I2C_USIC_NUM,_DX1_,PORT_SCL,_,PIN_SCL) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
 	//#define SDA						(1<<PIN_SDA) 
 	//#define SCL						(1<<PIN_SCL) 
 	//#define I2C_IRQ					USIC2_0_IRQn
@@ -737,10 +751,16 @@
 
 //	#define SPI						HW::USIC1_CH0
 //	#define	SPI_INPR				(0)
-	#define PIO_SPCK				HW::P5
-	#define PIO_MOSI				HW::P2
-	#define PIO_MISO				HW::P2
-	#define PIO_CS					HW::P5
+
+	#define PORT_SPCK				P5
+	#define PORT_MOSI				P2
+	#define PORT_MISO				P2
+	#define PORT_CS					P5
+
+	#define PIO_SPCK				HW::PORT_SPCK	
+	#define PIO_MOSI				HW::PORT_MOSI	
+	#define PIO_MISO				HW::PORT_MISO	
+	#define PIO_CS					HW::PORT_CS		
 
 	#define Pin_SPI_IRQ_Set()		HW::P2->BSET(12);
 	#define Pin_SPI_IRQ_Clr()		HW::P2->BCLR(12);
@@ -750,9 +770,11 @@
 	#define PIN_MISO				15 
 	#define PIN_CS0					9 
 	#define PIN_CS1					11
+	#define MUX_SPCK				A2PP
+	#define MUX_MOSI				A2PP
 
-	#define SPI_DX0CR 				(USIC_DSEL(2) | USIC_INSW(1) | USIC_DFEN(0) | USIC_DSEN(0) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
-	#define SPI_DX1CR 				(USIC_DSEL(0) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	#define SPI_DX0CR 				(CONCAT6(USIC,SPI_USIC_NUM,_DX0_,PORT_MISO,_,PIN_MISO) | USIC_INSW(1) | USIC_DFEN(0) | USIC_DSEN(0) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
+	#define SPI_DX1CR 				(CONCAT6(USIC,SPI_USIC_NUM,_DX1_,PORT_SPCK,_,PIN_SPCK) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
 	
 	#define SPI_BAUDRATE			4000000
 

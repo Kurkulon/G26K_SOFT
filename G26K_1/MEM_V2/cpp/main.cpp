@@ -2318,15 +2318,15 @@ static void UpdateI2C()
 
 #elif defined(CPU_XMC48)
 
-	if (!comdsp.Update())
-	{
-		if (I2C_Update())
-		{
-			comdsp.InitHW();
+	//if (!comdsp.Update())
+	//{
+	//	if (I2C_Update())
+	//	{
+	//		comdsp.InitHW();
 
-			i2cResetCount++;
-		};
-	};
+	//		i2cResetCount++;
+	//	};
+	//};
 
 #endif
 }
@@ -2976,6 +2976,7 @@ static void UpdateMisc()
 		CALL( UpdateDSP();		);
 		CALL( SPI_Update();		);
 		CALL( UpdateParams();	);
+		CALL( I2C_Update();		);
 	};
 
 	i = (i > (__LINE__-S-3)) ? 0 : i;
@@ -3003,6 +3004,10 @@ static void Update()
 	if (!(IsComputerFind() && EmacIsConnected()))
 	{
 		UpdateMisc();
+	}
+	else
+	{
+		I2C_Update();
 	};
 }
 
@@ -3055,15 +3060,11 @@ int main()
 
 	InitHardware();
 
-	LoadVars();
+	//LoadVars();
 
 	InitEMAC();
 
-//	InitTraps();
-
-	FLASH_Init();
-
-//	InitRmemList();
+	//FLASH_Init();
 
 	Update_RPS_SPR();
 
@@ -3071,15 +3072,14 @@ int main()
 
 	commoto.Connect(ComPort::ASYNC, 1562500, 0, 1);
 	comdsp.Connect(ComPort::ASYNC, 6250000, 2, 1);
-	//commem.Connect(ComPort::ASYNC, 1, 6250000, 0, 1);
 
 	EnableDSP();
 
 	//__breakpoint(0);
 
-	FlashMoto();
+	//FlashMoto();
 
-	FlashDSP();
+	//FlashDSP();
 
 #endif
 
