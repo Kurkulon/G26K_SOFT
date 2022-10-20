@@ -530,7 +530,21 @@
 	#define DRL_RS8					DRL8_USIC2_SR0	// I2C					
 	#define DRL_RS9					DRL9_USIC2_SR1	// UART2				
 	#define DRL_RS10				15				
-	#define DRL_RS11				15					
+	#define DRL_RS11				15		
+
+	#define UART0_DRL				0		
+	#define SPI_DRL					1		
+	#define UART1_DRL				2		
+	//#define DRL_3					3		
+	//#define DRL_4					4		
+	//#define DRL_5					5		
+	//#define DRL_6					6		
+	//#define DRL_7					7		
+	#define I2C_DRL					8				
+	#define UART2_DRL				9			
+	#define DRL_10					10		
+	#define DRL_11					11		
+
 
 	// ++++++++++++++	USIC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

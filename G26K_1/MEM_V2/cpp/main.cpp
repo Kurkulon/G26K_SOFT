@@ -3060,7 +3060,7 @@ int main()
 
 	InitHardware();
 
-	//LoadVars();
+	LoadVars();
 
 	InitEMAC();
 
