@@ -7,6 +7,8 @@
 #define MCK_MHz 200
 #define MCK (MCK_MHz*1000000)
 #define NS2CLK(x) (((x)*MCK_MHz+500)/1000)
+#define US2CLK(x) ((x)*MCK_MHz)
+#define MS2CLK(x) ((x)*MCK_MHz*1000)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -519,7 +521,7 @@
 	// GPDMA0 DLR_SRSEL0
 	#define DRL_RS0					DRL0_USIC0_SR0	// UART0
 	#define DRL_RS1					DRL1_USIC1_SR0	// SPI
-	#define DRL_RS2					DRL2_USIC0_SR1	// UART1			
+	#define DRL_RS2					DRL2_USIC0_SR1	// UART2			
 	#define DRL_RS3					15					
 	#define DRL_RS4					15					
 	#define DRL_RS5					15					
@@ -528,37 +530,37 @@
 
 	// GPDMA1 DLR_SRSEL1
 	#define DRL_RS8					DRL8_USIC2_SR0	// I2C					
-	#define DRL_RS9					DRL9_USIC2_SR1	// UART2				
+	#define DRL_RS9					DRL9_USIC2_SR1	// UART1				
 	#define DRL_RS10				15				
 	#define DRL_RS11				15		
 
 	#define UART0_DRL				0		
 	#define SPI_DRL					1		
-	#define UART1_DRL				2		
+	#define UART2_DRL				2		
 	//#define DRL_3					3		
 	//#define DRL_4					4		
 	//#define DRL_5					5		
 	//#define DRL_6					6		
 	//#define DRL_7					7		
 	#define I2C_DRL					8				
-	#define UART2_DRL				9			
-	#define DRL_10					10		
-	#define DRL_11					11		
+	#define UART1_DRL				9			
+	//#define DRL_10				10		
+	//#define DRL_11				11		
 
 
 	// ++++++++++++++	USIC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define UART0_USIC_NUM			0
-	#define UART1_USIC_NUM			1
+	#define UART2_USIC_NUM			1
 	#define SPI_USIC_NUM			2
 	//#define 						3
 	#define I2C_USIC_NUM			4
-	#define UART2_USIC_NUM			5
+	#define UART1_USIC_NUM			5
 
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define	UART0_DMA				DMA_CH0
-	#define	UART1_DMA				DMA_CH1
+	#define	UART2_DMA				DMA_CH1
 	//#define						DMA_CH2
 	//#define						DMA_CH3
 	#define	NAND_MEMCOPY_DMA		DMA_CH4
@@ -567,7 +569,7 @@
 	#define	NAND_DMA				DMA_CH7
 
 	#define	I2C_DMA					DMA_CH8
-	#define	UART2_DMA				DMA_CH9
+	#define	UART1_DMA				DMA_CH9
 	#define	CRC_DMA					DMA_CH10
 	//#define						DMA_CH11
 
@@ -766,6 +768,8 @@
 //	#define SPI						HW::USIC1_CH0
 //	#define	SPI_INPR				(0)
 
+	// ++++++++++++++	SPI		++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define PORT_SPCK				P5
 	#define PORT_MOSI				P2
 	#define PORT_MISO				P2
@@ -801,40 +805,92 @@
 	#define SPI_IRQ					USIC1_5_IRQn
 	#define SPI_PID					PID_USIC1
 
+	// ++++++++++++++	CLOCK	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define CLOCK_IRQ				SCU_0_IRQn
 
-	#define PIO_URXD0				HW::P1
-	#define PIO_UTXD0				HW::P1
-	#define PIO_RTS0				HW::P1
+	// ++++++++++++++	UART0	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define PIO_URXD1				HW::P4
-	#define PIO_UTXD1				HW::P4
-	#define PIO_RTS1				HW::P1
+	#define PORT_USCK0				P1
+	#define PORT_URXD0				P1
+	#define PORT_UTXD0				P1
+	#define PORT_RTS0				P1
 
-	#define PIO_URXD2				HW::P6
-	#define PIO_UTXD2				HW::P6
-	#define PIO_RTS2				HW::P1
+	#define PIO_USCK0				0
+	#define PIO_URXD0				HW::PORT_URXD0	
+	#define PIO_UTXD0				HW::PORT_UTXD0	
+	#define PIO_RTS0				HW::PORT_RTS0	
 
+	#define PIN_USCK0				1
 	#define PIN_URXD0				4 
 	#define PIN_UTXD0				5 
 	#define PIN_RTS0				0 
+
+	#define MUX_USCK0				A2PP
+	#define MUX_UTXD0				A2PP
+
+	#define UART0_DX0CR 			(CONCAT6(USIC,UART0_USIC_NUM,_DX0_,PORT_URXD0,_,PIN_URXD0)) 
+	#define UART0_DX1CR 			(CONCAT6(USIC,UART0_USIC_NUM,_DX1_,PORT_USCK0,_,PIN_USCK0) | USIC_DPOL(1))
+
+	//#define URXD0					(1<<PIN_URXD0) 
+	//#define UTXD0					(1<<PIN_UTXD0) 
+	//#define RTS0					(1<<PIN_RTS0) 
+
+	// ++++++++++++++	UART1	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define PORT_USCK1				P4
+	#define PORT_URXD1				P4
+	#define PORT_UTXD1				P4
+	#define PORT_RTS1				P1
+
+	#define PIO_USCK1				0
+	#define PIO_URXD1				HW::PORT_URXD1	
+	#define PIO_UTXD1				HW::PORT_UTXD1	
+	#define PIO_RTS1				HW::PORT_RTS1	
+	
+	#define PIN_USCK1				2
 	#define PIN_URXD1				6 
 	#define PIN_UTXD1				7
 	#define PIN_RTS1				8 
+
+	#define MUX_USCK1				A2PP
+	#define MUX_UTXD1				A1PP
+
+	#define UART1_DX0CR 			(CONCAT6(USIC,UART1_USIC_NUM,_DX0_,PORT_URXD1,_,PIN_URXD1))
+	#define UART1_DX1CR 			(CONCAT6(USIC,UART1_USIC_NUM,_DX1_,PORT_USCK1,_,PIN_USCK1) | USIC_DPOL(1))
+
+	//#define URXD1					(1<<PIN_URXD1) 
+	//#define UTXD1					(1<<PIN_UTXD1) 
+	//#define RTS1					(1<<PIN_RTS1) 
+
+	// ++++++++++++++	UART2	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define PORT_USCK2				P6
+	#define PORT_URXD2				P6
+	#define PORT_UTXD2				P6
+	#define PORT_RTS2				P1
+
+	#define PIO_USCK2				0
+	#define PIO_URXD2				HW::PORT_URXD2	
+	#define PIO_UTXD2				HW::PORT_UTXD2	
+	#define PIO_RTS2				HW::PORT_RTS2	
+
+	#define PIN_USCK2				2
 	#define PIN_URXD2				3 
 	#define PIN_UTXD2				4
 	#define PIN_RTS2				13 
 
-	#define URXD0					(1<<PIN_URXD0) 
-	#define UTXD0					(1<<PIN_UTXD0) 
-	#define RTS0					(1<<PIN_RTS0) 
-	#define URXD1					(1<<PIN_URXD1) 
-	#define UTXD1					(1<<PIN_UTXD1) 
-	#define RTS1					(1<<PIN_RTS1) 
-	#define URXD2					(1<<PIN_URXD2) 
-	#define UTXD2					(1<<PIN_UTXD2) 
-	#define RTS2					(1<<PIN_RTS2) 
+	#define MUX_USCK2				A2PP
+	#define MUX_UTXD2				A2PP
 
+	#define UART2_DX0CR 			(CONCAT6(USIC,UART2_USIC_NUM,_DX0_,PORT_URXD2,_,PIN_URXD2))
+	#define UART2_DX1CR 			(CONCAT6(USIC,UART2_USIC_NUM,_DX1_,PORT_USCK2,_,PIN_USCK2) | USIC_DPOL(1))
+
+	//#define URXD2					(1<<PIN_URXD2) 
+	//#define UTXD2					(1<<PIN_UTXD2) 
+	//#define RTS2					(1<<PIN_RTS2) 
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	/*******************************************************************************
 	 * MACROS
@@ -978,119 +1034,119 @@
 	//	 (((__CLKSET & SCU_CLK_CLKSET_USBCEN_Msk) != 0) && ((__USBCLKCR & SCU_CLK_USBCLKCR_USBSEL_Msk) == SCU_CLK_USBCLKCR_USBSEL_USBPLL)) || \
 	//	 (((__CLKSET & SCU_CLK_CLKSET_MMCCEN_Msk) != 0) && ((__USBCLKCR & SCU_CLK_USBCLKCR_USBSEL_Msk) == SCU_CLK_USBCLKCR_USBSEL_USBPLL)))
 
-	#define SLAD(v)		((v)&0xffff)                /*!< USIC_CH PCR_IICMode: SLAD (Bitfield-Mask: 0xffff)           */
-	#define ACK00     	(1<<16UL)                    /*!< USIC_CH PCR_IICMode: ACK00 (Bit 16)                         */
-	#define STIM      	(1<<17UL)                    /*!< USIC_CH PCR_IICMode: STIM (Bit 17)                          */
-	#define SCRIEN    	(1<<18UL)                    /*!< USIC_CH PCR_IICMode: SCRIEN (Bit 18)                        */
-	#define RSCRIEN   	(1<<19UL)                    /*!< USIC_CH PCR_IICMode: RSCRIEN (Bit 19)                       */
-	#define PCRIEN    	(1<<20UL)                    /*!< USIC_CH PCR_IICMode: PCRIEN (Bit 20)                        */
-	#define NACKIEN   	(1<<21UL)                    /*!< USIC_CH PCR_IICMode: NACKIEN (Bit 21)                       */
-	#define ARLIEN    	(1<<22UL)                    /*!< USIC_CH PCR_IICMode: ARLIEN (Bit 22)                        */
-	#define SRRIEN    	(1<<23UL)                    /*!< USIC_CH PCR_IICMode: SRRIEN (Bit 23)                        */
-	#define ERRIEN    	(1<<24UL)                    /*!< USIC_CH PCR_IICMode: ERRIEN (Bit 24)                        */
-	#define SACKDIS   	(1<<25UL)                    /*!< USIC_CH PCR_IICMode: SACKDIS (Bit 25)                       */
-	#define HDEL(v)		(((v)&0xF)<<26UL)                    /*!< USIC_CH PCR_IICMode: HDEL (Bit 26)                          */
-	#define ACKIEN    	(1<<30UL)                    /*!< USIC_CH PCR_IICMode: ACKIEN (Bit 30)                        */
-	//#define MCLK      	(1<<31UL)                    /*!< USIC_CH PCR_IICMode: MCLK (Bit 31)                          */
+	//#define SLAD(v)		((v)&0xffff)                /*!< USIC_CH PCR_IICMode: SLAD (Bitfield-Mask: 0xffff)           */
+	//#define ACK00     	(1<<16UL)                    /*!< USIC_CH PCR_IICMode: ACK00 (Bit 16)                         */
+	//#define STIM      	(1<<17UL)                    /*!< USIC_CH PCR_IICMode: STIM (Bit 17)                          */
+	//#define SCRIEN    	(1<<18UL)                    /*!< USIC_CH PCR_IICMode: SCRIEN (Bit 18)                        */
+	//#define RSCRIEN   	(1<<19UL)                    /*!< USIC_CH PCR_IICMode: RSCRIEN (Bit 19)                       */
+	//#define PCRIEN    	(1<<20UL)                    /*!< USIC_CH PCR_IICMode: PCRIEN (Bit 20)                        */
+	//#define NACKIEN   	(1<<21UL)                    /*!< USIC_CH PCR_IICMode: NACKIEN (Bit 21)                       */
+	//#define ARLIEN    	(1<<22UL)                    /*!< USIC_CH PCR_IICMode: ARLIEN (Bit 22)                        */
+	//#define SRRIEN    	(1<<23UL)                    /*!< USIC_CH PCR_IICMode: SRRIEN (Bit 23)                        */
+	//#define ERRIEN    	(1<<24UL)                    /*!< USIC_CH PCR_IICMode: ERRIEN (Bit 24)                        */
+	//#define SACKDIS   	(1<<25UL)                    /*!< USIC_CH PCR_IICMode: SACKDIS (Bit 25)                       */
+	//#define HDEL(v)		(((v)&0xF)<<26UL)                    /*!< USIC_CH PCR_IICMode: HDEL (Bit 26)                          */
+	//#define ACKIEN    	(1<<30UL)                    /*!< USIC_CH PCR_IICMode: ACKIEN (Bit 30)                        */
+	////#define MCLK      	(1<<31UL)                    /*!< USIC_CH PCR_IICMode: MCLK (Bit 31)                          */
 
-	#define SLSEL         (0x1UL)                   /*!< USIC_CH PSR_IICMode: SLSEL (Bitfield-Mask: 0x01)            */
-	#define WTDF          (0x2UL)                   /*!< USIC_CH PSR_IICMode: WTDF (Bitfield-Mask: 0x01)             */
-	#define SCR           (0x4UL)                   /*!< USIC_CH PSR_IICMode: SCR (Bitfield-Mask: 0x01)              */
-	#define RSCR          (0x8UL)                   /*!< USIC_CH PSR_IICMode: RSCR (Bitfield-Mask: 0x01)             */
-	#define PCR           (0x10UL)                  /*!< USIC_CH PSR_IICMode: PCR (Bitfield-Mask: 0x01)              */
-	#define NACK          (0x20UL)                  /*!< USIC_CH PSR_IICMode: NACK (Bitfield-Mask: 0x01)             */
-	#define ARL           (0x40UL)                  /*!< USIC_CH PSR_IICMode: ARL (Bitfield-Mask: 0x01)              */
-	#define SRR           (0x80UL)                  /*!< USIC_CH PSR_IICMode: SRR (Bitfield-Mask: 0x01)              */
-	#define ERR           (0x100UL)                 /*!< USIC_CH PSR_IICMode: ERR (Bitfield-Mask: 0x01)              */
-	#define ACK           (0x200UL)                 /*!< USIC_CH PSR_IICMode: ACK (Bitfield-Mask: 0x01)              */
-	#define RSIF          (0x400UL)                 /*!< USIC_CH PSR_IICMode: RSIF (Bitfield-Mask: 0x01)             */
-	#define DLIF          (0x800UL)                 /*!< USIC_CH PSR_IICMode: DLIF (Bitfield-Mask: 0x01)             */
-	#define TSIF          (0x1000UL)                /*!< USIC_CH PSR_IICMode: TSIF (Bitfield-Mask: 0x01)             */
-	#define TBIF          (0x2000UL)                /*!< USIC_CH PSR_IICMode: TBIF (Bitfield-Mask: 0x01)             */
-	#define RIF           (0x4000UL)                /*!< USIC_CH PSR_IICMode: RIF (Bitfield-Mask: 0x01)              */
-	#define AIF           (0x8000UL)                /*!< USIC_CH PSR_IICMode: AIF (Bitfield-Mask: 0x01)              */
-	#define BRGIF         (0x10000UL)               /*!< USIC_CH PSR_IICMode: BRGIF (Bitfield-Mask: 0x01)            */
+	//#define SLSEL         (0x1UL)                   /*!< USIC_CH PSR_IICMode: SLSEL (Bitfield-Mask: 0x01)            */
+	//#define WTDF          (0x2UL)                   /*!< USIC_CH PSR_IICMode: WTDF (Bitfield-Mask: 0x01)             */
+	//#define SCR           (0x4UL)                   /*!< USIC_CH PSR_IICMode: SCR (Bitfield-Mask: 0x01)              */
+	//#define RSCR          (0x8UL)                   /*!< USIC_CH PSR_IICMode: RSCR (Bitfield-Mask: 0x01)             */
+	//#define PCR           (0x10UL)                  /*!< USIC_CH PSR_IICMode: PCR (Bitfield-Mask: 0x01)              */
+	//#define NACK          (0x20UL)                  /*!< USIC_CH PSR_IICMode: NACK (Bitfield-Mask: 0x01)             */
+	//#define ARL           (0x40UL)                  /*!< USIC_CH PSR_IICMode: ARL (Bitfield-Mask: 0x01)              */
+	//#define SRR           (0x80UL)                  /*!< USIC_CH PSR_IICMode: SRR (Bitfield-Mask: 0x01)              */
+	//#define ERR           (0x100UL)                 /*!< USIC_CH PSR_IICMode: ERR (Bitfield-Mask: 0x01)              */
+	//#define ACK           (0x200UL)                 /*!< USIC_CH PSR_IICMode: ACK (Bitfield-Mask: 0x01)              */
+	//#define RSIF          (0x400UL)                 /*!< USIC_CH PSR_IICMode: RSIF (Bitfield-Mask: 0x01)             */
+	//#define DLIF          (0x800UL)                 /*!< USIC_CH PSR_IICMode: DLIF (Bitfield-Mask: 0x01)             */
+	//#define TSIF          (0x1000UL)                /*!< USIC_CH PSR_IICMode: TSIF (Bitfield-Mask: 0x01)             */
+	//#define TBIF          (0x2000UL)                /*!< USIC_CH PSR_IICMode: TBIF (Bitfield-Mask: 0x01)             */
+	//#define RIF           (0x4000UL)                /*!< USIC_CH PSR_IICMode: RIF (Bitfield-Mask: 0x01)              */
+	//#define AIF           (0x8000UL)                /*!< USIC_CH PSR_IICMode: AIF (Bitfield-Mask: 0x01)              */
+	//#define BRGIF         (0x10000UL)               /*!< USIC_CH PSR_IICMode: BRGIF (Bitfield-Mask: 0x01)            */
 
-	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define TDF_MASTER_SEND				(0U << 8U)
-	#define TDF_SLAVE_SEND				(1U << 8U)
-	#define TDF_MASTER_RECEIVE_ACK   	(2U << 8U)
-	#define TDF_MASTER_RECEIVE_NACK  	(3U << 8U)
-	#define TDF_MASTER_START         	(4U << 8U)
-	#define TDF_MASTER_RESTART      	(5U << 8U)
-	#define TDF_MASTER_STOP         	(6U << 8U)
+	//#define TDF_MASTER_SEND				(0U << 8U)
+	//#define TDF_SLAVE_SEND				(1U << 8U)
+	//#define TDF_MASTER_RECEIVE_ACK   	(2U << 8U)
+	//#define TDF_MASTER_RECEIVE_NACK  	(3U << 8U)
+	//#define TDF_MASTER_START         	(4U << 8U)
+	//#define TDF_MASTER_RESTART      	(5U << 8U)
+	//#define TDF_MASTER_STOP         	(6U << 8U)
 
-	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define I2C__SCTR (SDIR(1) | TRM(3) | FLE(0x3F) | WLE(7))
+	//#define I2C__SCTR (SDIR(1) | TRM(3) | FLE(0x3F) | WLE(7))
 
-	#define I2C__CCR (MODE(4))
+	//#define I2C__CCR (MODE(4))
 
-	#define I2C__BRG (DCTQ(24)|SCLKCFG(0))
+	//#define I2C__BRG (DCTQ(24)|SCLKCFG(0))
 
-	#define I2C__DX0CR (DSEL(1) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
-	#define I2C__DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
-	#define I2C__DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-	#define I2C__DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define I2C__DX0CR (DSEL(1) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+	//#define I2C__DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+	//#define I2C__DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define I2C__DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 
-	#define I2C__PCR (STIM)
+	//#define I2C__PCR (STIM)
 
-	#define I2C__FDR ((1024 - (((SYSCLK + 400000/2) / 400000 + 8) / 16)) | DM(1))
+	//#define I2C__FDR ((1024 - (((SYSCLK + 400000/2) / 400000 + 8) / 16)) | DM(1))
 
-	#define I2C__TCSR (TDEN(1)|TDSSM(1))
+	//#define I2C__TCSR (TDEN(1)|TDSSM(1))
 
 
-	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define MSLSEN    	(0x1UL)         	/*!< USIC_CH PCR_SSCMode: MSLSEN (Bitfield-Mask: 0x01)           */
-	#define SELCTR    	(0x2UL)         	/*!< USIC_CH PCR_SSCMode: SELCTR (Bitfield-Mask: 0x01)           */
-	#define SELINV    	(0x4UL)         	/*!< USIC_CH PCR_SSCMode: SELINV (Bitfield-Mask: 0x01)           */
-	#define FEM       	(0x8UL)         	/*!< USIC_CH PCR_SSCMode: FEM (Bitfield-Mask: 0x01)              */
-	#define CTQSEL1(v)	(((v)&3)<<4)		/*!< USIC_CH PCR_SSCMode: CTQSEL1 (Bitfield-Mask: 0x03)          */
-	#define PCTQ1(v)	(((v)&3)<<6)    	/*!< USIC_CH PCR_SSCMode: PCTQ1 (Bitfield-Mask: 0x03)            */
-	#define DCTQ1(v)	(((v)&0x1F)<<8)		/*!< USIC_CH PCR_SSCMode: DCTQ1 (Bitfield-Mask: 0x1f)            */
-	#define PARIEN    	(0x2000UL)      	/*!< USIC_CH PCR_SSCMode: PARIEN (Bitfield-Mask: 0x01)           */
-	#define MSLSIEN   	(0x4000UL)      	/*!< USIC_CH PCR_SSCMode: MSLSIEN (Bitfield-Mask: 0x01)          */
-	#define DX2TIEN   	(0x8000UL)      	/*!< USIC_CH PCR_SSCMode: DX2TIEN (Bitfield-Mask: 0x01)          */
-	#define SELO(v)		(((v)&0xFF)<<16)	/*!< USIC_CH PCR_SSCMode: SELO (Bitfield-Mask: 0xff)             */
-	#define TIWEN     	(0x1000000UL)   	/*!< USIC_CH PCR_SSCMode: TIWEN (Bitfield-Mask: 0x01)            */
-	#define SLPHSEL   	(0x2000000UL)   	/*!< USIC_CH PCR_SSCMode: SLPHSEL (Bitfield-Mask: 0x01)          */
-	#define MCLK      	(0x80000000UL)  	/*!< USIC_CH PCR_SSCMode: MCLK (Bitfield-Mask: 0x01)             */
+	//#define MSLSEN    	(0x1UL)         	/*!< USIC_CH PCR_SSCMode: MSLSEN (Bitfield-Mask: 0x01)           */
+	//#define SELCTR    	(0x2UL)         	/*!< USIC_CH PCR_SSCMode: SELCTR (Bitfield-Mask: 0x01)           */
+	//#define SELINV    	(0x4UL)         	/*!< USIC_CH PCR_SSCMode: SELINV (Bitfield-Mask: 0x01)           */
+	//#define FEM       	(0x8UL)         	/*!< USIC_CH PCR_SSCMode: FEM (Bitfield-Mask: 0x01)              */
+	//#define CTQSEL1(v)	(((v)&3)<<4)		/*!< USIC_CH PCR_SSCMode: CTQSEL1 (Bitfield-Mask: 0x03)          */
+	//#define PCTQ1(v)	(((v)&3)<<6)    	/*!< USIC_CH PCR_SSCMode: PCTQ1 (Bitfield-Mask: 0x03)            */
+	//#define DCTQ1(v)	(((v)&0x1F)<<8)		/*!< USIC_CH PCR_SSCMode: DCTQ1 (Bitfield-Mask: 0x1f)            */
+	//#define PARIEN    	(0x2000UL)      	/*!< USIC_CH PCR_SSCMode: PARIEN (Bitfield-Mask: 0x01)           */
+	//#define MSLSIEN   	(0x4000UL)      	/*!< USIC_CH PCR_SSCMode: MSLSIEN (Bitfield-Mask: 0x01)          */
+	//#define DX2TIEN   	(0x8000UL)      	/*!< USIC_CH PCR_SSCMode: DX2TIEN (Bitfield-Mask: 0x01)          */
+	//#define SELO(v)		(((v)&0xFF)<<16)	/*!< USIC_CH PCR_SSCMode: SELO (Bitfield-Mask: 0xff)             */
+	//#define TIWEN     	(0x1000000UL)   	/*!< USIC_CH PCR_SSCMode: TIWEN (Bitfield-Mask: 0x01)            */
+	//#define SLPHSEL   	(0x2000000UL)   	/*!< USIC_CH PCR_SSCMode: SLPHSEL (Bitfield-Mask: 0x01)          */
+	//#define MCLK      	(0x80000000UL)  	/*!< USIC_CH PCR_SSCMode: MCLK (Bitfield-Mask: 0x01)             */
 
-	#define MSLS      	(0x1UL)           	/*!< USIC_CH PSR_SSCMode: MSLS (Bitfield-Mask: 0x01)             */
-	#define DX2S      	(0x2UL)           	/*!< USIC_CH PSR_SSCMode: DX2S (Bitfield-Mask: 0x01)             */
-	#define MSLSEV    	(0x4UL)           	/*!< USIC_CH PSR_SSCMode: MSLSEV (Bitfield-Mask: 0x01)           */
-	#define DX2TEV    	(0x8UL)           	/*!< USIC_CH PSR_SSCMode: DX2TEV (Bitfield-Mask: 0x01)           */
-	#define PARERR    	(0x10UL)          	/*!< USIC_CH PSR_SSCMode: PARERR (Bitfield-Mask: 0x01)           */
-	#define RSIF      	(0x400UL)         	/*!< USIC_CH PSR_SSCMode: RSIF (Bitfield-Mask: 0x01)             */
-	#define DLIF      	(0x800UL)         	/*!< USIC_CH PSR_SSCMode: DLIF (Bitfield-Mask: 0x01)             */
-	#define TSIF      	(0x1000UL)        	/*!< USIC_CH PSR_SSCMode: TSIF (Bitfield-Mask: 0x01)             */
-	#define TBIF      	(0x2000UL)        	/*!< USIC_CH PSR_SSCMode: TBIF (Bitfield-Mask: 0x01)             */
-	#define RIF       	(0x4000UL)        	/*!< USIC_CH PSR_SSCMode: RIF (Bitfield-Mask: 0x01)              */
-	#define AIF       	(0x8000UL)        	/*!< USIC_CH PSR_SSCMode: AIF (Bitfield-Mask: 0x01)              */
-	#define BRGIF     	(0x10000UL)       	/*!< USIC_CH PSR_SSCMode: BRGIF (Bitfield-Mask: 0x01)            */
+	//#define MSLS      	(0x1UL)           	/*!< USIC_CH PSR_SSCMode: MSLS (Bitfield-Mask: 0x01)             */
+	//#define DX2S      	(0x2UL)           	/*!< USIC_CH PSR_SSCMode: DX2S (Bitfield-Mask: 0x01)             */
+	//#define MSLSEV    	(0x4UL)           	/*!< USIC_CH PSR_SSCMode: MSLSEV (Bitfield-Mask: 0x01)           */
+	//#define DX2TEV    	(0x8UL)           	/*!< USIC_CH PSR_SSCMode: DX2TEV (Bitfield-Mask: 0x01)           */
+	//#define PARERR    	(0x10UL)          	/*!< USIC_CH PSR_SSCMode: PARERR (Bitfield-Mask: 0x01)           */
+	//#define RSIF      	(0x400UL)         	/*!< USIC_CH PSR_SSCMode: RSIF (Bitfield-Mask: 0x01)             */
+	//#define DLIF      	(0x800UL)         	/*!< USIC_CH PSR_SSCMode: DLIF (Bitfield-Mask: 0x01)             */
+	//#define TSIF      	(0x1000UL)        	/*!< USIC_CH PSR_SSCMode: TSIF (Bitfield-Mask: 0x01)             */
+	//#define TBIF      	(0x2000UL)        	/*!< USIC_CH PSR_SSCMode: TBIF (Bitfield-Mask: 0x01)             */
+	//#define RIF       	(0x4000UL)        	/*!< USIC_CH PSR_SSCMode: RIF (Bitfield-Mask: 0x01)              */
+	//#define AIF       	(0x8000UL)        	/*!< USIC_CH PSR_SSCMode: AIF (Bitfield-Mask: 0x01)              */
+	//#define BRGIF     	(0x10000UL)       	/*!< USIC_CH PSR_SSCMode: BRGIF (Bitfield-Mask: 0x01)            */
 
-	#define SPI__SCTR (SDIR(1) | TRM(1) | FLE(0x3F) | WLE(7))
+	//#define SPI__SCTR (SDIR(1) | TRM(1) | FLE(0x3F) | WLE(7))
 
-	#define SPI__CCR (MODE(1))
+	//#define SPI__CCR (MODE(1))
 
-	#define SPI__BRG (SCLKCFG(2)|CTQSEL(0)|DCTQ(1)|PCTQ(3)|CLKSEL(0))
+	//#define SPI__BRG (SCLKCFG(2)|CTQSEL(0)|DCTQ(1)|PCTQ(3)|CLKSEL(0))
 
-	#define SPI__DX0CR (DSEL(2) | INSW(1) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
-	#define SPI__DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
-	#define SPI__DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
-	#define SPI__DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define SPI__DX0CR (DSEL(2) | INSW(1) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+	//#define SPI__DX1CR (DSEL(0) | INSW(0) | DFEN(1) | DSEN(1) | DPOL(0) | SFSEL(1) | CM(0) | DXS(0))
+	//#define SPI__DX2CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
+	//#define SPI__DX3CR (DSEL(0) | INSW(0) | DFEN(0) | DSEN(0) | DPOL(0) | SFSEL(0) | CM(0) | DXS(0))
 
-	#define SPI__PCR (MSLSEN | SELINV |  TIWEN | MCLK | CTQSEL1(0) | PCTQ1(0) | DCTQ1(0))
+	//#define SPI__PCR (MSLSEN | SELINV |  TIWEN | MCLK | CTQSEL1(0) | PCTQ1(0) | DCTQ1(0))
 
-	#define SPI__BAUD (4000000)
+	//#define SPI__BAUD (4000000)
 
-	#define SPI__FDR ((1024 - ((SYSCLK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
+	//#define SPI__FDR ((1024 - ((SYSCLK + SPI__BAUD/2) / SPI__BAUD + 1) / 2) | DM(1))
 
-	#define SPI__BAUD2FDR(v) ((1024 - ((SYSCLK + (v)/2) / (v) + 1) / 2) | DM(1))
+	//#define SPI__BAUD2FDR(v) ((1024 - ((SYSCLK + (v)/2) / (v) + 1) / 2) | DM(1))
 
-	#define SPI__TCSR (TDEN(1)|HPCMD(0))
+	//#define SPI__TCSR (TDEN(1)|HPCMD(0))
 
 //	static void delay(u32 cycles) { for(volatile u32 i = 0UL; i < cycles ;++i) { __nop(); }}
 
