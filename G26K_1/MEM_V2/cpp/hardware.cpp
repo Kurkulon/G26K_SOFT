@@ -16,8 +16,12 @@
 
 #define SMALL_BUF_LEN	512
 #define MEDIUM_BUF_LEN	1536
-#define HUGE_BUF_LEN	3072    
 
+#ifndef WIN32
+#define HUGE_BUF_LEN	3072    
+#else
+#define HUGE_BUF_LEN	0x4100    
+#endif
 #define	NUM_SMALL_BUF	16       
 #define	NUM_MEDIUM_BUF	8
 #define	NUM_HUGE_BUF	8
@@ -1166,6 +1170,7 @@ static __irq void Clock_IRQ()
 #endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#ifndef WIN32
 
 static void InitClock()
 {
@@ -1248,6 +1253,7 @@ static void InitClock()
 	SEGGER_RTT_WriteString(0, "OK\n");
 }
 
+#endif
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #ifdef CPU_XMC48
@@ -1411,6 +1417,8 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
 	crc_ccit_result = 0;//GetCRC16_CCIT(data, len, init);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

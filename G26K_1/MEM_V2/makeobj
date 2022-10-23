@@ -106,9 +106,9 @@ asm_options = $(cpu_asm_options) -g --xref --diag_style=ide --pd "__MICROLIB SET
 
 link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph --symbols --summary_stderr --library_type=microlib
   
-##################################################################################################
+##################################################################################################-wd4996
 
-win32_compiler_options = $(debug_compiler_options) -nologo -DWIN32 -D_TESTONPC_ -D_DEBUG_ -c -Z7 -Zp -wd4996 -I"$(libdir)\cpp"
+win32_compiler_options = $(debug_compiler_options) -nologo -DWIN32 -D_TESTONPC_ -D_DEBUG_ -c -Z7 -Zp  -I"$(libdir)\cpp"
 
 ##################################################################################################
 

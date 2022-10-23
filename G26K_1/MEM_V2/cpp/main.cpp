@@ -1001,7 +1001,7 @@ static u32 InitRspMan_00(__packed u16 *data)
 
 static void RequestFlashWrite_00(Ptr<MB> &flwb)
 {
-	__packed u16* data = (__packed u16*)(flwb->data+flwb->dataOffset);
+	__packed u16* data = (__packed u16*)(flwb->GetDataPtr());
 
 	flwb->len = InitRspMan_00(data) * 2;
 
@@ -1060,7 +1060,7 @@ static u32 InitRspMan_10(__packed u16 *data)
 
 static void RequestFlashWrite_10(Ptr<MB> &flwb)
 {
-	__packed u16* data = (__packed u16*)(flwb->data+flwb->dataOffset);
+	__packed u16* data = (__packed u16*)(flwb->GetDataPtr());
 
 	flwb->len = InitRspMan_10(data) * 2;
 
@@ -1126,7 +1126,7 @@ static u32 InitRspMan_20(__packed u16 *data)
 
 static void RequestFlashWrite_20(Ptr<MB> &flwb)
 {
-	__packed u16* data = (__packed u16*)(flwb->data+flwb->dataOffset);
+	__packed u16* data = (__packed u16*)(flwb->GetDataPtr());
 
 	flwb->len = InitRspMan_20(data) * 2;
 

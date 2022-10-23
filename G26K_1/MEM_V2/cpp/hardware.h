@@ -50,9 +50,9 @@ extern void DisableDSP();
 
 __forceinline u32 Push_IRQ()
 {
-	register u32 t;
-
 #ifndef WIN32
+
+	register u32 t;
 
 	register u32 primask __asm("primask");
 
@@ -60,9 +60,13 @@ __forceinline u32 Push_IRQ()
 
 	__disable_irq();
 
-#endif
-
 	return t;
+
+#else 
+
+	return 0;
+
+#endif
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
