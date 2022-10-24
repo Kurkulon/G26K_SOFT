@@ -363,6 +363,10 @@ void CallBackDspReq01(Ptr<REQ> &q)
 				
 				dspStatus |= 1;
 				dspRcvCount++;
+
+				q->rsp->len = 0;
+				q->crcOK = false;
+				q->tryCount = 0;
 			};
 		};
 	}
@@ -396,11 +400,19 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	
 	rq.Alloc();//= REQ::Alloc();
 
-	if (!rq.Valid()) return rq;
+	if (!rq.Valid()) 
+	{
+		rq.Free();
+		return rq;
+	};
 
 	rq->rsp = AllocFlashWriteBuffer(sizeof(RspDsp01));
 
-	if (!rq->rsp.Valid()) { rq.Free(); return rq; };
+	if (!rq->rsp.Valid())
+	{ 
+		rq.Free();
+		return rq; 
+	};
 
 	ReqDsp01 &req = *((ReqDsp01*)rq->reqData);
 	RspDsp01 &rsp = *((RspDsp01*)(rq->rsp->GetDataPtr()));
@@ -3034,6 +3046,96 @@ static void Update()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+//static void Com_test()
+//{
+//	TM32 tm;
+//
+//	ComPort::ReadBuffer rb;
+//	ComPort::WriteBuffer wb;
+//
+//	static ReqDsp01 req;
+//	static RspDsp01 rsp;
+//
+//	req.rw				= dspReqWord|1;
+//	req.len				= sizeof(req);
+//	req.version			= req.VERSION;
+//	req.mode 			= mode;
+//	req.ax				= ax;
+//	req.ay				= ay;
+//	req.az				= az;
+//	req.at				= at;
+//	req.gain 			= mv.gain;
+//	req.st	 			= mv.sampleTime;
+//	req.sl 				= mv.sampleLen;
+//	req.sd 				= mv.sampleDelay;
+//	req.thr				= mv.descriminant;
+//	req.descr			= mv.deadTime;
+//	req.freq			= mv.freq;
+//	req.refgain 		= mv.gainRef;
+//	req.refst			= mv.sampleTimeRef;
+//	req.refsl 			= mv.sampleLenRef;
+//	req.refsd 			= mv.sampleDelayRef;
+//	req.refthr			= mv.descriminantRef;
+//	req.refdescr		= mv.deadTimeRef;
+//	req.refFreq			= mv.refFreq;
+//	req.vavesPerRoundCM = mv.cmSPR;
+//	req.vavesPerRoundIM = mv.imSPR;
+//	req.filtrType		= mv.filtrType;
+//	req.packType		= mv.packType;
+//	req.fireVoltage		= mv.fireVoltage;
+//
+//	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
+//
+//	//byte buf[20] = {0};
+//
+//	rb.data = &rsp;
+//	rb.maxLen = sizeof(rsp.v01)+sizeof(rsp.rw);
+//	wb.data = &req;
+//	wb.len = sizeof(req);
+//	//buf[0] = 0x55;
+//	//buf[19] = 0xAA;
+//
+//	////commoto.Read(&rb, MS2COM(50), US2COM(100));
+//
+//	static byte i = 0;
+//
+//	while (1)
+//	{
+//		switch (i)
+//		{
+//			case 0:
+//
+//				if (tm.Check(100)) 
+//				{
+//					comdsp.Write(&wb);
+//					i++;	
+//				};
+//				
+//				break;
+//
+//			case 1:
+//
+//				if (!comdsp.Update())
+//				{
+//					comdsp.Read(&rb, MS2COM(50), US2COM(100));
+//
+//					i++;
+//				};
+//
+//				break;
+//
+//			case 2:
+//
+//				if (!comdsp.Update())
+//				{
+//					i = 0;
+//				};
+//		};
+//	};
+//}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "main() start ...\n");
@@ -3076,23 +3178,6 @@ int main()
 	EnableDSP();
 
 	//__breakpoint(0);
-
-	//ComPort::ReadBuffer rb;
-
-	//byte buf[20];
-
-	//rb.data = buf;
-	//rb.maxLen = sizeof(buf);
-
-	//commoto.Read(&rb, MS2COM(50), US2COM(100));
-
-	//while (1)
-	//{
-	//	if (!commoto.Update())
-	//	{
-	//		commoto.Read(&rb, MS2COM(50), US2COM(100));
-	//	};
-	//};
 
 	FlashMoto();
 

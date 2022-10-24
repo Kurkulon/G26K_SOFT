@@ -18,7 +18,7 @@
 #define MEDIUM_BUF_LEN	1536
 
 #ifndef WIN32
-#define HUGE_BUF_LEN	3072    
+#define HUGE_BUF_LEN	0x900 //2034
 #else
 #define HUGE_BUF_LEN	0x4100    
 #endif
@@ -469,7 +469,7 @@ extern "C" void SystemInit()
 		HW::DLR->DRL10	= DRL_RS10;
 		HW::DLR->DRL11	= DRL_RS11;
 
-		HW::DLR->LNEN = ~0;
+		HW::DLR->LNEN = 0;
 
 	#endif
 
