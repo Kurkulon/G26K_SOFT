@@ -581,7 +581,7 @@
 	#define MANT_CC					0
 	#define MANR_CC					1
 	//#define						2
-	#define MANI_CC					3
+	#define MANI_CC					2
 
 	//#define						CCU42
 
@@ -606,7 +606,8 @@
 
 	#define	CRC_FCE					HW::FCE_KE3
 
-	//#define I2C					HW::USIC2_CH0
+	// ++++++++++++++	I2C		++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define PORT_SDA				P5
 	#define PORT_SCL				P5
 	#define PIO_SDA					HW::PORT_SDA
@@ -618,30 +619,14 @@
 	#define I2C_BAUDRATE			400000
 	#define I2C_DX0CR 				(CONCAT6(USIC,I2C_USIC_NUM,_DX0_,PORT_SDA,_,PIN_SDA) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
 	#define I2C_DX1CR 				(CONCAT6(USIC,I2C_USIC_NUM,_DX1_,PORT_SCL,_,PIN_SCL) | USIC_INSW(0) | USIC_DFEN(1) | USIC_DSEN(1) | USIC_DPOL(0) | USIC_SFSEL(1) | USIC_CM(0) | USIC_DXS(0))
-	//#define SDA						(1<<PIN_SDA) 
-	//#define SCL						(1<<PIN_SCL) 
-	//#define I2C_IRQ					USIC2_0_IRQn
-	//#define I2C_PID					PID_USIC2
 
 	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	//#define ManRT					HW::CCU41_CC43		//HW::CCU41_CC42
-	//#define ManTT					HW::CCU41_CC40
-	//#define ManCCU					HW::CCU41
-	//#define ManCCU_PID				PID_CCU41
-	//#define ManTmr					HW::CCU41_CC41
-	//#define ManRT_PSC				3
-	//#define US2MT(v)				((u16)((SYSCLK_MHz*(v)+(1<<ManRT_PSC)/2)>>ManRT_PSC))
-	//#define BAUD2CLK(x)				((u32)((SYSCLK*1.0/(1<<ManRT_PSC))/x+0.5))
+	#define PORT_MANRXD				P1
+	#define PIO_MANRXD				HW::PORT_MANRXD
+	#define PIN_MANRXD				10
 
-	//#define MANT_IRQ				CCU41_0_IRQn
-	//#define MANR_IRQ				CCU41_2_IRQn
 
-	//#define ManCCU_GIDLC			(CCU4_CS1I | CCU4_CS3I | CCU4_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	//#define ManCCU_GCSS				(CCU4_S1SE | CCU4_S3SE)				// (CCU4_S1SE | CCU4_S2SE)
-	#define ManRT_INS				(CC4_EV0IS(2) | CC4_EV0EM_BOTH_EDGES | CC4_LPF0M_7CLK)
-	#define ManTmr_INS				(CC4_EV0IS(12+3) | CC4_EV0EM_RISING_EDGE);
-//	#define ManRT_SRS				CC4_POSR(3)
 
 	#define ManT1					HW::CCU80_CC80
 	#define ManT2					HW::CCU80_CC81
