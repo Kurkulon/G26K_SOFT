@@ -590,7 +590,13 @@
 
 	// ++++++++++++++	CCU8x	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	//#define						CCU80
+	//#define MANT_CCU8				CCU80
+	//#define MANT_L1_CC				2
+	//#define MANT_H1_CC				1
+	//#define MANT_L2_CC				1
+	//#define MANT_H2_CC				0
+
+
 	//#define						CCU81
 
 
@@ -622,41 +628,32 @@
 
 	// ++++++++++++++	MANCH	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+	#define MAN_TRANSMIT_V2
+
 	#define PORT_MANRXD				P1
 	#define PIO_MANRXD				HW::PORT_MANRXD
 	#define PIN_MANRXD				10
 
 
 
-	#define ManT1					HW::CCU80_CC80
-	#define ManT2					HW::CCU80_CC81
-	#define ManT3					HW::CCU80_CC82
-	
-	//#define ManT_L1					HW::CCU81_CC80
-	//#define ManT_H1					HW::CCU81_CC81
-	//#define ManT_L2					HW::CCU81_CC82
-	//#define ManT_H2					HW::CCU81_CC83
+	#ifdef MAN_TRANSMIT_V1
 
-	#define ManT_CCUCON				SCU_GENERAL_CCUCON_GSC80_Msk
-	#define ManT_CCU8				HW::CCU80
-	#define ManT_CCU8_PID			PID_CCU80
-	#define MANT_CCU8_IRQ			CCU80_0_IRQn
-	#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_CS2I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
-	#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
-//	#define ManT_PSC				3					// 0.04us
-//	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
-//	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
-//	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
-	#define ManT1_PSL				(0) 
-	#define ManT1_CHC				(CC8_OCS2 | CC8_OCS3)			
-	#define ManT2_CHC				(CC8_OCS2 | CC8_OCS3)			
-	#define ManT3_CHC				(CC8_OCS2)			
-	#define ManT_OUT_GCSS			(CCU8_S1ST1C | CCU8_S1ST2S | CCU8_S1ST2S)
-	#define ManT_OUT_GCSC			(CCU8_S0ST2C)
+		#define PIO_MANCH			HW::P0
 
+	#else // #ifdef MAN_TRANSMIT_V1	
 
-	#define PIO_MANCH				HW::P0
+		#define PORT_L1					P0
+		#define PORT_H1					P0
+		#define PORT_L2					P0
+		#define PORT_H2					P0
+
+		#define PIO_L1					HW::PORT_L1
+		#define PIO_H1					HW::PORT_H1
+		#define PIO_L2					HW::PORT_L2
+		#define PIO_H2					HW::PORT_H2
+
+	#endif
+
 	#define PIN_L1					0 
 	#define PIN_H1					1 
 	#define PIN_L2					9 
@@ -666,6 +663,36 @@
 	#define H1						(1UL<<PIN_H1)
 	#define L2						(1UL<<PIN_L2)
 	#define H2						(1UL<<PIN_H2)
+
+
+	//#define ManT1					HW::CCU80_CC80
+	//#define ManT2					HW::CCU80_CC81
+	//#define ManT3					HW::CCU80_CC82
+	
+	//#define ManT_L1					HW::CCU81_CC80
+	//#define ManT_H1					HW::CCU81_CC81
+	//#define ManT_L2					HW::CCU81_CC82
+	//#define ManT_H2					HW::CCU81_CC83
+
+	//#define ManT_CCUCON				SCU_GENERAL_CCUCON_GSC80_Msk
+	//#define ManT_CCU8				HW::CCU80
+	//#define ManT_CCU8_PID			PID_CCU80
+	//#define MANT_CCU8_IRQ			CCU80_0_IRQn
+	//#define ManT_CCU8_GIDLC			(CCU8_CS0I | CCU8_CS1I | CCU8_CS2I | CCU8_SPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	//#define ManT_CCU8_GIDLS			(CCU8_SS0I | CCU8_SS1I | CCU8_SS2I | CCU8_CPRB)	// (CCU4_CS1I | CCU4_CS2I | CCU4_SPRB)
+	//#define ManT_CCU8_GCSS			(CCU8_S0SE | CCU8_S1SE | CCU8_S2SE)				// (CCU4_S1SE | CCU4_S2SE)
+//	#define ManT_PSC				3					// 0.04us
+//	#define ManT_SET_PR(v)			{ ManT1->PRS = (v); ManT2->PRS = (v); ManT3->PRS = (v); }
+//	#define ManT_SET_CR(v)			{ ManT1->CR2S = (v); ManT2->CR1S = (v); ManT2->CR2S = (v); ManT3->CR1S = (v);}
+//	#define ManT_SHADOW_SYNC()		{ ManT_CCU8->GCSS = ManT_CCU8_GCSS; }	
+	//#define ManT1_PSL				(0) 
+	//#define ManT1_CHC				(CC8_OCS2 | CC8_OCS3)			
+	//#define ManT2_CHC				(CC8_OCS2 | CC8_OCS3)			
+	//#define ManT3_CHC				(CC8_OCS2)			
+	//#define ManT_OUT_GCSS			(CCU8_S1ST1C | CCU8_S1ST2S | CCU8_S1ST2S)
+	//#define ManT_OUT_GCSC			(CCU8_S0ST2C)
+
+
 
 	//#define ManRxd()				((PIO_MANCH->IN >> PIN_MANCHRX) & 1)
 
