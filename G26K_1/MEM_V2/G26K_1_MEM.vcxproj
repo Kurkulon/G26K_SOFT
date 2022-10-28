@@ -86,7 +86,7 @@
     <NMakeReBuildCommandLine>wmake -h -a version=Release targetcpu=XMC48</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_XMC48.axf</NMakeOutput>
-    <NMakePreprocessorDefinitions>__softfp=,CPU_XMC48</NMakePreprocessorDefinitions>
+    <NMakePreprocessorDefinitions>__softfp=;CPU_XMC48</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SAME53_Debug|Win32'">
@@ -96,8 +96,8 @@
     <NMakeReBuildCommandLine>wmake -h -a version=Debug targetcpu=SAME53</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_SAME53.axf</NMakeOutput>
-    <NMakePreprocessorDefinitions>_DEBUG,__softfp=,CPU_SAME53;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakePreprocessorDefinitions>_DEBUG;__softfp=;CPU_SAME53;</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SAME53_Release|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
@@ -106,7 +106,7 @@
     <NMakeReBuildCommandLine>wmake -h -a version=Release targetcpu=SAME53</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_SAME53.axf</NMakeOutput>
-    <NMakePreprocessorDefinitions>__softfp=,CPU_SAME53</NMakePreprocessorDefinitions>
+    <NMakePreprocessorDefinitions>__softfp=;CPU_SAME53</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win32_Debug|Win32'">
@@ -116,7 +116,7 @@
     <NMakeReBuildCommandLine>wmake -h -a version=Win32_Debug targetcpu=WIN32</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_WIN32.exe</NMakeOutput>
-    <NMakePreprocessorDefinitions>_DEBUG,__softfp=,WIN32</NMakePreprocessorDefinitions>
+    <NMakePreprocessorDefinitions>_DEBUG;__softfp=;WIN32</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;</NMakeIncludeSearchPath>
   </PropertyGroup>
   <ItemDefinitionGroup>

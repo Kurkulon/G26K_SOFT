@@ -634,8 +634,6 @@
 	#define PIO_MANRXD				HW::PORT_MANRXD
 	#define PIN_MANRXD				10
 
-
-
 	#ifdef MAN_TRANSMIT_V1
 
 		#define PIO_MANCH			HW::P0
@@ -646,11 +644,6 @@
 		#define PORT_H1					P0
 		#define PORT_L2					P0
 		#define PORT_H2					P0
-
-		#define PIO_L1					HW::PORT_L1
-		#define PIO_H1					HW::PORT_H1
-		#define PIO_L2					HW::PORT_L2
-		#define PIO_H2					HW::PORT_H2
 
 	#endif
 

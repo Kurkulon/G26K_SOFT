@@ -3205,6 +3205,17 @@ int main()
 		{ 
 			fps = fc; fc = 0; 
 
+			//static MTB mtb;
+			//static u16 buf[20];
+
+			//mtb.baud = 1;
+			//mtb.data1 = buf;
+			//mtb.len1 = ArraySize(buf);
+			//mtb.data2 = 0;
+			//mtb.len2 = 0;
+
+			//SendManData(&mtb);
+
 #ifdef WIN32
 
 			extern u32 txThreadCount;
