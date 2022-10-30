@@ -500,17 +500,17 @@ Ptr<MB> CreateTestDspReq01()
 	rsp.CM.fi_time = 12;
 	rsp.CM.gain = 13;
 	rsp.CM.st = 14;
-	rsp.CM.sl = 1500;
+	rsp.CM.sl = ArraySize(rsp.CM.data);
 	rsp.CM.sd = 0;
 	rsp.CM.pakType = 0;
 	rsp.CM.pakLen = 0;
 
-	for (u32 i = 0; i < 1500; i++)
+	for (u32 i = 0; i < rsp.CM.sl; i++)
 	{
 		rsp.CM.data[i] = 0;
 	};
 
-	rq->len = (22+1500)*2;
+	rq->len = sizeof(rsp.rw) + sizeof(rsp.CM);
 	
 	return rq;
 }
@@ -1874,7 +1874,7 @@ static void MainMode()
 			{
 				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
 
-				RequestFlashWrite(rq->rsp, rsp->rw, false);
+				RequestFlashWrite(rq->rsp, rsp->rw, true);
 
 				mainModeState++;
 			};

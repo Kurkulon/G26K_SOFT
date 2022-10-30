@@ -117,7 +117,7 @@
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_WIN32.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>_DEBUG;__softfp=;WIN32</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;C:\Program Files %28x86%29\Microsoft Visual Studio 8\VC\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
