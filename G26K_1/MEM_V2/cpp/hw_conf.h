@@ -108,8 +108,8 @@
 //	#define SERCOM_1			1
 //	#define SERCOM_2			2
 	#define I2C_SERCOM_NUM		3
-	#define DSP_SERCOM_NUM		4
-	#define UART2_DSP			5
+	//#define DSP_SERCOM_NUM		4
+	#define UART1_DSP			5
 	//#define SERCOM_6			6
 	#define UART0_LPC			7
 
@@ -184,10 +184,10 @@
 
 	// ++++++++++++++	TCC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define RotTmr			HW::TCC0
+	#define ROT_TCC			TCC0
 	//#define				TCC1
 	#define MANR_TCC		TCC2
-	#define SyncTmr			HW::TCC3
+	#define SYNC_TCC		TCC3
 	#define NAND_TCC		TCC4
 	//#define MltTmr		TCC4
 
@@ -218,14 +218,17 @@
 
 	// ++++++++++++++	I2C	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define I2C					HW::I2C3
+	//#define I2C					HW::I2C3
 	#define PIO_I2C				HW::PIOA 
 	#define PIN_SDA				22 
 	#define PIN_SCL				23 
 	#define SDA					(1<<PIN_SDA) 
 	#define SCL					(1<<PIN_SCL) 
-	#define I2C_TRIGSRC_RX		DMCH_TRIGSRC_SERCOM3_RX
-	#define I2C_TRIGSRC_TX		DMCH_TRIGSRC_SERCOM3_TX
+	#define I2C_PMUX_SDA		PORT_PMUX_C 
+	#define I2C_PMUX_SCL		PORT_PMUX_C 
+	#define I2C_GEN_SRC			GEN_MCK
+	#define I2C_GEN_CLK			GEN_MCK_CLK
+	#define I2C_BAUDRATE		400000 
 
 	// ++++++++++++++	SPI	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -247,8 +250,15 @@
 	#define CS0				(1<<PIN_CS0) 
 	#define CS1				(1<<PIN_CS1) 
 
-	#define SPI_IRQ			SERCOM0_0_IRQ
-	//#define SPI_PID			PID_USIC1
+	#define SPI_PMUX_SPCK		PORT_PMUX_C 
+	#define SPI_PMUX_MOSI		PORT_PMUX_C 
+	#define SPI_PMUX_MISO		PORT_PMUX_C 
+	#define SPI_DIPO_BITS		SPI_DIPO(2)
+	#define SPI_DOPO_BITS		SPI_DOPO(0) 
+
+	#define SPI_GEN_SRC			GEN_MCK
+	#define SPI_GEN_CLK			GEN_MCK_CLK
+	#define SPI_BAUDRATE		8000000
 
 	#define Pin_SPI_IRQ_Set() HW::PIOB->BSET(15)		
 	#define Pin_SPI_IRQ_Clr() HW::PIOB->BCLR(15)		
@@ -347,8 +357,18 @@
 	#define ALE				(1UL<<PIN_ALE) 
 	#define CLE				(1UL<<PIN_CLE) 
 
-	#define PIN_WE_CFG		0 //PINGFG_DRVSTR 
-	#define PIN_RE_CFG		0 //PINGFG_DRVSTR 
+	#define PIN_WE_CFG		PINGFG_DRVSTR 
+	#define PIN_RE_CFG		PINGFG_DRVSTR 
+	#define PIN_ALE_CFG		PINGFG_DRVSTR 
+	#define PIN_CLE_CFG		PINGFG_DRVSTR 
+
+	#define NAND_DELAY_WP()		{ delay(4);		}
+	#define NAND_DELAY_WH()		{ delay(4);		}
+	#define NAND_DELAY_RP()		{ delay(2);		}
+	#define NAND_DELAY_REH()	{ delay(2);		}
+	#define NAND_DELAY_WHR()	{ delay(10);	}
+	#define NAND_DELAY_ADL()	{ delay(20);	}
+	#define NAND_DELAY_PR()		{ delay(4);		}
 
 	#define NAND_WE_PER		NS2CLK(60)-1	
 	#define NAND_WE_CC0		NS2CLK(30) 
@@ -414,7 +434,8 @@
 	#define ROT				(1<<PIN_ROT)
 	#define PIO_SYNC		HW::PIOB
 	#define PIO_ROT			HW::PIOB
-	#define US2SRT(v)		(v)
+	#define PMUX_SYNC		PORT_PMUX_F
+	#define PMUX_ROT		PORT_PMUX_F
 
 
 	// ++++++++++++++	SHAFT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -433,35 +454,53 @@
 
 	#define PIO_UTXD0			HW::PIOB 
 	#define PIO_URXD0			HW::PIOB 
+	#define PIO_UTXD1			HW::PIOB 
+	#define PIO_URXD1			HW::PIOB 
 	#define PIO_UTXD2			HW::PIOC 
 	#define PIO_URXD2			HW::PIOC 
+	#define PIO_RTS0			HW::PIOC 
+	#define PIO_RTS1			HW::PIOC 
+	#define PIO_RTS2			HW::PIOC 
 
 	#define PMUX_UTXD0			PORT_PMUX_D
 	#define PMUX_URXD0			PORT_PMUX_D 
+	#define PMUX_UTXD1			PORT_PMUX_C
+	#define PMUX_URXD1			PORT_PMUX_C 
 	#define PMUX_UTXD2			PORT_PMUX_C 
 	#define PMUX_URXD2			PORT_PMUX_C 
 
 	#define UART0_TXPO			USART_TXPO_0 
 	#define UART0_RXPO			USART_RXPO_1 
 
-	#define UART2_TXPO			USART_TXPO_0 
-	#define UART2_RXPO			USART_RXPO_1 
+	#define UART1_TXPO			USART_TXPO_0 
+	#define UART1_RXPO			USART_RXPO_1 
 
-	#define PIN_UTXD0		21 
-	#define PIN_URXD0		20 
-	#define PIN_UTXD2		7 
-	#define PIN_URXD2		6 
+	#define PIN_UTXD0			21 
+	#define PIN_URXD0			20 
+	#define PIN_UTXD1			16 
+	#define PIN_URXD1			17 
+	#define PIN_UTXD2			7 
+	#define PIN_URXD2			6 
+	#define PIN_RTS0			21
+	#define PIN_RTS1			11
+	#define PIN_RTS2			5
+
 
 	#define UTXD0				(1<<PIN_UTXD0) 
 	#define URXD0				(1<<PIN_URXD0) 
+	#define UTXD1				(1<<PIN_UTXD1) 
+	#define URXD1				(1<<PIN_URXD1) 
 	#define UTXD2				(1<<PIN_UTXD2) 
 	#define URXD2				(1<<PIN_URXD2) 
+	#define RTS0				(1<<PIN_RTS0) 
+	#define RTS1				(1<<PIN_RTS1) 
+	#define RTS2				(1<<PIN_RTS2) 
 
 	#define UART0_GEN_SRC		GEN_MCK
 	#define UART0_GEN_CLK		GEN_MCK_CLK
 
-	#define UART2_GEN_SRC		GEN_MCK
-	#define UART2_GEN_CLK		GEN_MCK_CLK
+	#define UART1_GEN_SRC		GEN_MCK
+	#define UART1_GEN_CLK		GEN_MCK_CLK
 
 	//#define PIO_USART0		HW::PIOB 
 	//#define PIO_USART1		HW::PIOB 

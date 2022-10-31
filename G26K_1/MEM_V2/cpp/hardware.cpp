@@ -107,7 +107,7 @@ static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
 volatile u16 curShaftCounter = 0;
 
-//static bool busy_CRC_CCITT_DMA = false;
+static bool busy_CRC_CCITT_DMA = false;
 
 //static void I2C_Init();
 
@@ -1283,15 +1283,11 @@ u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init)
 
 u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 {
-	HW::P6->BSET(5);
-
 	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
 
 	CRC_DMA.MemCopySrcInc(data, &CRC_FCE->IR, len);
 
 	while (!CRC_DMA.CheckMemCopyComplete());
-
-	HW::P6->BCLR(5);
 
 	__dsb(15);
 
@@ -1302,7 +1298,9 @@ u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
 
 bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 {
-	HW::P6->BSET(5);
+	if (busy_CRC_CCITT_DMA) return false;
+
+	busy_CRC_CCITT_DMA = true;
 
 	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
 
@@ -1320,6 +1318,8 @@ bool CRC_CCITT_DMA_CheckComplete(u16* crc)
 		__dsb(15);
 
 		*crc = (byte)CRC_FCE->RES;
+
+		busy_CRC_CCITT_DMA = false;
 
 		return true;
 	}
@@ -1369,6 +1369,8 @@ bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
 	busy_CRC_CCITT_DMA = true;
 
 	CRC_DMA.CRC_CCITT(data, len, init);
+
+	return true;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1497,30 +1499,51 @@ static void WDT_Init()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static u32 rotCount = 0;
+#define SyncTmr				HW::SYNC_TCC
+#define RotTmr				HW::ROT_TCC
+#define SYNC_GEN			CONCAT2(GEN_,SYNC_TCC)
+#define SYNC_GEN_CLK		CONCAT2(CLK_,SYNC_TCC) 
+#define ROT_GEN				CONCAT2(GEN_,ROT_TCC)
+#define ROT_GEN_CLK			CONCAT2(CLK_,ROT_TCC) 
 
-//static __irq void RotTrmIRQ()
-//{
-//#ifdef CPU_SAME53
-//
-//	//PIO_SYNCROT->WBIT(ROT, !(PIO_SYNCROT->ODSR & ROT));
-//	rotCount++;
-//
-//	HW::PIOA->BCLR(15);
-//
-//	//if (rotCount >= pulsesPerHeadRound)
-//	//{
-//	//	SyncTmr.CCR = SWTRG;
-//	//	rotCount = 0;
-//	//	
-//	//	HW::PIOA->BSET(15);
-//	//};
-//
-////	u32 tmp = RotTmr.SR;
-//
-//#elif defined(CPU_XMC48)
-//#endif
-//}
+#if (SYNC_GEN_CLK > 100000000)
+		#define SYNC_PRESC_NUM		256
+#elif (SYNC_GEN_CLK > 50000000)
+		#define SYNC_PRESC_NUM		64
+#elif (SYNC_GEN_CLK > 20000000)
+		#define SYNC_PRESC_NUM		16
+#elif (SYNC_GEN_CLK > 10000000)
+		#define SYNC_PRESC_NUM		8
+#elif (SYNC_GEN_CLK > 5000000)
+		#define SYNC_PRESC_NUM		4
+#else
+		#define SYNC_PRESC_NUM		1
+#endif
+
+#if (ROT_GEN_CLK > 100000000)
+		#define ROT_PRESC_NUM		256
+#elif (ROT_GEN_CLK > 50000000)
+		#define ROT_PRESC_NUM		64
+#elif (ROT_GEN_CLK > 20000000)
+		#define ROT_PRESC_NUM		16
+#elif (ROT_GEN_CLK > 10000000)
+		#define ROT_PRESC_NUM		8
+#elif (ROT_GEN_CLK > 5000000)
+		#define ROT_PRESC_NUM		4
+#else
+		#define ROT_PRESC_NUM		1
+#endif
+
+#define SYNC_PRESC_DIV		CONCAT2(TCC_PRESCALER_DIV,SYNC_PRESC_NUM)
+#define ROT_PRESC_DIV		CONCAT2(TCC_PRESCALER_DIV,ROT_PRESC_NUM)
+
+#define US2ROT(v)			(((v)*(ROT_GEN_CLK/1000/ROT_PRESC_NUM)+500)/1000)
+#define US2SYNC(v)			(((v)*(SYNC_GEN_CLK/1000/SYNC_PRESC_NUM)+500)/1000)
+
+
+inline void Sync_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,SYNC_TCC)] = SYNC_GEN|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,SYNC_TCC)); }
+inline void Rot_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,ROT_TCC)]	 = ROT_GEN|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,ROT_TCC)); }
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1538,7 +1561,7 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 	
 	t = (100000000 + t/2) / t;
 	
-	t = US2SRT(t);
+	t = US2SYNC(t);
 
 	if (t > 0xFFFF) t = 0xFFFF;
 
@@ -1548,7 +1571,7 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 
 	if (r != 0)
 	{
-		r = US2SRT((100000000 + r/2) / r);
+		r = US2ROT((100000000 + r/2) / r);
 	};
 
 	if (r > 0xFFFF) r = 0xFFFF;
@@ -1556,13 +1579,13 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 	#ifdef CPU_SAME53	
 
 		SyncTmr->PER = t;
-		SyncTmr->CC[0] = US2SRT(10); 
+		SyncTmr->CC[0] = US2SYNC(10); 
 
-		SyncTmr->CTRLA = (t != 0) ? TCC_ENABLE : 0;
+		SyncTmr->CTRLA = (t != 0) ? TCC_ENABLE|SYNC_PRESC_DIV : SYNC_PRESC_DIV;
 
 		RotTmr->CC[0] = r;
 
-		RotTmr->CTRLA = (r != 0) ? TCC_ENABLE : 0;
+		RotTmr->CTRLA = (r != 0) ? TCC_ENABLE|ROT_PRESC_DIV : ROT_PRESC_DIV;
 
 		SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
 		RotTmr->CTRLBSET = TCC_CMD_RETRIGGER;
@@ -1602,6 +1625,7 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #ifndef WIN32
 
+
 static void Init_Sync_Rot()
 {
 	using namespace HW;
@@ -1611,14 +1635,17 @@ static void Init_Sync_Rot()
 #ifdef CPU_SAME53	
 
 
-	PIO_SYNC->SetWRCONFIG(SYNC, PORT_PMUX(5)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);
-	PIO_ROT->SetWRCONFIG(ROT,	PORT_PMUX(5)|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);	
+	PIO_SYNC->SetWRCONFIG(SYNC, PMUX_SYNC|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);
+	PIO_ROT->SetWRCONFIG(ROT,	PMUX_ROT|PORT_WRPINCFG|PORT_PMUXEN|PORT_WRPMUX|PORT_INEN);	
 
-	HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3]	= GCLK_GEN(GEN_1M)|GCLK_CHEN;
-	HW::GCLK->PCHCTRL[GCLK_TCC4]		= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+	Sync_ClockEnable();
+	Rot_ClockEnable();
 
-	HW::MCLK->APBCMASK |= APBC_TCC3;
-	HW::MCLK->APBDMASK |= APBD_TCC4;
+	//HW::GCLK->PCHCTRL[GCLK_TCC2_TCC3]	= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+	//HW::GCLK->PCHCTRL[GCLK_TCC4]		= GCLK_GEN(GEN_1M)|GCLK_CHEN;
+
+	//HW::MCLK->APBCMASK |= APBC_TCC3;
+	//HW::MCLK->APBDMASK |= APBD_TCC4;
 
 	//PIO_MANCH->DIRSET = L1|H1|L2|H2;
 
@@ -1626,7 +1653,7 @@ static void Init_Sync_Rot()
 
 	while(SyncTmr->SYNCBUSY);
 
-	SyncTmr->CTRLA = 0;
+	SyncTmr->CTRLA = SYNC_PRESC_DIV;
 	SyncTmr->WAVE = TCC_WAVEGEN_NPWM;//|TCC_POL0;
 	SyncTmr->DRVCTRL = 0;//TCC_NRE0|TCC_NRE1|TCC_NRV0|TCC_NRV1;
 	SyncTmr->PER = 250;
@@ -1635,13 +1662,13 @@ static void Init_Sync_Rot()
 
 	SyncTmr->EVCTRL = 0;
 
-	SyncTmr->CTRLA = TCC_ENABLE;
+	SyncTmr->CTRLA = TCC_ENABLE|SYNC_PRESC_DIV;
 
 	RotTmr->CTRLA = TCC_SWRST;
 
 	while(RotTmr->SYNCBUSY);
 
-	RotTmr->CTRLA = 0;
+	RotTmr->CTRLA = ROT_PRESC_DIV;
 	RotTmr->WAVE = TCC_WAVEGEN_MFRQ;//|TCC_POL0;
 	RotTmr->DRVCTRL = 0;//TCC_NRE0|TCC_NRE1|TCC_NRV0|TCC_NRV1;
 	RotTmr->CC[0] = 250;
@@ -1650,7 +1677,7 @@ static void Init_Sync_Rot()
 
 	RotTmr->EVCTRL = 0;
 
-	RotTmr->CTRLA = 0;//TCC_ENABLE;
+	RotTmr->CTRLA = ROT_PRESC_DIV;//TCC_ENABLE;
 	
 	SyncTmr->CTRLBSET = TCC_CMD_RETRIGGER;
 	RotTmr->CTRLBSET = TCC_CMD_RETRIGGER;
