@@ -1499,51 +1499,124 @@ static void WDT_Init()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define SyncTmr				HW::SYNC_TCC
-#define RotTmr				HW::ROT_TCC
-#define SYNC_GEN			CONCAT2(GEN_,SYNC_TCC)
-#define SYNC_GEN_CLK		CONCAT2(CLK_,SYNC_TCC) 
-#define ROT_GEN				CONCAT2(GEN_,ROT_TCC)
-#define ROT_GEN_CLK			CONCAT2(CLK_,ROT_TCC) 
+#ifdef CPU_SAME53	
 
-#if (SYNC_GEN_CLK > 100000000)
-		#define SYNC_PRESC_NUM		256
-#elif (SYNC_GEN_CLK > 50000000)
-		#define SYNC_PRESC_NUM		64
-#elif (SYNC_GEN_CLK > 20000000)
-		#define SYNC_PRESC_NUM		16
-#elif (SYNC_GEN_CLK > 10000000)
-		#define SYNC_PRESC_NUM		8
-#elif (SYNC_GEN_CLK > 5000000)
-		#define SYNC_PRESC_NUM		4
-#else
-		#define SYNC_PRESC_NUM		1
+	#define SyncTmr				HW::SYNC_TCC
+	#define RotTmr				HW::ROT_TCC
+	#define SYNC_GEN			CONCAT2(GEN_,SYNC_TCC)
+	#define SYNC_GEN_CLK		CONCAT2(CLK_,SYNC_TCC) 
+	#define ROT_GEN				CONCAT2(GEN_,ROT_TCC)
+	#define ROT_GEN_CLK			CONCAT2(CLK_,ROT_TCC) 
+
+	#if (SYNC_GEN_CLK > 100000000)
+			#define SYNC_PRESC_NUM		256
+	#elif (SYNC_GEN_CLK > 50000000)
+			#define SYNC_PRESC_NUM		64
+	#elif (SYNC_GEN_CLK > 20000000)
+			#define SYNC_PRESC_NUM		16
+	#elif (SYNC_GEN_CLK > 10000000)
+			#define SYNC_PRESC_NUM		8
+	#elif (SYNC_GEN_CLK > 5000000)
+			#define SYNC_PRESC_NUM		4
+	#else
+			#define SYNC_PRESC_NUM		1
+	#endif
+
+	#if (ROT_GEN_CLK > 100000000)
+			#define ROT_PRESC_NUM		256
+	#elif (ROT_GEN_CLK > 50000000)
+			#define ROT_PRESC_NUM		64
+	#elif (ROT_GEN_CLK > 20000000)
+			#define ROT_PRESC_NUM		16
+	#elif (ROT_GEN_CLK > 10000000)
+			#define ROT_PRESC_NUM		8
+	#elif (ROT_GEN_CLK > 5000000)
+			#define ROT_PRESC_NUM		4
+	#else
+			#define ROT_PRESC_NUM		1
+	#endif
+
+	#define SYNC_PRESC_DIV		CONCAT2(TCC_PRESCALER_DIV,SYNC_PRESC_NUM)
+	#define ROT_PRESC_DIV		CONCAT2(TCC_PRESCALER_DIV,ROT_PRESC_NUM)
+
+	#define US2ROT(v)			(((v)*(ROT_GEN_CLK/1000/ROT_PRESC_NUM)+500)/1000)
+	#define US2SYNC(v)			(((v)*(SYNC_GEN_CLK/1000/SYNC_PRESC_NUM)+500)/1000)
+
+
+	inline void Sync_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,SYNC_TCC)] = SYNC_GEN|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,SYNC_TCC)); }
+	inline void Rot_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,ROT_TCC)]	 = ROT_GEN|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,ROT_TCC)); }
+
+#elif defined(CPU_XMC48)
+
+	#define PIO_SYNC				HW::PORT_SYNC	
+	#define PIO_ROT					HW::PORT_ROT	
+
+	//P0_0_CCU
+	#define SYNC_CCU_NUM			CONCAT4(PORT_SYNC,	_,	PIN_SYNC,	_CCU)
+	#define ROT_CCU_NUM				CONCAT4(PORT_ROT,	_,	PIN_ROT,	_CCU)
+
+	#define SYNC_CCU				CONCAT2(CCU, SYNC_CCU_NUM)
+	#define ROT_CCU					CONCAT2(CCU, ROT_CCU_NUM)
+
+	#if (SYNC_CCU_NUM >= 40) && (SYNC_CCU_NUM <= 43) && (SYNC_CCU_NUM == ROT_CCU_NUM)
+		#define SYNC_ROT_CCU_NUM		SYNC_CCU_NUM
+		#define SYNC_ROT_CCU_NAME		SYNC_CCU
+	#else
+		#error  SYNC_ROT_CCU ERROR!!!
+	#endif
+
+	#define SyncRotCCU_PID			CONCAT2(PID_,SYNC_ROT_CCU_NAME)
+
+	#define SYNC_CC_NUM				CONCAT6(PORT_SYNC,	_,	PIN_SYNC,	_,	SYNC_ROT_CCU_NAME,	_CC)
+	#define ROT_CC_NUM				CONCAT6(PORT_ROT,	_,	PIN_ROT,	_,	SYNC_ROT_CCU_NAME,	_CC)
+
+	#define SYNC_CC					CONCAT3(SYNC_ROT_CCU_NAME, _CC4, SYNC_CC_NUM)
+	#define ROT_CC					CONCAT3(SYNC_ROT_CCU_NAME, _CC4, ROT_CC_NUM)
+
+									// P0_0_CCU40_OUT21
+	#define SYNC_PINMODE			CONCAT7(PORT_SYNC,	_,	PIN_SYNC,	_,	SYNC_ROT_CCU_NAME,	_OUT,SYNC_CC_NUM)
+	#define ROT_PINMODE				CONCAT7(PORT_ROT,	_,	PIN_ROT,	_,	SYNC_ROT_CCU_NAME,	_OUT,ROT_CC_NUM)
+
+	#define SyncTmr					HW::SYNC_CC
+	#define RotTmr					HW::ROT_CC
+	#define SyncRotCCU				HW::SYNC_ROT_CCU_NAME
+	#define Sync_GCSS				CONCAT3(CCU4_S, SYNC_CC_NUM,	SE)
+	#define Rot_GCSS				CONCAT3(CCU4_S, ROT_CC_NUM,		SE)
+	#define Sync_GIDLC				CONCAT3(CCU4_S, SYNC_CC_NUM,	I)
+	#define Rot_GIDLC				CONCAT3(CCU4_S, ROT_CC_NUM,		I)
+
+	#define SyncRot_GIDLC			(Sync_GIDLC|Rot_GIDLC|CCU4_PRB)
+	//#define SyncRot_PSC				8					//1.28us
+	//#define SyncRot_DIV				(1<<SyncRot_PSC)	
+
+	#if (SYSCLK > 100000000)
+			#define SYNC_PSC		8
+			#define ROT_PSC			8
+	#elif (SYSCLK > 50000000)
+			#define SYNC_PSC		6
+			#define ROT_PSC			6
+	#elif (SYSCLK > 20000000)
+			#define SYNC_PSC		4
+			#define ROT_PSC			4
+	#elif (SYSCLK > 10000000)
+			#define SYNC_PSC		3
+			#define ROT_PSC			3
+	#elif (SYSCLK > 5000000)
+			#define SYNC_PSC		2
+			#define ROT_PSC			2
+	#else
+			#define SYNC_PSC		0
+			#define ROT_PSC			0
+	#endif
+
+	#define SYNC_DIV				(1UL<<SYNC_PSC)	
+	#define ROT_DIV					(1UL<<ROT_PSC)	
+
+	#define US2ROT(v)				(((SYSCLK_MHz*(v)+ROT_DIV/2)/ROT_DIV))
+	#define US2SYNC(v)				(((SYSCLK_MHz*(v)+SYNC_DIV/2)/SYNC_DIV))
+
+
 #endif
-
-#if (ROT_GEN_CLK > 100000000)
-		#define ROT_PRESC_NUM		256
-#elif (ROT_GEN_CLK > 50000000)
-		#define ROT_PRESC_NUM		64
-#elif (ROT_GEN_CLK > 20000000)
-		#define ROT_PRESC_NUM		16
-#elif (ROT_GEN_CLK > 10000000)
-		#define ROT_PRESC_NUM		8
-#elif (ROT_GEN_CLK > 5000000)
-		#define ROT_PRESC_NUM		4
-#else
-		#define ROT_PRESC_NUM		1
-#endif
-
-#define SYNC_PRESC_DIV		CONCAT2(TCC_PRESCALER_DIV,SYNC_PRESC_NUM)
-#define ROT_PRESC_DIV		CONCAT2(TCC_PRESCALER_DIV,ROT_PRESC_NUM)
-
-#define US2ROT(v)			(((v)*(ROT_GEN_CLK/1000/ROT_PRESC_NUM)+500)/1000)
-#define US2SYNC(v)			(((v)*(SYNC_GEN_CLK/1000/SYNC_PRESC_NUM)+500)/1000)
-
-
-inline void Sync_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,SYNC_TCC)] = SYNC_GEN|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,SYNC_TCC)); }
-inline void Rot_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,ROT_TCC)]	 = ROT_GEN|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,ROT_TCC)); }
-
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1602,15 +1675,15 @@ void Set_Sync_Rot(u16 RPS, u16 samplePerRound)
 		SyncRotCCU->GIDLC = SyncRot_GIDLC;
 
 		SyncTmr->PRS = t-1;
-		SyncTmr->CRS = US2SRT(10)-1;
-		SyncTmr->PSC = SyncRot_PSC; 
+		SyncTmr->CRS = US2SYNC(10)-1;
+		SyncTmr->PSC = SYNC_PSC; 
 		SyncTmr->PSL = 1; 
 
 		if (t != 0) { SyncTmr->TCSET = CC4_TRBS; } else { SyncTmr->TCCLR = CC4_TRBC; };
 
 		RotTmr->PRS = r-1;
 		RotTmr->CRS = r/2;
-		RotTmr->PSC = SyncRot_PSC; 
+		RotTmr->PSC = ROT_PSC; 
 		RotTmr->TC = CC4_TCM;
 
 		if (r != 0) { RotTmr->TCSET = CC4_TRBS; } else { RotTmr->TCCLR = CC4_TRBC; };
@@ -1685,8 +1758,8 @@ static void Init_Sync_Rot()
 
 #elif defined(CPU_XMC48)
 
-	PIO_SYNC->ModePin(PIN_SYNC, A3PP);
-	PIO_ROT->ModePin(PIN_ROT, A3PP);
+	PIO_SYNC->ModePin(PIN_SYNC, SYNC_PINMODE);
+	PIO_ROT->ModePin(PIN_ROT, ROT_PINMODE);
 
 	HW::CCU_Enable(SyncRotCCU_PID);
 
@@ -1694,15 +1767,15 @@ static void Init_Sync_Rot()
 
 	SyncRotCCU->GIDLC = SyncRot_GIDLC;
 
-	SyncTmr->PRS = US2SRT(60)-1;
-	SyncTmr->CRS = US2SRT(10)-1;
-	SyncTmr->PSC = SyncRot_PSC; 
+	SyncTmr->PRS = US2SYNC(60)-1;
+	SyncTmr->CRS = US2SYNC(10)-1;
+	SyncTmr->PSC = SYNC_PSC; 
 	SyncTmr->PSL = 1;
 	SyncTmr->TCSET = CC4_TRBS;
 
 	RotTmr->PRS = ~0;
 	RotTmr->CRS = 0x7FFF;
-	RotTmr->PSC = SyncRot_PSC; 
+	RotTmr->PSC = ROT_PSC; 
 	RotTmr->TC = CC4_TCM;
 	RotTmr->TCSET = CC4_TRBS;
 
@@ -1835,31 +1908,31 @@ static void InitShaft()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
-{
-#ifndef WIN32
-
-	DSP_DMA.MemCopy(src, dst, len);
-
-#else
-
-#endif
-}
+//void DSP_CopyDataDMA(volatile void *src, volatile void *dst, u16 len)
+//{
+//#ifndef WIN32
+//
+//	DSP_DMA.MemCopy(src, dst, len);
+//
+//#else
+//
+//#endif
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool DSP_CheckDataComplete()
-{
-#ifndef WIN32
-
-	return DSP_DMA.CheckMemCopyComplete();
-
-#else
-
-	return true;
-		
-#endif
-}
+//bool DSP_CheckDataComplete()
+//{
+//#ifndef WIN32
+//
+//	return DSP_DMA.CheckMemCopyComplete();
+//
+//#else
+//
+//	return true;
+//		
+//#endif
+//}
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 /*

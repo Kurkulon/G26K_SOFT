@@ -123,7 +123,7 @@
 	#define	SPI_DMA_RX			DMA_CH5
 	#define	NAND_MEMCOPY_DMA	DMA_CH6
 	#define	I2C_DMA				DMA_CH7
-	#define	DSP_DMA				DMA_CH30
+	//#define	DSP_DMA				DMA_CH30
 	#define	CRC_DMA				DMA_CH31
 
 	// ++++++++++++++	EVENT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -371,17 +371,17 @@
 	#define NAND_DELAY_PR()		{ delay(4);		}
 
 	#define NAND_WE_PER		NS2CLK(60)-1	
-	#define NAND_WE_CC0		NS2CLK(30) 
-	#define NAND_WE_CC1		NS2CLK(30)
+	#define NAND_WE_CC0		NS2CLK(40) 
+	#define NAND_WE_CC1		NS2CLK(40)
 
 	#define nandTCC			HW::NAND_TCC
 	//#define nandTC			HW::NAND_TC
 
 	#ifdef nandTCC
 	
-		#define NAND_RE_PER		(NS2CLK(60)-1)
-		#define NAND_RE_CC0		NS2CLK(35) 
-		#define NAND_RE_CC1		NS2CLK(30)
+		#define NAND_RE_PER		(NS2CLK(100)-1)
+		#define NAND_RE_CC0		NS2CLK(55) 
+		#define NAND_RE_CC1		NS2CLK(50)
 
 		#define WE_PORT_PMUX	(PORT_PMUX_F) 
 		#define RE_PORT_PMUX	(PORT_PMUX_F) 
@@ -403,7 +403,7 @@
 		#define WE_PORT_PMUX	(PORT_PMUX_E) 
 		#define RE_PORT_PMUX	(PORT_PMUX_E) 
 
-		inline void NAND_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,NAND_TC)] = GCLK_GEN(CONCAT2(GEN_,NAND_TCC))|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,NAND_TC)); }
+		inline void NAND_ClockEnable()  { HW::GCLK->PCHCTRL[CONCAT2(GCLK_,NAND_TC)] = GCLK_GEN(CONCAT2(GEN_,NAND_TC))|GCLK_CHEN; HW::MCLK->ClockEnable(CONCAT2(PID_,NAND_TC)); }
 
 		#define NAND_TRIGSRC_MC0	CONCAT3(DMCH_TRIGSRC_,NAND_TC,_MC0)
 		#define NAND_TRIGSRC_MC1	CONCAT3(DMCH_TRIGSRC_,NAND_TC,_MC1)
@@ -614,7 +614,9 @@
 
 	// ++++++++++++++	CCU4x	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	//#define						CCU40
+	//#define SYNC_ROT_CCU			CCU40
+	//#define ROT_CC					0
+	//#define SYNC_CC					1
 
 	#define MAN_CCU					CCU41
 	#define MANT_CC					0
@@ -773,33 +775,31 @@
 	#define NAND_DELAY_ADL()	{ delay(20);	}
 	#define NAND_DELAY_PR()		{ delay(4);		}
 
+	// ++++++++++++++	VCORE	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define PIO_ENVCORE				HW::P2
 	#define PIN_ENVCORE				11 
 	#define ENVCORE					(1<<PIN_ENVCORE) 
 	
+	// ++++++++++++++	RESET	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	#define PIN_RESET				11
 	#define PIO_RESET				HW::P0
 	#define RESET					(1<<PIN_RESET)
+
+	// ++++++++++++++	SYNC ROT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+	#define PORT_SYNC				P0
+	#define PORT_ROT				P0
 
 	#define PIN_SYNC				14
 	#define PIN_ROT					15
 
 	#define SYNC					(1<<PIN_SYNC)
 	#define ROT						(1<<PIN_ROT)
-	#define PIO_SYNC				HW::P0
-	#define PIO_ROT					HW::P0
 
-	#define SyncTmr					HW::CCU40_CC41
-	#define RotTmr					HW::CCU40_CC40
-	#define SyncRotCCU				HW::CCU40
-	#define SyncRotCCU_PID			PID_CCU40
-	#define Sync_GCSS				CCU4_S1SE	
-	#define Rot_GCSS				CCU4_S0SE
-	#define SyncRot_GIDLC			(CCU4_S0I|CCU4_S1I|CCU4_PRB)
-	#define SyncRot_PSC				8					//1.28us
-	#define SyncRot_DIV				(1<<SyncRot_PSC)	
-
-	#define US2SRT(v)				(((SYSCLK_MHz*(v)+SyncRot_DIV/2)/SyncRot_DIV))
+	// ++++++++++++++	SHAFT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	#define PIN_SHAFT				6
 	#define SHAFT					(1<<PIN_SHAFT)
