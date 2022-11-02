@@ -26,6 +26,8 @@ static const bool __WIN32__ = false;
 
 #endif
 
+#define __TEST__
+
 enum { VERSION = 0x103 };
 
 //#pragma O3
@@ -38,6 +40,25 @@ enum { VERSION = 0x103 };
 #endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef CPU_SAME53
+
+	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
+	#define FPS_PIN_CLR()	HW::PIOA->BCLR(25)
+
+#elif defined(CPU_XMC48)
+
+	#define FPS_PIN_SET()	HW::P2->BSET(13)
+	#define FPS_PIN_CLR()	HW::P2->BCLR(13)
+
+#elif defined(WIN32)
+
+	#define FPS_PIN_SET()	
+	#define FPS_PIN_CLR()	
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 __packed struct MainVars // NonVolatileVars  
 {
@@ -2611,18 +2632,18 @@ static void FlashMoto()
 	const unsigned __int64 masterGUID = MGUID;
 	const unsigned __int64 slaveGUID = SGUID;
 
-	TM32 tm;
+	CTM32 ctm;
 
 	Ptr<REQ> req;
 
 	motoFlashLen = sizeof(motoFlashPages);
 	motoFlashCRC = GetCRC16(motoFlashPages, motoFlashLen);
 
-	tm.Reset();
+	ctm.Reset();
 
 	bool hs = false;
 
-	while (!tm.Check(200))
+	while (!ctm.Check(MS2CLK(200)))
 	{
 		reqHS.guid = masterGUID;
 		reqHS.crc = GetCRC16(&reqHS, sizeof(reqHS) - sizeof(reqHS.crc));
@@ -2645,6 +2666,17 @@ static void FlashMoto()
 			break;
 		};
 	};
+
+	FPS_PIN_SET();
+	FPS_PIN_CLR();
+	FPS_PIN_SET();
+	FPS_PIN_CLR();
+	FPS_PIN_SET();
+	FPS_PIN_CLR();
+	FPS_PIN_SET();
+	FPS_PIN_CLR();
+	FPS_PIN_SET();
+	FPS_PIN_CLR();
 
 	if (hs)
 	{
@@ -2677,9 +2709,9 @@ static void FlashMoto()
 						if (req->crcOK && rsp->F02.status) { break;	}
 					};
 
-					tm.Reset();
+					ctm.Reset();
 
-					while (!tm.Check(1)) HW::WDT->Update();
+					while (!ctm.Check(MS2CLK(1))) HW::WDT->Update();
 
 					count -= len;
 					p += len;
@@ -2692,9 +2724,9 @@ static void FlashMoto()
 
 		qmoto.Add(req); while(!req->ready) { qmoto.Update(); HW::WDT->Update();	};
 
-		tm.Reset();
+		ctm.Reset();
 
-		while (!tm.Check(1)) HW::WDT->Update();
+		while (!ctm.Check(MS2CLK(1))) HW::WDT->Update();
 	};
 }
 
@@ -3025,27 +3057,6 @@ static void Update()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#ifdef CPU_SAME53
-
-	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
-	#define FPS_PIN_CLR()	HW::PIOA->BCLR(25)
-
-#elif defined(CPU_XMC48)
-
-	#define FPS_PIN_SET()	HW::P2->BSET(13)
-	#define FPS_PIN_CLR()	HW::P2->BCLR(13)
-
-#elif defined(WIN32)
-
-	#define FPS_PIN_SET()	
-	#define FPS_PIN_CLR()	
-
-#endif
-
-//static ComPort com1;
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 //static void Com_test()
 //{
 //	TM32 tm;
@@ -3136,9 +3147,81 @@ static void Update()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef __TEST__
+
+static void Test_Ptr_MB()
+{
+	const u32 buflen = 1UL<<4;
+	const u32 bufmask = buflen-1;
+
+	Ptr<MB> buf[16];
+
+	Ptr<MB> mb = AllocSmallBuffer();
+
+	if (!mb.Valid()) __breakpoint(0);
+
+	u32 count = mb.Count();
+
+	u32 freeCount = mb->FreeCount();
+
+	for (u32 i = 0; i < buflen; i++)
+	{
+		if (buf[i].Valid()) __breakpoint(0);
+	};
+
+	Ptr<MB> ptr;// = AllocSmallBuffer();
+
+	for (u32 i = 0, n = 0; i < 100000; i++)
+	{
+		n = n * 7727 + (n>>16) + 1;
+
+		if (((n>>8)&0xF) == 0)
+		{
+			ptr = AllocSmallBuffer();
+		}
+		else
+		{
+			buf[n&bufmask] = ptr;
+		};
+	};
+
+	for (u32 i = 0; i < buflen; i++)
+	{
+		buf[i].Free();
+
+		if (buf[i].Valid()) __breakpoint(0);
+	};
+
+	ptr.Free();
+
+	if (ptr.Valid()) __breakpoint(0);
+
+	u32 freeCount2 = mb->FreeCount();
+
+	if (freeCount2 != freeCount) __breakpoint(0);
+
+	u32 count2 = mb.Count();
+
+	if (count2 != count) __breakpoint(0);
+
+	mb.Free();
+
+	if (mb.Valid()) __breakpoint(0);
+}
+
+#endif // __TEST__
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 int main()
 {
 	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_WHITE "main() start ...\n");
+
+	#ifdef __TEST__
+
+		Test_Ptr_MB();
+
+	#endif
 
 //	static bool c = true;
 
