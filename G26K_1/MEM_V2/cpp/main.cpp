@@ -41,22 +41,22 @@ enum { VERSION = 0x103 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#ifdef CPU_SAME53
-
-	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
-	#define FPS_PIN_CLR()	HW::PIOA->BCLR(25)
-
-#elif defined(CPU_XMC48)
-
-	#define FPS_PIN_SET()	HW::P2->BSET(13)
-	#define FPS_PIN_CLR()	HW::P2->BCLR(13)
-
-#elif defined(WIN32)
-
-	#define FPS_PIN_SET()	
-	#define FPS_PIN_CLR()	
-
-#endif
+//#ifdef CPU_SAME53
+//
+//	#define FPS_PIN_SET()	HW::PIOA->BSET(25)
+//	#define FPS_PIN_CLR()	HW::PIOA->BCLR(25)
+//
+//#elif defined(CPU_XMC48)
+//
+//	#define FPS_PIN_SET()	HW::P2->BSET(13)
+//	#define FPS_PIN_CLR()	HW::P2->BCLR(13)
+//
+//#elif defined(WIN32)
+//
+//	#define FPS_PIN_SET()	
+//	#define FPS_PIN_CLR()	
+//
+//#endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2667,17 +2667,6 @@ static void FlashMoto()
 		};
 	};
 
-	FPS_PIN_SET();
-	FPS_PIN_CLR();
-	FPS_PIN_SET();
-	FPS_PIN_CLR();
-	FPS_PIN_SET();
-	FPS_PIN_CLR();
-	FPS_PIN_SET();
-	FPS_PIN_CLR();
-	FPS_PIN_SET();
-	FPS_PIN_CLR();
-
 	if (hs)
 	{
 		req = CreateBootMotoReq01(motoFlashLen, 2);
@@ -3272,15 +3261,11 @@ int main()
 
 	while (1)
 	{
-		FPS_PIN_SET();
+		Pin_MainLoop_Set();
 
 		Update();
 
-		//__disable_irq();
-		//CRC_CCITT_DMA(buf, 0x414, 0xFFFF);
-		//__enable_irq();
-
-		FPS_PIN_CLR();
+		Pin_MainLoop_Clr();
 
 		fc++;
 

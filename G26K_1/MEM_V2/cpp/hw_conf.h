@@ -518,6 +518,23 @@
 	#define CLOCK_IRQ		0//SCU_0_IRQn
 	#define PIO_32kHz		HW::PIOB 
 	#define PIN_32kHz		19 
+
+	// ++++++++++++++	PIO INIT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define PIOA_INIT_DIR		((1<<0)|(1<<1)|(0xFF<<4)|(0xFF<<14)|(1<<25)|(1<<27))
+	#define PIOA_INIT_SET		((1<<0)|(1<<1)|(1<<27))
+	#define PIOA_INIT_CLR		((0xFF<<4)|(0xFF<<14)|(1<<25))
+
+	#define PIOB_INIT_DIR		((0xF<<0)|(0x1FF<<4)|(0x3F<<16)|(7<<23)|(3UL<<30))
+	#define PIOB_INIT_SET		(0)
+	#define PIOB_INIT_CLR		((0xF<<0)|(0x1FF<<4)|(0x3F<<16)|(7<<23)|(3UL<<30))
+
+	#define PIOC_INIT_DIR		(~0)
+	#define PIOC_INIT_SET		(0)
+	#define PIOC_INIT_CLR		(~0)
+
+	#define Pin_MainLoop_Set()	HW::PIOA->BSET(25)
+	#define Pin_MainLoop_Clr()	HW::PIOA->BCLR(25)
 	
 
 #elif defined(CPU_XMC48) //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -744,6 +761,19 @@
 	#define PIO_WP					HW::P5 
 	#define PIO_FLREADY				HW::P15
 	#define PIO_FCS					HW::P3
+	#define PIO_D0					HW::P0
+	#define PIO_D1					HW::P0
+	#define PIO_D2					HW::P0
+	#define PIO_D3					HW::P0
+	#define PIO_D4					HW::P3
+	#define PIO_D5					HW::P3
+	#define PIO_D6					HW::P0
+	#define PIO_D7					HW::P0
+	#define PIO_NANDCLE				HW::P1
+	#define PIO_NANDALE				HW::P1
+	#define PIO_NANDOE				HW::P3
+	#define PIO_NANDwE				HW::P3
+
 
 	#define PIN_WP					10 
 	#define PIN_FLREADY				7 
@@ -755,6 +785,18 @@
 	#define PIN_FCS5				9 
 	#define PIN_FCS6				8 
 	#define PIN_FCS7				7 
+	#define PIN_D0					2
+	#define PIN_D1					3
+	#define PIN_D2					4
+	#define PIN_D3					5
+	#define PIN_D4					5
+	#define PIN_D5					6
+	#define PIN_D6					7
+	#define PIN_D7					8
+	#define PIN_NANDCLE				14
+	#define PIN_NANDALE				15
+	#define PIN_NANDOE				0
+	#define PIN_NANDwE				1
 
 	#define WP						(1<<PIN_WP) 
 	#define FLREADY					(1<<PIN_FLREADY) 
@@ -788,7 +830,6 @@
 	#define RESET					(1<<PIN_RESET)
 
 	// ++++++++++++++	SYNC ROT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 	#define PORT_SYNC				P0
 	#define PORT_ROT				P0
@@ -934,7 +975,63 @@
 	//#define UTXD2					(1<<PIN_UTXD2) 
 	//#define RTS2					(1<<PIN_RTS2) 
 
+	// ++++++++++++++	EMAC	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define PORT_MDIO		P2
+	#define PORT_GRXCK		P2
+	#define PORT_GRX0		P2
+	#define PORT_GRX1		P2
+	#define PORT_GRXER		P2
+	#define PORT_GTXEN		P2
+	#define PORT_GMDC		P2
+	#define PORT_GTX0		P2
+	#define PORT_GTX1		P2
+	#define PORT_PHY_RST	P2
+	#define PORT_GCRS		P15
+
+	#define PIN_MDIO		0		
+	#define PIN_GRXCK		1
+	#define PIN_GRX0		2
+	#define PIN_GRX1		3
+	#define PIN_GRXER		4
+	#define PIN_GTXEN		5
+	#define PIN_GMDC		7
+	#define PIN_GTX0		8
+	#define PIN_GTX1		9
+	#define PIN_PHY_RST		10
+	#define PIN_GCRS		9
+
+	#define PIO_PHY_RST		HW::PORT_PHY_RST
+	#define PHY_RST			(1UL<<PIN_PHY_RST)
+
 	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	#define P0_INIT_DIR		(L1|H1|L2|H2|RESET|SYNC|(1<<12)|(1<<13)|(1<<15))
+	#define P0_INIT_OUT		(H1|H2|RESET)
+
+	#define P1_INIT_DIR		(P1_0|P1_1|P1_2|P1_3|P1_6|P1_7|P1_8|P1_9|P1_12|P1_13)
+	#define P1_INIT_OUT		(P1_0|P1_8|P1_13)
+
+	#define P2_INIT_DIR		(P2_6|P2_10|ENVCORE|P2_12|P2_13)
+	#define P2_INIT_OUT		(ENVCORE|P2_10)
+
+	#define P3_INIT_DIR		(FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7|P3_3|P3_4)
+	#define P3_INIT_OUT		(FCS0|FCS1|FCS2|FCS3|FCS4|FCS5|FCS6|FCS7)
+
+	#define P4_INIT_DIR		(P4_0|P4_1|P4_2|P4_3|P4_4|P4_5)
+	#define P4_INIT_OUT		(0)
+
+	#define P5_INIT_DIR		(P5_1|P5_3|P5_4|P5_5|P5_6|P5_7|CS0|CS1|WP)
+	#define P5_INIT_OUT		(CS0|CS1|WP)
+
+	#define P6_INIT_DIR		(P6_0|P6_1|P6_2|P6_5|P6_6)
+	#define P6_INIT_OUT		(0)
+
+	#define P14_INIT_PDISC	(0)
+	#define P15_INIT_PDISC	(0)
+
+	#define Pin_MainLoop_Set()	HW::P2->BSET(13)
+	#define Pin_MainLoop_Clr()	HW::P2->BCLR(13)
 
 	/*******************************************************************************
 	 * MACROS

@@ -69,8 +69,8 @@ static bool HW_EMAC_Init();
 	inline void ResetPHY()	{ HW::PIOC->DIRSET = (1 << 15); HW::PIOC->BCLR(15); };
 	inline void EnablePHY() { HW::PIOC->DIRSET = (1 << 15); HW::PIOC->BSET(15); };
 #elif defined(CPU_XMC48)
-	inline void ResetPHY()	{ HW::P2->BCLR(10); };
-	inline void EnablePHY() { HW::P2->BSET(10); };
+	inline void ResetPHY()	{ PIO_PHY_RST->BCLR(PIN_PHY_RST); };
+	inline void EnablePHY() { PIO_PHY_RST->BSET(PIN_PHY_RST); };
 #endif
 
 
@@ -122,6 +122,19 @@ static bool HW_EMAC_Init()
 	HW::GMAC->NCFGR = GMAC_CLK_MCK_64; // MDC CLock MCK/48
 
 #elif defined(CPU_XMC48)
+
+	P2->ModePin0(	HWIO0	);
+	P2->ModePin1(	I1DPD	);
+	P2->ModePin2(	I2DPU	);
+	P2->ModePin3(	I1DPD	);
+	P2->ModePin4(	I1DPD	);
+	P2->ModePin5(	A1PP	);
+	P2->ModePin7(	A1PP	);
+	P2->ModePin8(	A1PP	);
+	P2->ModePin9(	A1PP	);
+	P15->ModePin9(	I1DPD	);
+
+	PIO_PHY_RST->ModePin(PIN_PHY_RST, G_PP);
 
     //Enable ETH0 peripheral clock
 
