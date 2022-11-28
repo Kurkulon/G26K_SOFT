@@ -1295,6 +1295,8 @@
 
 	#define BAUD2CLK(x)				(x)
 	#define MT(v)					(v)
+	#define Pin_MainLoop_Set()	
+	#define Pin_MainLoop_Clr()	
 
 #endif
 
