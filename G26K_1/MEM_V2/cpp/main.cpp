@@ -26,7 +26,7 @@ static const bool __WIN32__ = false;
 
 #endif
 
-#define __TEST__
+//#define __TEST__
 
 enum { VERSION = 0x103 };
 
