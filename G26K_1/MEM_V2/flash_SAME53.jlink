@@ -2,5 +2,5 @@ SWDSelect
 speed 2000
 r
 exec device = ATSAME53N19
-loadbin obj\G26K_SAME53.bin,0x00000000
+loadbin obj\G26K_SAME53.bin,0x00004000
 exit
