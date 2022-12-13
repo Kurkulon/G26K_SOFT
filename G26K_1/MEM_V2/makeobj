@@ -92,11 +92,11 @@ libname = $(libdir)\$(targetcpu)_$(libsuffix).a
 	@call buildnum.bat
 
 
-##################################################################################################--diag_suppress=68,368,1165,1299,3017
+################################################################################################## --no_depend_system_headers 
 
 compiler_options = $(debug_compiler_options) $(cpu_compiler_options) --gnu --asm --interleave -g -c --diag_style=ide &
 	  --feedback "$(objdir)\$(target_name).fed"  &
-	 -D__MICROLIB -DCPU_$(targetcpu) --no_depend_system_headers --reduce_paths -I$(libdir)\cpp
+	 -D__MICROLIB -DCPU_$(targetcpu) --reduce_paths -J$(libdir)\cpp,"$(%ARMCC50INC)"
 
 ##################################################################################################
 
@@ -108,7 +108,7 @@ link_options = $(cpu_link_options) --bestdebug --strict --map --xref --callgraph
   
 ##################################################################################################-wd4996
 
-win32_compiler_options = $(debug_compiler_options) -nologo -DWIN32 -D_TESTONPC_ -D_DEBUG_ -c -Z7 -Zp  -I"$(libdir)\cpp"
+win32_compiler_options = $(debug_compiler_options) -nologo -DWIN32 -D_TESTONPC_ -D_DEBUG_ -c -Z7 -Zp -I"$(libdir)\cpp"
 
 ##################################################################################################
 

@@ -1,16 +1,12 @@
-#include "types.h"
-#include "core.h"
-#include "time.h"
-#include "COM_DEF.h"
-#include "CRC16_8005.h"
+#include <types.h>
+#include <core.h>
+#include <time.h>
+#include <CRC16_8005.h>
+#include <DMA.h>
+#include <SEGGER_RTT.h>
 
 #include "hardware.h"
 
-#include "SEGGER_RTT.h"
-#include "hw_conf.h"
-#include "hw_rtm.h"
-#include "manch.h"
-#include "DMA.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -32,60 +28,16 @@
 
 #ifdef WIN32
 
-#include <windows.h>
-#include <Share.h>
+//#include <windows.h>
+//#include <Share.h>
 #include <conio.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <intrin.h>
-#include "CRC16_CCIT.h"
-#include "list.h"
-
-
-static HANDLE handleNandFile;
-static const char nameNandFile[] = "NAND_FLASH_STORE.BIN";
-
-static HANDLE handleWriteThread;
-static HANDLE handleReadThread;
-
-static byte nandChipSelected = 0;
-
-static u64 curNandFilePos = 0;
-//static u64 curNandFileBlockPos = 0;
-static u32 curBlock = 0;
-static u32 curRawBlock = 0;
-static u16 curPage = 0;
-static u16 curCol = 0;
-
-static OVERLAPPED	_overlapped;
-static u32			_ovlReadedBytes = 0;
-static u32			_ovlWritenBytes = 0;
-
-static void* nandEraseFillArray;
-static u32 nandEraseFillArraySize = 0;
-static byte nandReadStatus = 0x41;
-static u32 lastError = 0;
-
-
-static byte fram_I2c_Mem[0x10000];
-static byte fram_SPI_Mem[0x40000];
-
-static bool fram_spi_WREN = false;
+//#include <intrin.h>
+#include <CRC16_CCIT.h>
+#include <list.h>
 
 static u16 crc_ccit_result = 0;
-
-
-//struct BlockBuffer { BlockBuffer *next; u32 block; u32 prevBlock; u32 writed; u32 data[((NAND_PAGE_SIZE+NAND_SPARE_SIZE) << NAND_PAGE_BITS) >> 2]; };
-
-//static BlockBuffer _blockBuf[16];
-
-//static List<BlockBuffer> freeBlockBuffer;
-//static List<BlockBuffer> rdBlockBuffer;
-//static List<BlockBuffer> wrBlockBuffer;
-
-//static BlockBuffer *curNandBlockBuffer[4] = { 0 };
-
-static volatile bool busyWriteThread = false;
 
 #else
 

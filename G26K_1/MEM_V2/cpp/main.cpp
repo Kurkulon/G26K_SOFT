@@ -1,14 +1,14 @@
+#include <xtrap.h>
+#include <flash.h>
+#include <CRC16.h>
+#include <CRC16_CCIT.h>
+#include <list.h>
+#include <PointerCRC.h>
+#include <SEGGER_RTT.h>
+
+
 #include "hardware.h"
-//#include "options.h"
-//#include "hw_emac.h"
-#include "xtrap.h"
-#include "flash.h"
-#include "CRC16.h"
-#include "CRC16_CCIT.h"
 #include "req.h"
-#include "list.h"
-#include "PointerCRC.h"
-#include "SEGGER_RTT.h"
 #include "hw_com.h"
 
 #ifdef WIN32
