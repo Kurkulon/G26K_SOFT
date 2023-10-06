@@ -133,7 +133,7 @@ static DSCPPI ppidsc[PPI_BUF_NUM];
 //u16 ppiClkDiv = NS2CLK(400);
 //u16 ppiLen = 16;
 
-u16 ppiOffset = sizeof(RspCM)/2; //19;
+//u16 ppiOffset = sizeof(RspHdrCM)/2; //19;
 
 //u32 ppiDelay = US2CCLK(10);
 
@@ -157,7 +157,7 @@ u32 rotDeltaMMSEC = 0;
 u32 fireSyncCount = 0;
 u32 firesPerRound = 16;
 
-static SENS *curSens = &dspVars.mainSens;
+static SENS *curSens = &dspVars.sens[0];
 
 struct PPI 
 {
@@ -169,6 +169,7 @@ struct PPI
 	u16 st;
 	u16 sd;
 	u16 fireDiv;
+	u16 freq;
 };
 
 static PPI mainPPI;
@@ -215,58 +216,67 @@ void SetMux(byte a)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetPPI(PPI &ppi, SENS &sens, u16 sensType)
+static void SetPPI(PPI &ppi, SENS &sens, u16 sensType, bool forced)
 {
-	ppi.st = (sens.st > 0) ? sens.st : 1;
-
-	ppi.clkDiv = ppi.st * NS2CLK(50);
-
-	//if (ppi.clkDiv == 0) ppi.clkDiv = 1;
-
 	ppi.len = sens.sl;
 
 	if (ppi.len < 16) ppi.len = 16;
 
-	ppi.sd = sens.sd;
+	if (ppi.sd != sens.sd || ppi.st != sens.st || forced)
+	{
+		ppi.st = sens.st;
 
-	i32 d = (i32)ppi.sd + (i32)ppi.st/2;
+		ppi.clkDiv = ppi.st * NS2CLK(50);
 
-	if (d < 0) d = 0;
+		u16 d = ppi.sd = sens.sd;
 
-	ppi.delay = d * (NS2CCLK(50));
-	
-	if (ppi.delay > US2CCLK(1000)) ppi.delay = US2CCLK(1000);
+		if (d > (US2CLK(1000)/NS2CLK(50))) d = US2CLK(1000)/NS2CLK(50);
+
+		ppi.delay = d / ppi.st;
+	};
 
 	ppi.gain = sens.gain;
 	ppi.sensType = sensType;
 
-	if (sens.freq > 900)
+	if (ppi.freq != sens.freq || forced)
 	{
-		ppi.fireDiv = sens.freq - 900;
-	}
-	else if (sens.freq > 0)
-	{
-		ppi.fireDiv = (US2CLK(500) + sens.freq/2) / sens.freq;
-	}
-	else
-	{
-		ppi.fireDiv = US2CLK(1);
-	};
+		ppi.freq = sens.freq;
 
-	if (ppi.fireDiv == 0) { ppi.fireDiv = 1; };
+		if (sens.freq > 900)
+		{
+			ppi.fireDiv = sens.freq - 900;
+		}
+		else if (sens.freq > 0)
+		{
+			ppi.fireDiv = (US2CLK(500) + sens.freq/2) / sens.freq;
+		}
+		else
+		{
+			ppi.fireDiv = US2CLK(1);
+		};
+
+		if (ppi.fireDiv == 0) { ppi.fireDiv = 1; };
+	};
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void SetDspVars(const ReqDsp01 *v)
+void SetDspVars(const ReqDsp01 *v, bool forced)
 {
 	dspVars = *v;
 
-	SetPPI(mainPPI, dspVars.mainSens, 0); 
+	SetPPI(mainPPI,	dspVars.sens[0], 0, forced); 
 
-	SetPPI(refPPI, dspVars.refSens, 1);
+	SetPPI(refPPI,	dspVars.sens[1], 1, forced);
 	
 	firesPerRound = (dspVars.mode == 0) ? dspVars.wavesPerRoundCM : dspVars.wavesPerRoundIM;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+const ReqDsp01* GetDspVars()
+{
+	return &dspVars;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -340,35 +350,62 @@ void FreeDscPPI(DSCPPI* dsc)
 
 static void ReadPPI(PPI &ppi)
 {
+	static T_HW::DMADSC_LLM	_dsc1;
+	static T_HW::DMADSC_LLM	_dsc2;
+
 	curDscPPI = AllocDscPPI();
 
 	StopPPI();
 
 	if (curDscPPI != 0)
 	{
+		RspCM &rsp = *((RspCM*)curDscPPI->data);
+
 		curDscPPI->busy = false;
 		curDscPPI->ppidelay = ppi.delay;
-		curDscPPI->sampleDelay = ppi.sd;
-		curDscPPI->sampleTime = ppi.st;
+		rsp.hdr.sd = ppi.delay * ppi.st;
+		rsp.hdr.st = ppi.st;
+		rsp.hdr.sl = ppi.len; 
+		curDscPPI->dataLen = ppi.len + sizeof(rsp.hdr)/2;
 
-		SetMux(curDscPPI->sensType = ppi.sensType);
-		SetGain(curDscPPI->gain = ppi.gain);
+		SetMux(rsp.hdr.sensType = ppi.sensType);
+		SetGain(rsp.hdr.gain = ppi.gain);
 
 		//*pTIMER0_CONFIG = PWM_OUT|PULSE_HI;
 		//*pTIMER0_PERIOD = ppi.fireDiv*2;
 		*pTIMER0_WIDTH = ppi.fireDiv;
 
 		*pTIMER1_CONFIG = PERIOD_CNT|PWM_OUT|PULSE_HI;
-		*pTIMER1_PERIOD = curDscPPI->ppiclkdiv = ppi.clkDiv;
-		*pTIMER1_WIDTH = curDscPPI->ppiclkdiv>>1;
-
-		*pDMA0_START_ADDR = curDscPPI->data+(curDscPPI->offset = ppiOffset);
-		*pDMA0_X_COUNT = ppi.len + 32; curDscPPI->len = ppi.len;
-		*pDMA0_X_MODIFY = 2;
+		*pTIMER1_PERIOD = ppi.clkDiv; //curDscPPI->ppiclkdiv = ppi.clkDiv;
+		*pTIMER1_WIDTH = ppi.clkDiv>>1; //curDscPPI->ppiclkdiv>>1;
 
 		*pPPI_COUNT = 0;//*pDMA0_X_COUNT - 1;
 		*pPPI_DELAY = 0;
-		*pDMA0_CONFIG = FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+
+		if (ppi.delay == 0)
+		{
+			*pDMA0_START_ADDR = rsp.data;
+			*pDMA0_X_COUNT	= ppi.len + 32; 
+			*pDMA0_X_MODIFY	= 2;
+			*pDMA0_CONFIG	= FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+		}
+		else
+		{
+			_dsc1.SA		= rsp.data;
+			_dsc1.XCNT		= ppi.delay;
+			_dsc1.XMOD		= 0;
+			_dsc1.NDP		= &_dsc2;
+			_dsc1.DMACFG	= FLOW_LARGE|NDSIZE_9|WDSIZE_16|SYNC|WNR|DMAEN;
+
+			_dsc2.SA		= rsp.data;
+			_dsc2.XCNT		= ppi.len + 32;
+			_dsc2.XMOD		= 2;
+			_dsc2.DMACFG	= FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+
+			*pDMA0_NEXT_DESC_PTR = &_dsc1;
+			*pDMA0_CONFIG = FLOW_LARGE|NDSIZE_9|DMAEN;
+		};
+
 		*pPPI_CONTROL = FLD_SEL|PORT_CFG|DLEN_12|XFR_TYPE|PORT_EN;
 		
 		ssync();
@@ -387,34 +424,27 @@ static void Fire()
 		{
 			curDscPPI->busy = true;
 
-			if (curDscPPI->ppidelay == 0)
-			{ 
-				*pTCNTL = 0;
-				StartPPI();
-			}
-			else
-			{
-				*pTSCALE = 0;
-				*pTCOUNT = curDscPPI->ppidelay;
-				*pTCNTL = TINT|TMPWR|TMREN;
-			};
+			*pTCNTL = 0;
+			StartPPI();
+
+			RspHdrCM &rsp = *((RspHdrCM*)curDscPPI->data);
 
 			curDscPPI->fireIndex = fireSyncCount;
 
-			curDscPPI->mmsec = mmsec;
-			curDscPPI->shaftTime = shaftMMSEC;
+			rsp.mmsecTime = mmsec;
+			rsp.shaftTime = shaftMMSEC;
 			curDscPPI->shaftPrev = shaftPrevMMSEC;
 
 			curDscPPI->rotCount = rotCount;
 			curDscPPI->rotMMSEC = rotMMSEC;
 
-			curDscPPI->motoCount = motoCount; //dspVars.motoCount;
-			curDscPPI->shaftCount = shaftCount;
+			rsp.motoCount = motoCount; //dspVars.motoCount;
+			rsp.headCount = shaftCount;
 
-			curDscPPI->ax = dspVars.ax;
-			curDscPPI->ay = dspVars.ay;
-			curDscPPI->az = dspVars.az;
-			curDscPPI->at = dspVars.at;
+			//curDscPPI->ax = dspVars.ax;
+			//curDscPPI->ay = dspVars.ay;
+			//curDscPPI->az = dspVars.az;
+			//curDscPPI->at = dspVars.at;
 		};
 	}
 	else
@@ -461,13 +491,14 @@ EX_INTERRUPT_HANDLER(PPI_ISR)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-EX_INTERRUPT_HANDLER(TIMER_PPI_ISR)
-{
-	StartPPI();
-	*pTCNTL = 0;
+//EX_INTERRUPT_HANDLER(TIMER_PPI_ISR)
+//{
+//	StartPPI();
+//	*pTCNTL = 0;
+//
+//	ssync();
+//}
 
-	ssync();
-}
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 EX_INTERRUPT_HANDLER(SYNC_ISR)
@@ -528,8 +559,8 @@ static void InitFire()
 	*pPORTFIO_CLEAR = BM_SYNC;
 	*pPORTFIO_MASKA = BM_SYNC;
 
-	SetPPI(mainPPI, dspVars.mainSens, 0);
-	SetPPI(refPPI, dspVars.refSens, 1);
+	SetPPI(mainPPI, dspVars.sens[0], 0, true);
+	SetPPI(refPPI,	dspVars.sens[1], 1, true);
 
 	ReadPPI(mainPPI);
 
@@ -541,7 +572,7 @@ static void InitFire()
 	*pTIMER_ENABLE = TIMEN0; 
 	//InitIVG(IVG_FIRE, PID_GP_Timer_0, FIRE_ISR);
 	
-	InitIVG(IVG_CORETIMER, 0, TIMER_PPI_ISR);
+	//InitIVG(IVG_CORETIMER, 0, TIMER_PPI_ISR);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

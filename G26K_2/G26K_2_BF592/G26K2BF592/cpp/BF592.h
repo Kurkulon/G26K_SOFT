@@ -32,6 +32,47 @@ namespace T_HW
 
 	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+	struct DMADSC_AM
+	{
+		union { u32 SA;	struct { u16 SAL; u16 SAH; }; };
+		u16 DMACFG;
+		u16 XCNT;
+		u16 XMOD;
+		u16 YCNT;
+		u16 YMOD;
+	};
+
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	
+	struct DMADSC_SLM
+	{
+		u16 NDPL;
+		u16 SAL; 
+		u16 SAH; 
+		u16 DMACFG;
+		u16 XCNT;
+		u16 XMOD;
+		u16 YCNT;
+		u16 YMOD;
+
+		inline void SA(u32 v) { SAL = v; SAH = v>>16; }
+	};
+
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	struct DMADSC_LLM
+	{
+		union { void* NDP; struct { u16 NDPL; u16 NDPH; }; };
+		union { void* SA;	struct { u16 SAL; u16 SAH; }; };
+		u16 DMACFG;
+		u16 XCNT;
+		u16 XMOD;
+		u16 YCNT;
+		u16 YMOD;
+	};
+
+	//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 	struct S_SMC
 	{
 		BF_REG	NFC_CFG;	

@@ -12,33 +12,35 @@
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #define PPI_BUF_LEN (1024+64)
+#define SENS_NUM	2
 
 struct DSCPPI
 {
 	DSCPPI	*next;
-	u32		mmsec;
+	//u32		mmsec;
 	u32		rotCount;
 	u32		rotMMSEC;
-	u32		shaftTime;
+	//u32		shaftTime;
 	u32		shaftPrev;
 	u32		fireIndex;
 	u32		ppidelay;
-	u16		motoCount;
-	u16		shaftCount;
-	u16		sensType;
-	u16		gain;
-	u16		len;
-	u16		offset;
-	u16		ppiclkdiv;
-	u16		sampleTime;
-	u16		sampleDelay;
-	u16		maxAmp;
-	u16		fi_amp;
-	u16		fi_time;
-	u16		ax;
-	u16		ay;
-	u16		az;
-	u16		at;
+	//u16		ppiclkdiv;
+	//u16		motoCount;
+	//u16		shaftCount;
+	//u16		sensType;
+	//u16		gain;
+	u16		fi_index;
+	u16		dataLen;
+	//u16		offset;
+	//u16		sampleTime;
+	//u16		sampleDelay;
+	//u16		maxAmp;
+	//u16		fi_amp;
+	//u16		fi_time;
+	//u16		ax;
+	//u16		ay;
+	//u16		az;
+	//u16		at;
 	u16		busy;
 	u16		data[PPI_BUF_LEN];
 };
@@ -54,13 +56,17 @@ struct SENS
 	u16		thr;
 	u16		descr;
 	u16		freq;
+	u16 	filtr;
+	u16 	pack;
+	u16 	fi_Type;
+	u16 	fragLen;
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #pragma pack(1)
 
-struct RspCM	// 0xAD40
+struct RspHdrCM	// 0xAD40
 {
 	u16 	rw;
 	u32 	mmsecTime; 
@@ -84,13 +90,19 @@ struct RspCM	// 0xAD40
 	u16		packLen;
 };
 
+struct RspCM
+{
+	RspHdrCM	hdr;
+	u16			data[16];
+};
+
 #pragma pack()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #pragma pack(1)
 
-struct RspIM	// 0xAD50
+struct RspHdrIM	// 0xAD50
 {
 	u16 	rw;
 	u32 	mmsecTime; 
@@ -103,7 +115,12 @@ struct RspIM	// 0xAD50
 	u16		refAmp;
 	u16		refTime;
 	u16		len;
-	u16		data[16];
+};
+
+struct RspIM
+{
+	RspHdrIM	hdr;
+	u16			data[16];
 };
 
 #pragma pack()
@@ -159,14 +176,10 @@ struct ReqDsp01	// чтение вектора
 	u16		az; 
 	u16		at;
 
-	SENS	mainSens;			// измерительный датчик
-	SENS	refSens;			// опорный датчик
+	SENS	sens[SENS_NUM];		// измерительный датчик
 
 	u16		wavesPerRoundCM;	// Количество волновых картин на оборот головки в режиме цементомера
 	u16		wavesPerRoundIM;	// Количество точек на оборот головки в режиме имиджера
-
-	u16		filtrType;			// Фильтр
-	u16		packType;			// Упаковка
 
 	u16		fireVoltage;		// Напряжение излучателя (В)
 
@@ -225,7 +238,8 @@ struct DSCTWI
 extern void InitHardware();
 extern void UpdateHardware();
 extern void InitIVG(u32 IVG, u32 PID, void (*EVT)());
-extern void SetDspVars(const ReqDsp01 *v);
+extern void SetDspVars(const ReqDsp01 *v, bool forced = false);
+extern const ReqDsp01* GetDspVars();
 
 
 //extern bool defPPI_Ready;
