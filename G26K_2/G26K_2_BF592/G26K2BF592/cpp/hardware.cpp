@@ -163,7 +163,7 @@ struct PPI
 {
 	u16 clkDiv;
 	u16 len;
-	u32 delay;
+	u16 delay;
 	u16 gain;
 	u16 sensType;
 	u16 st;
@@ -227,6 +227,8 @@ static void SetPPI(PPI &ppi, SENS &sens, u16 sensType, bool forced)
 		ppi.st = sens.st;
 
 		ppi.clkDiv = ppi.st * NS2CLK(50);
+
+		if (ppi.clkDiv == 0) ppi.clkDiv = 1;
 
 		u16 d = ppi.sd = sens.sd;
 
@@ -382,17 +384,17 @@ static void ReadPPI(PPI &ppi)
 		*pPPI_COUNT = 0;//*pDMA0_X_COUNT - 1;
 		*pPPI_DELAY = 0;
 
-		if (ppi.delay == 0)
-		{
-			*pDMA0_START_ADDR = rsp.data;
-			*pDMA0_X_COUNT	= ppi.len + 32; 
-			*pDMA0_X_MODIFY	= 2;
-			*pDMA0_CONFIG	= FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
-		}
-		else
+		//if (ppi.delay == 0)
+		//{
+		//	*pDMA0_START_ADDR = rsp.data;
+		//	*pDMA0_X_COUNT	= ppi.len + 32; 
+		//	*pDMA0_X_MODIFY	= 2;
+		//	*pDMA0_CONFIG	= FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
+		//}
+		//else
 		{
 			_dsc1.SA		= rsp.data;
-			_dsc1.XCNT		= ppi.delay;
+			_dsc1.XCNT		= ppi.delay+6;
 			_dsc1.XMOD		= 0;
 			_dsc1.NDP		= &_dsc2;
 			_dsc1.DMACFG	= FLOW_LARGE|NDSIZE_9|WDSIZE_16|SYNC|WNR|DMAEN;
@@ -562,14 +564,14 @@ static void InitFire()
 	SetPPI(mainPPI, dspVars.sens[0], 0, true);
 	SetPPI(refPPI,	dspVars.sens[1], 1, true);
 
-	ReadPPI(mainPPI);
+	//ReadPPI(mainPPI);
 
 	//InitIVG(IVG_GPTIMER0_FIRE, PID_GP_Timer_0, FIRE_PPI_ISR);
 
 	*pTIMER0_CONFIG = PWM_OUT|PULSE_HI/*|IRQ_ENA*/;
 	*pTIMER0_PERIOD = ~0;//MS2CLK(1000) / 500 / 4;
 	*pTIMER0_WIDTH = US2CLK(1);
-	*pTIMER_ENABLE = TIMEN0; 
+	//*pTIMER_ENABLE = TIMEN0; 
 	//InitIVG(IVG_FIRE, PID_GP_Timer_0, FIRE_ISR);
 	
 	//InitIVG(IVG_CORETIMER, 0, TIMER_PPI_ISR);

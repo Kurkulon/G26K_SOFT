@@ -56,9 +56,9 @@ static u16 mode = 0; // 0 - CM, 1 - IM
 
 struct SensVars
 {
-	u16 thr;
-	u16 descrIndx;
-	u16 descr;
+	u16 threshold;
+	u16 deadIndx;
+	u16 deadTime;
 	u16 delay;
 	u16 filtr;
 	u16 fi_type;
@@ -197,28 +197,28 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		SensVars &sv = sensVars[n];
 		SENS &rs = req->sens[n];
 
-		sv.thr		= rs.thr;
-		sv.filtr	= rs.filtr;
-		sv.fi_type	= rs.fi_Type;
-		sv.pack		= rs.pack;
-		sv.fragLen	= rs.fragLen;
+		sv.threshold	= rs.threshold;
+		sv.filtr		= rs.filtr;
+		sv.fi_type		= rs.fi_Type;
+		sv.pack			= rs.pack;
+		sv.fragLen		= rs.fragLen;
 
-		if (sv.descr != rs.descr || sv.delay != rs.sd || forced)
+		if (sv.deadTime != rs.deadTime || sv.delay != rs.sd || forced)
 		{
-			sv.descr = rs.descr;
+			sv.deadTime = rs.deadTime;
 			sv.delay = rs.sd;
 
-			u16 t = sv.descr;
+			u16 t = sv.deadTime;
 
 			t = (t > sv.delay) ? (t - sv.delay) : 0;
 
 			if (t != 0)
 			{
-				sv.descrIndx = (t + rs.st/2) / rs.st;
+				sv.deadIndx = (t + rs.st/2) / rs.st;
 			}
 			else
 			{
-				sv.descrIndx = 0;
+				sv.deadIndx = 0;
 			};
 		};
 	};
@@ -458,9 +458,9 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	{
 		i32 *ab = avrBuf;
 
-		for (u32 i = rsp.hdr.sl; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
 		{
-			i16 v = d[4] - 2048;
+			i16 v = d[0] - 2048;
 
 			*(d++) = v -= *ab/32;
 
@@ -471,9 +471,9 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	{
 		//i32 av = 0;
 
-		for (u32 i = rsp.hdr.sl; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
 		{
-			i16 v = (d[4] + d[5])/2 - 2048;
+			i16 v = (d[0] + d[1])/2 - 2048;
 
 			//av += v - av/2;
 
@@ -485,9 +485,9 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 		i32 av = 0;
 		i32 *ab = avrBuf;
 
-		for (u32 i = rsp.hdr.sl; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
 		{
-			i16 v = (d[6] - d[4] + d[7] - d[5])/4;// - 2048;
+			i16 v = (d[2] - d[0] + d[3] - d[1])/4;// - 2048;
 
 //			av += v - av/2;
 
@@ -500,80 +500,10 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	}
 	else
 	{
-		for (u32 i = rsp.hdr.sl; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
 		{
-			*d = d[4] - 2048; d++;
+			*d = d[0] - 2048; d++;
 		};
-	};
-}
-
-#pragma optimize_as_cmd_line
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#pragma optimize_for_speed
-
-static void Filtr_IM(DSCPPI &dsc, u16 imDescr, u16 imDelay)
-{
-	RspCM &rsp = *((RspCM*)dsc.data);
-
-	i16 *d = (i16*)(rsp.data);
-	i16 *pd = (i16*)d;
-
-	u16 descr = (imDescr > imDelay) ? (imDescr - imDelay) : 0;
-	i32 ind = descr / rsp.hdr.st;
-
-	i32 sums = 0;
-	i32 sumc = 0;
-
-	i32 max = -32768;
-	i32 imax = -1;
-
-	for (u32 i = 0; i < rsp.hdr.sl; i++)
-	{
-		i16 v = *d;// - 2048;
-
-		i32 s = (i32)(v) * sin_Table[i&7];
-		i32 c = (i32)(v) * sin_Table[2+(i&7)];
-
-		sums += s;
-		sumc += c;
-
-		//n = (n+1) & 3;
-
-		if ((i&K_DEC_MASK) == K_DEC_MASK)
-		{
-			if (sums < 0) sums = -sums;
-			if (sumc < 0) sumc = -sumc;
-
-			i32 x = (sums+sumc) / (16384*K_DEC);
-
-			*(pd++) = x; sums = 0;  sumc = 0;  
-
-			if (i >= ind && x > max) { max = x; imax = i; };
-		};
-
-		//*d = (; 
-		
-		d++;
-	};
-
-	rsp.hdr.sl /= K_DEC;
-	rsp.hdr.st *= K_DEC;
-	imax /= K_DEC;
-
-	if (imax >= 0)
-	{
-		u32 t = rsp.hdr.sd + imax * rsp.hdr.st;
-		rsp.hdr.fi_time  = (t < 0xFFFF) ? t : 0xFFFF;
-		rsp.hdr.fi_amp = max;
-		rsp.hdr.maxAmp = max;
-	}
-	else
-	{
-		rsp.hdr.fi_time  = ~0;
-		rsp.hdr.fi_amp = 0;
-		rsp.hdr.maxAmp = 0;
 	};
 }
 
@@ -616,7 +546,7 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 descrIndx)
 
 			sum /= 16384*4;
 			
-			d++;//*(d++) = sum;
+			d++; //*(d++) = sum;
 
 			if (sum < 0) sum = -sum;
 
@@ -646,7 +576,7 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 descrIndx)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#pragma optimize_for_speed
+//#pragma optimize_for_speed
 
 static void GetAmpTimeIM_3(DSCPPI &dsc, u16 ind, u16 imThr)
 {
@@ -715,7 +645,7 @@ static void GetAmpTimeIM_3(DSCPPI &dsc, u16 ind, u16 imThr)
 	rsp.hdr.maxAmp = (ampmax < 0xFFFF) ? ampmax : 0xFFFF;
 }
 
-#pragma optimize_as_cmd_line
+//#pragma optimize_as_cmd_line
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -988,7 +918,7 @@ static void SendReadyDataIM(DSCPPI *dsc, u16 len)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//#pragma optimize_for_speed
+#pragma optimize_for_speed
 
 static void ProcessDataIM(DSCPPI &dsc)
 {
@@ -1131,11 +1061,11 @@ static void UpdateMode()
 
 			if (sens.fi_type != 0)
 			{
-				Filtr_Wavelet(*dsc, sens.descrIndx);
+				Filtr_Wavelet(*dsc, sens.deadIndx);
 			}
 			else
 			{
-				GetAmpTimeIM_3(*dsc, sens.descrIndx, sens.thr);
+				GetAmpTimeIM_3(*dsc, sens.deadIndx, sens.threshold);
 			};
 
 			i++;
@@ -1197,8 +1127,8 @@ static void UpdateMode()
 	
 			PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
 
-			dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
-			dsc->dataLen += 1;
+			//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
+			//dsc->dataLen += 1;
 
 			processedPPI.Add(dsc);
 

@@ -23,7 +23,7 @@ struct DSCPPI
 	//u32		shaftTime;
 	u32		shaftPrev;
 	u32		fireIndex;
-	u32		ppidelay;
+	u16		ppidelay;
 	//u16		ppiclkdiv;
 	//u16		motoCount;
 	//u16		shaftCount;
@@ -53,8 +53,8 @@ struct SENS
 	u16 	st;	 
 	u16 	sl; 
 	u16 	sd; 
-	u16		thr;
-	u16		descr;
+	u16		deadTime;
+	u16		threshold;
 	u16		freq;
 	u16 	filtr;
 	u16 	pack;
