@@ -28,7 +28,7 @@ static const bool __WIN32__ = false;
 
 //#define __TEST__
 
-enum { VERSION = 0x103 };
+enum { VERSION = 0x106 };
 
 //#pragma O3
 //#pragma Otime
@@ -67,23 +67,9 @@ __packed struct MainVars // NonVolatileVars
 	u16 numDevice;
 	u16 numMemDevice;
 
-	u16 gain;
-	u16 sampleTime;
-	u16 sampleLen;
-	u16 sampleDelay;
-	u16 deadTime;
-	u16 descriminant;
-	u16 freq;
+	SENS	sens1;
+	SENS	refSens;
 
-	u16 gainRef;
-	u16 sampleTimeRef;
-	u16 sampleLenRef;
-	u16 sampleDelayRef;
-	u16 deadTimeRef;
-	u16 descriminantRef;
-	u16 refFreq;
-	u16 filtrType;
-	u16 packType;
 	u16 cmSPR;
 	u16 imSPR;
 	u16 fireVoltage;
@@ -349,35 +335,43 @@ void CallBackDspReq01(Ptr<REQ> &q)
 	 
 	if (q->rb.recieved)
 	{
-		if (rsp.rw == (dspReqWord|0x40))
+		if (rsp.CM.hdr.rw == (dspReqWord|0x40))
 		{
-			q->crcOK = (q->rb.len == (rsp.CM.sl*2 + 2 + sizeof(rsp.CM)-sizeof(rsp.CM.data)));
+			if (rsp.CM.hdr.packType == 0)
+			{
+				q->crcOK = (q->rb.len == (rsp.CM.hdr.sl*2 + sizeof(rsp.CM.hdr)));
+			}
+			else
+			{
+				q->crcOK = (q->rb.len == (rsp.CM.hdr.packLen*2 + sizeof(rsp.CM.hdr)));
+			};
+
 			q->rsp->len = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv40++;
 			dspRcvCount++;
 			
-			dspMMSEC = rsp.CM.time;
-			shaftMMSEC = rsp.CM.hallTime;
+			dspMMSEC = rsp.CM.hdr.time;
+			shaftMMSEC = rsp.CM.hdr.hallTime;
 		}
-		else if (rsp.rw == (dspReqWord|0x50))
+		else if (rsp.IM.hdr.rw == (dspReqWord|0x50))
 		{
-			q->crcOK = (q->rb.len == (rsp.IM.dataLen*4 + 2 + sizeof(rsp.IM)-sizeof(rsp.IM.data)));
+			q->crcOK = (q->rb.len == (rsp.IM.hdr.dataLen*4 + sizeof(rsp.IM.hdr)));
 			q->rsp->len = q->rb.len;
 
 			dspStatus |= 1;
 			dspRcv50++;
 			dspRcvCount++;
 
-			dspMMSEC = rsp.IM.time;
-			shaftMMSEC = rsp.IM.hallTime;
+			dspMMSEC = rsp.IM.hdr.time;
+			shaftMMSEC = rsp.IM.hdr.hallTime;
 		}
 		else
 		{
 			q->crcOK = GetCRC16(q->rb.data, q->rb.len) == 0;
 
-			if (q->crcOK && rsp.rw == (dspReqWord|1))
+			if (q->crcOK && rsp.v01.rw == (dspReqWord|1))
 			{
 				curFireVoltage = rsp.v01.fireVoltage;
 				motoVoltage = rsp.v01.motoVoltage;
@@ -468,24 +462,10 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	req.ay				= ay;
 	req.az				= az;
 	req.at				= at;
-	req.gain 			= mv.gain;
-	req.st	 			= mv.sampleTime;
-	req.sl 				= mv.sampleLen;
-	req.sd 				= mv.sampleDelay;
-	req.thr				= mv.descriminant;
-	req.descr			= mv.deadTime;
-	req.freq			= mv.freq;
-	req.refgain 		= mv.gainRef;
-	req.refst			= mv.sampleTimeRef;
-	req.refsl 			= mv.sampleLenRef;
-	req.refsd 			= mv.sampleDelayRef;
-	req.refthr			= mv.descriminantRef;
-	req.refdescr		= mv.deadTimeRef;
-	req.refFreq			= mv.refFreq;
+	req.sens1 			= mv.sens1;
+	req.refSens 		= mv.refSens;
 	req.vavesPerRoundCM = mv.cmSPR;
 	req.vavesPerRoundIM = mv.imSPR;
-	req.filtrType		= mv.filtrType;
-	req.packType		= mv.packType;
 	req.fireVoltage		= mv.fireVoltage;
 
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
@@ -505,33 +485,33 @@ Ptr<MB> CreateTestDspReq01()
 
 	RspDsp01 &rsp = *((RspDsp01*)(rq->GetDataPtr()));
 
-	rsp.rw = manReqWord|0x40;
-	rsp.CM.time = 1;
-	rsp.CM.hallTime = 2;
-	rsp.CM.motoCount = 3;
-	rsp.CM.headCount = 4;
-	rsp.CM.ax = 5;
-	rsp.CM.ay = 6;
-	rsp.CM.az = 7;
-	rsp.CM.at = 8;
-	rsp.CM.sensType = 0;
-	rsp.CM.angle = 9;
-	rsp.CM.maxAmp = 10;
-	rsp.CM.fi_amp = 11;
-	rsp.CM.fi_time = 12;
-	rsp.CM.gain = 13;
-	rsp.CM.st = 14;
-	rsp.CM.sl = ArraySize(rsp.CM.data);
-	rsp.CM.sd = 0;
-	rsp.CM.pakType = 0;
-	rsp.CM.pakLen = 0;
+	rsp.CM.hdr.rw = manReqWord|0x40;
+	rsp.CM.hdr.time = 1;
+	rsp.CM.hdr.hallTime = 2;
+	rsp.CM.hdr.motoCount = 3;
+	rsp.CM.hdr.headCount = 4;
+	rsp.CM.hdr.ax = 5;
+	rsp.CM.hdr.ay = 6;
+	rsp.CM.hdr.az = 7;
+	rsp.CM.hdr.at = 8;
+	rsp.CM.hdr.sensType = 0;
+	rsp.CM.hdr.angle = 9;
+	rsp.CM.hdr.maxAmp = 10;
+	rsp.CM.hdr.fi_amp = 11;
+	rsp.CM.hdr.fi_time = 12;
+	rsp.CM.hdr.gain = 13;
+	rsp.CM.hdr.st = 14;
+	rsp.CM.hdr.sl = ArraySize(rsp.CM.data);
+	rsp.CM.hdr.sd = 0;
+	rsp.CM.hdr.packType = 0;
+	rsp.CM.hdr.packLen = 0;
 
-	for (u32 i = 0; i < rsp.CM.sl; i++)
+	for (u32 i = 0; i < rsp.CM.hdr.sl; i++)
 	{
 		rsp.CM.data[i] = 0;
 	};
 
-	rq->len = sizeof(rsp.rw) + sizeof(rsp.CM);
+	rq->len = sizeof(rsp.CM);
 	
 	return rq;
 }
@@ -1063,30 +1043,20 @@ static u32 InitRspMan_10(__packed u16 *data)
 {
 	__packed u16 *start = data;
 
-	*(data++)	= (manReqWord & manReqMask) | 0x10;		//	1. Ответное слово	
-	*(data++)	= mv.gain;								//	2. КУ(измерительный датчик)
-	*(data++)	= mv.sampleTime;						//	3. Шаг оцифровки
-	*(data++)	= mv.sampleLen;							//	4. Длина оцифровки
-	*(data++)	= mv.sampleDelay; 						//	5. Задержка оцифровки
-	*(data++)	= mv.deadTime;							//	6. Мертвая зона датчика
-	*(data++)	= mv.descriminant;						//	7. Уровень дискриминации датчика
-	*(data++)	= mv.freq;								//	8. Частота излучателя(кГц)
-	*(data++)	= mv.gainRef;							//	9. КУ(опорный датчик)
-	*(data++)	= mv.sampleTimeRef;						//	10. Шаг оцифровки
-	*(data++)	= mv.sampleLenRef;						//	11. Длина оцифровки
-	*(data++)	= mv.sampleDelayRef; 					//	12. Задержка оцифровки
-	*(data++)	= mv.deadTimeRef;						//	13. Мертвая зона датчика
-	*(data++)	= mv.descriminantRef;					//	14. Уровень дискриминации датчика
-	*(data++)	= mv.refFreq;							//	15. Частота излучателя(кГц)
-	*(data++)	= mv.filtrType;							//	16. Фильтр
-	*(data++)	= mv.packType;							//	17. Упаковка
-	*(data++)	= mv.cmSPR;								//	18. Количество волновых картин на оборот головки в режиме цементомера
-	*(data++)	= mv.imSPR;								//	19. Количество точек на оборот головки в режиме имиджера
-	*(data++)	= mv.fireVoltage;						//	20. Напряжение излучателя(В)
-	*(data++)	= mv.motoLimCur;						//	21. Ограничение тока двигателя (мА)
-	*(data++)	= mv.motoMaxCur;						//	22. Аварийный ток двигателя (мА)
+	union { __packed u16 *d; SENS *s; } u;
 
-	return data - start;
+	u.d = data;
+
+	*(u.d++)	= (manReqWord & manReqMask) | 0x10;		//	1.  Ответное слово	
+	*(u.s++)	= mv.sens1;								//	2.  КУ(измерительный датчик)
+	*(u.s++)	= mv.refSens;							//  13. КУ (опорный датчик)
+	*(u.d++)	= mv.cmSPR;								//	18. Количество волновых картин на оборот головки в режиме цементомера
+	*(u.d++)	= mv.imSPR;								//	19. Количество точек на оборот головки в режиме имиджера
+	*(u.d++)	= mv.fireVoltage;						//	20. Напряжение излучателя(В)
+	*(u.d++)	= mv.motoLimCur;						//	21. Ограничение тока двигателя (мА)
+	*(u.d++)	= mv.motoMaxCur;						//	22. Аварийный ток двигателя (мА)
+
+	return u.d - start;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1252,7 +1222,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 		{
 			RspDsp01 &rsp = *((RspDsp01*)(curManVec40->GetDataPtr()));
 
-			u16 sz = 21 + rsp.CM.sl;
+			u16 sz = (sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen);
 
 			mtb->data2 = ((u16*)&rsp)+1;
 
@@ -1296,7 +1266,7 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 			len = data[2];
 		};
 
-		u16 sz = 21 + rsp.CM.sl;
+		u16 sz = (sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen);
 
 		if (sz >= off)
 		{
@@ -1382,7 +1352,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 
 			prevOff = 0;
 
-			u16 sz = 12 + rsp.IM.dataLen*2;
+			u16 sz = (sizeof(rsp.IM.hdr)-sizeof(rsp.IM.hdr.rw))/2 + rsp.IM.hdr.dataLen*2;
 
 			if (reqlen == 1)
 			{
@@ -1409,7 +1379,7 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 
 		u16 off = prevOff + prevLen;
 		u16 len = prevLen;
-		u16 sz = 12 + rsp.IM.dataLen*2;
+		u16 sz = (sizeof(rsp.IM.hdr)-sizeof(rsp.IM.hdr.rw))/2 + rsp.IM.hdr.dataLen*2;
 
 		if (reqlen == 3)
 		{
@@ -1470,31 +1440,40 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 
 	switch(data[1])
 	{
-		case 0x1:	mv.gain				= data[2];			break;
-		case 0x2:	mv.sampleTime		= data[2];			break;
-		case 0x3:	mv.sampleLen		= data[2];			break;
-		case 0x4:	mv.sampleDelay 		= data[2];			break;
-		case 0x5:	mv.deadTime			= data[2];			break;
-		case 0x6:	mv.descriminant		= data[2];			break;
-		case 0x7:	mv.freq				= data[2];			break;
+		case 0x01:	mv.sens1.gain			= data[2];			break;
+		case 0x02:	mv.sens1.sampleTime		= data[2];			break;
+		case 0x03:	mv.sens1.sampleLen		= data[2];			break;
+		case 0x04:	mv.sens1.sampleDelay 	= data[2];			break;
+		case 0x05:	mv.sens1.deadTime		= data[2];			break;
+		case 0x06:	mv.sens1.descriminant	= data[2];			break;
+		case 0x07:	mv.sens1.freq			= data[2];			break;
+		case 0x08:	mv.sens1.filtrType		= data[2];			break;
+		case 0x09:	mv.sens1.packType		= data[2];			break;
+		case 0x0A:	mv.sens1.fi_Type		= data[2];			break;
+		case 0x0B:	mv.sens1.fragLen		= data[2];			break;
 
-		case 0x11:	mv.gainRef			= data[2];			break;
-		case 0x12:	mv.sampleTimeRef	= data[2];			break;
-		case 0x13:	mv.sampleLenRef		= data[2];			break;
-		case 0x14:	mv.sampleDelayRef 	= data[2];			break;
-		case 0x15:	mv.deadTimeRef		= data[2];			break;
-		case 0x16:	mv.descriminantRef	= data[2];			break;
-		case 0x17:	mv.refFreq			= data[2];			break;
 
-		case 0x20:	mv.filtrType		= data[2];			break;
-		case 0x21:	mv.packType			= data[2];			break;
+		case 0x11:	mv.refSens.gain			= data[2];			break;
+		case 0x12:	mv.refSens.sampleTime	= data[2];			break;
+		case 0x13:	mv.refSens.sampleLen	= data[2];			break;
+		case 0x14:	mv.refSens.sampleDelay 	= data[2];			break;
+		case 0x15:	mv.refSens.deadTime		= data[2];			break;
+		case 0x16:	mv.refSens.descriminant	= data[2];			break;
+		case 0x17:	mv.refSens.freq			= data[2];			break;
+		case 0x18:	mv.refSens.filtrType	= data[2];			break;
+		case 0x19:	mv.refSens.packType		= data[2];			break;
+		case 0x1A:	mv.refSens.fi_Type		= data[2];			break;
+		case 0x1B:	mv.refSens.fragLen		= data[2];			break;
 
-		case 0x30:	mv.cmSPR 			= data[2]; Update_RPS_SPR();	break;
-		case 0x31:	mv.imSPR 			= data[2]; Update_RPS_SPR();	break;
+//		case 0x20:	mv.filtrType			= data[2];			break;
+//		case 0x21:	mv.packType				= data[2];			break;
 
-		case 0x40:	mv.fireVoltage		= data[2];			break;
-		case 0x41:	mv.motoLimCur		= data[2];			break;
-		case 0x42:	mv.motoMaxCur		= data[2];			break;
+		case 0x30:	mv.cmSPR 				= data[2]; Update_RPS_SPR();	break;
+		case 0x31:	mv.imSPR 				= data[2]; Update_RPS_SPR();	break;
+
+		case 0x40:	mv.fireVoltage			= data[2];			break;
+		case 0x41:	mv.motoLimCur			= data[2];			break;
+		case 0x42:	mv.motoMaxCur			= data[2];			break;
 
 		default:
 
@@ -1895,7 +1874,7 @@ static void MainMode()
 			{
 				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
 
-				RequestFlashWrite(rq->rsp, rsp->rw, true);
+				RequestFlashWrite(rq->rsp, rsp->CM.hdr.rw, true);
 
 				mainModeState++;
 			};
@@ -1904,16 +1883,16 @@ static void MainMode()
 
 		case 1:
 
-			if ((rsp->rw & 0xFF) == 0x40)
+			if ((rsp->CM.hdr.rw & 0xFF) == 0x40)
 			{
-				byte n = rsp->CM.sensType & 1;
+				byte n = rsp->CM.hdr.sensType & 1;
 
 				manVec40[n] = rq->rsp;
 
 				AmpTimeMinMax& mm = sensMinMaxTemp[n];
 
-				u16 amp = rsp->CM.maxAmp;
-				u16 time = rsp->CM.fi_time;
+				u16 amp = rsp->CM.hdr.maxAmp;
+				u16 time = rsp->CM.hdr.fi_time;
 
 				if (amp > mm.ampMax) mm.ampMax = amp;
 				if (amp < mm.ampMin) mm.ampMin = amp;
@@ -1922,7 +1901,7 @@ static void MainMode()
 
 				mm.valid = true;
 			}
-			else if ((rsp->rw & 0xFF) == 0x50)
+			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)
 			{
 				manVec50 = rq->rsp;
 			};
@@ -2434,7 +2413,7 @@ static void UpdateTestFlashWrite()
 			count--;
 
 			RspDsp01 *rsp = (RspDsp01*)(ptr->GetDataPtr());
-			RequestFlashWrite(ptr, rsp->rw, true);
+			RequestFlashWrite(ptr, rsp->CM.hdr.rw, true);
 
 		};
 	};
@@ -2724,29 +2703,38 @@ static void FlashMoto()
 
 static void InitMainVars()
 {
-	mv.numDevice		= 0;
-	mv.numMemDevice		= 0;
-	mv.gain				= 0; 
-	mv.sampleTime		= 8; 
-	mv.sampleLen		= 500; 
-	mv.sampleDelay 		= 400; 
-	mv.deadTime			= 400; 
-	mv.descriminant		= 400; 
-	mv.freq				= 500; 
-	mv.gainRef			= 0; 
-	mv.sampleTimeRef	= 8; 
-	mv.sampleLenRef		= 500; 
-	mv.sampleDelayRef 	= 400; 
-	mv.deadTimeRef		= 400; 
-	mv.descriminantRef	= 400; 
-	mv.refFreq			= 500; 
-	mv.filtrType		= 0;
-	mv.packType			= 0;
-	mv.cmSPR			= 36;
-	mv.imSPR			= 180;
-	mv.fireVoltage		= 500;
-	mv.motoLimCur		= 2000;
-	mv.motoMaxCur		= 3000;
+	mv.numDevice			= 0;
+	mv.numMemDevice			= 0;
+
+	mv.sens1.gain			= 0; 
+	mv.sens1.sampleTime		= 8; 
+	mv.sens1.sampleLen		= 500; 
+	mv.sens1.sampleDelay 	= 400; 
+	mv.sens1.deadTime		= 400; 
+	mv.sens1.descriminant	= 400; 
+	mv.sens1.freq			= 500; 
+	mv.sens1.filtrType		= 0;
+	mv.sens1.packType		= 0;
+	mv.sens1.fi_Type		= 0;
+	mv.sens1.fragLen		= 0;
+
+	mv.refSens.gain			= 0; 
+	mv.refSens.sampleTime	= 8; 
+	mv.refSens.sampleLen	= 500; 
+	mv.refSens.sampleDelay 	= 400; 
+	mv.refSens.deadTime		= 400; 
+	mv.refSens.descriminant	= 400; 
+	mv.refSens.freq			= 500; 
+	mv.refSens.filtrType	= 0;
+	mv.refSens.packType		= 0;
+	mv.refSens.fi_Type		= 0;
+	mv.refSens.fragLen		= 0;
+
+	mv.cmSPR				= 36;
+	mv.imSPR				= 180;
+	mv.fireVoltage			= 500;
+	mv.motoLimCur			= 2000;
+	mv.motoMaxCur			= 3000;
 
 	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_CYAN "Init Main Vars Vars ... OK\n");
 }

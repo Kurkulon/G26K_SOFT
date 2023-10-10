@@ -202,8 +202,8 @@ __packed struct RspHdrIM	// 0xAD50
 
 __packed union RspDsp01	// чтение вектора
 {
-	__packed struct { RspHdrCM hdr; u16 data[512]; } CM;
-	__packed struct { RspHdrIM hdr; u16 data[512]; } IM;
+	__packed struct { RspHdrCM hdr; u16 data[1024]; } CM;
+	__packed struct { RspHdrIM hdr; u16 data[1024]; } IM;
 	__packed struct { u16 rw; u16 len; u16 version; u16 fireVoltage; u16 motoVoltage; u16 crc; } v01;
 };
 

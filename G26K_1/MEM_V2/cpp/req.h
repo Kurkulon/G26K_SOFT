@@ -78,41 +78,58 @@ struct RspBootMoto
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct ReqDsp01_old	// чтение вектора
+__packed struct SENS
 {
-	u16 	rw;
-	u16 	mode; 
-	u32 	mmsecTime; 
-	u32		hallTime; 
-	u16		motoCount; 
-	u16		headCount;
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-	u16		sensType; 
-	u16		angle;
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		thr;
-	u16		descr;
-	u16		freq;
-	u16 	refgain; 
-	u16 	refst;	 
-	u16 	refsl; 
-	u16 	refsd; 
-	u16		refthr;
-	u16		refdescr;
-	u16		refFreq;
-	u16		vavesPerRoundCM;
-	u16		vavesPerRoundIM;
-	u16		filtrType;
-	u16		packType;
-
-	u16 	crc;  
+	u16 gain;
+	u16 sampleTime;
+	u16 sampleLen;
+	u16 sampleDelay;
+	u16 deadTime;
+	u16 descriminant;
+	u16 freq;
+	u16 filtrType;
+	u16 packType;
+	u16 fi_Type;
+	u16 fragLen;
 };
+	
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+//__packed struct ReqDsp01_old	// чтение вектора
+//{
+//	u16 	rw;
+//	u16 	mode; 
+//	u32 	mmsecTime; 
+//	u32		hallTime; 
+//	u16		motoCount; 
+//	u16		headCount;
+//	u16		ax; 
+//	u16		ay; 
+//	u16		az; 
+//	u16		at;
+//	u16		sensType; 
+//	u16		angle;
+//	u16 	gain; 
+//	u16 	st;	 
+//	u16 	sl; 
+//	u16 	sd; 
+//	u16		thr;
+//	u16		descr;
+//	u16		freq;
+//	u16 	refgain; 
+//	u16 	refst;	 
+//	u16 	refsl; 
+//	u16 	refsd; 
+//	u16		refthr;
+//	u16		refdescr;
+//	u16		refFreq;
+//	u16		vavesPerRoundCM;
+//	u16		vavesPerRoundIM;
+//	u16		filtrType;
+//	u16		packType;
+//
+//	u16 	crc;  
+//};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -129,24 +146,10 @@ __packed struct ReqDsp01	// чтение вектора
 	u16		ay; 
 	u16		az; 
 	u16		at;
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		thr;
-	u16		descr;
-	u16		freq;
-	u16 	refgain; 
-	u16 	refst;	 
-	u16 	refsl; 
-	u16 	refsd; 
-	u16		refthr;
-	u16		refdescr;
-	u16		refFreq;
+	SENS	sens1;
+	SENS	refSens;
 	u16		vavesPerRoundCM;
 	u16		vavesPerRoundIM;
-	u16		filtrType;
-	u16		packType;
 	u16		fireVoltage;		// Напряжение излучателя (В)
 
 	u16 	crc;  
@@ -154,16 +157,54 @@ __packed struct ReqDsp01	// чтение вектора
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-__packed struct RspDsp01	// чтение вектора
+__packed struct RspHdrCM	// 0xAD40
 {
-	u16 rw; 
+	u16 	rw;
+	u32 	time;		//mmsecTime; 
+	u32		hallTime;	//shaftTime; 
+	u16		motoCount; 
+	u16		headCount;
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16		sensType; 
+	u16		angle;
+	u16		maxAmp;
+	u16		fi_amp;
+	u16		fi_time;
+	u16 	gain; 
+	u16 	st;	 
+	u16 	sl; 
+	u16 	sd; 
+	u16		packType;
+	u16		packLen;
+};
 
-	__packed union
-	{
-		__packed struct { u32 time; u32 hallTime; u16 motoCount; u16 headCount; u16 ax; u16 ay; u16 az; u16 at; u16 sensType; u16 angle; u16 maxAmp; u16 fi_amp; u16 fi_time; u16 gain; u16 st; u16 sl; u16 sd; u16 pakType; u16 pakLen; u16 data[1024]; } CM;
-		__packed struct { u32 time; u32 hallTime; u16 ax; u16 ay; u16 az; u16 at; u16 gain; u16 refAmp;u16 refTime; u16 dataLen; u16 data[1024];} IM;
-		__packed struct { u16 len;	u16	version; u16 fireVoltage; u16 motoVoltage; u16 	crc;  } v01;
-	};
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct RspHdrIM	// 0xAD50
+{
+	u16 	rw;
+	u32 	time;		//mmsecTime; 
+	u32		hallTime;	//shaftTime; 
+	u16		ax; 
+	u16		ay; 
+	u16		az; 
+	u16		at;
+	u16 	gain; 
+	u16		refAmp;
+	u16		refTime;
+	u16		dataLen;
+};
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed union RspDsp01	// чтение вектора
+{
+	__packed struct { RspHdrCM hdr; u16 data[1024]; } CM;
+	__packed struct { RspHdrIM hdr; u16 data[1024]; } IM;
+	__packed struct { u16 rw; u16 len; u16 version; u16 fireVoltage; u16 motoVoltage; u16 crc; } v01;
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

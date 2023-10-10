@@ -163,9 +163,18 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 			{
 				fr = sens.freq;
 
-				u16 f = (fr > 400) ? 400 : fr;
+				if (mode == 0)
+				{
+					u16 f = (fr > 500) ? 500 : fr;
 
-				s = (20000/8 + f/2) / f;
+					s = (10000/8 + f/2) / f;
+				}
+				else
+				{
+					u16 f = (fr > 400) ? 400 : fr;
+
+					s = (20000/8 + f/2) / f;
+				};
 			};
 
 			sens.st = s;
@@ -480,23 +489,51 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 			*(d++) = v;//av / 2;
 		};
 	}
-	else if (filtrType == 3)
+	//else if (filtrType == 3)
+	//{
+	//	i32 av = 0;
+	//	i32 *ab = avrBuf;
+
+	//	for (u32 i = rsp.hdr.sl+32; i > 0; i--)
+	//	{
+	//		i16 v = (d[2] - d[0] + d[3] - d[1])/4;// - 2048;
+
+	//		*(d++) = v;// -= *ab/32;
+	//	};
+	//}
+	else if (filtrType == 3 && (rsp.hdr.st&1) == 0)
 	{
-		i32 av = 0;
-		i32 *ab = avrBuf;
+		u32 len = rsp.hdr.sl;
 
-		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
+		if (len > 512) len = 512;
+
+		u16 *p = d+(len+15)*2+2;
+
+		d += len+15;
+
+		for (u32 i = len+16; i > 0; i--)
 		{
-			i16 v = (d[2] - d[0] + d[3] - d[1])/4;// - 2048;
+			u16 v = (d[0]+d[1]+1)/2+1;
 
-//			av += v - av/2;
-
-//			v = av / 2;
-
-			*(d++) = v;// -= *ab/32;
-
-//			*(ab++) += v;
+			*(p--) = (i16)((d[1]+v)/2 - 2048);
+			*(p--) = (i16)((d[0]+v)/2 - 2048);
+			d--;
 		};
+
+		p[0] = p[1];
+
+		//i16 *d = (i16*)rsp.data;
+
+		//for (u32 i = len*2+16; i > 0; i--)
+		//{
+		//	d[0] = (d[0]+d[1])/2;
+		//	d++;
+		//};
+
+		dsc.dataLen -= rsp.hdr.sl;
+		rsp.hdr.sl = len*2;
+		dsc.dataLen += rsp.hdr.sl;
+		rsp.hdr.st /= 2;
 	}
 	else
 	{
@@ -535,22 +572,45 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 descrIndx)
 
 		d += descrIndx;
 
-		for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
+		if (mode == 0)
 		{
-			i32 sum = 0;
-
-			for (i32 j = 0; j < ArraySize(wavelet_Table); j += 2)
+			for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
 			{
-				sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
+				i32 sum = 0;
+
+				for (i32 j = 0; j < ArraySize(wavelet_Table); j++)
+				{
+					sum += (i32)d[j*2] * wavelet_Table[j]; //sin_Table[j&7];
+				};
+
+				sum /= 16384*4;
+				
+				d++; //*(d++) = sum;
+
+				if (sum < 0) sum = -sum;
+
+				if (sum > max) { max = sum; imax = i; };
 			};
+		}
+		else
+		{
+			for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
+			{
+				i32 sum = 0;
 
-			sum /= 16384*4;
-			
-			d++; //*(d++) = sum;
+				for (i32 j = 0; j < ArraySize(wavelet_Table); j += 2)
+				{
+					sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
+				};
 
-			if (sum < 0) sum = -sum;
+				sum /= 16384*2;
+				
+				d++; //*(d++) = sum;
 
-			if (sum > max) { max = sum; imax = i; };
+				if (sum < 0) sum = -sum;
+
+				if (sum > max) { max = sum; imax = i; };
+			};
 		};
 	};
 
