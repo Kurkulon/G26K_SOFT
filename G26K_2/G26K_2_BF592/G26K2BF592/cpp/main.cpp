@@ -163,18 +163,9 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 			{
 				fr = sens.freq;
 
-				if (mode == 0)
-				{
-					u16 f = (fr > 500) ? 500 : fr;
+				u16 f = (fr > 400) ? 400 : fr;
 
-					s = (10000/8 + f/2) / f;
-				}
-				else
-				{
-					u16 f = (fr > 400) ? 400 : fr;
-
-					s = (20000/8 + f/2) / f;
-				};
+				s = (20000/8 + f/2) / f;
 			};
 
 			sens.st = s;
@@ -488,53 +479,50 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 
 			*(d++) = v;//av / 2;
 		};
+
+		u16 t = (rsp.hdr.st+1)/2;
+		rsp.hdr.sd += t;
+
+		//if (rsp.hdr.sd >= t) rsp.hdr.sd -= t; else rsp.hdr.sd = 0;
 	}
-	//else if (filtrType == 3)
-	//{
-	//	i32 av = 0;
-	//	i32 *ab = avrBuf;
-
-	//	for (u32 i = rsp.hdr.sl+32; i > 0; i--)
-	//	{
-	//		i16 v = (d[2] - d[0] + d[3] - d[1])/4;// - 2048;
-
-	//		*(d++) = v;// -= *ab/32;
-	//	};
-	//}
-	else if (filtrType == 3 && (rsp.hdr.st&1) == 0)
+	else if (filtrType == 3)
 	{
-		u32 len = rsp.hdr.sl;
+		i32 av = 0;
+		i32 *ab = avrBuf;
 
-		if (len > 512) len = 512;
-
-		u16 *p = d+(len+15)*2+2;
-
-		d += len+15;
-
-		for (u32 i = len+16; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
 		{
-			u16 v = (d[0]+d[1]+1)/2+1;
+			i16 v = (d[2] - d[0] + d[3] - d[1])/4;// - 2048;
 
-			*(p--) = (i16)((d[1]+v)/2 - 2048);
-			*(p--) = (i16)((d[0]+v)/2 - 2048);
-			d--;
+			*(d++) = v;// -= *ab/32;
 		};
-
-		p[0] = p[1];
-
-		//i16 *d = (i16*)rsp.data;
-
-		//for (u32 i = len*2+16; i > 0; i--)
-		//{
-		//	d[0] = (d[0]+d[1])/2;
-		//	d++;
-		//};
-
-		dsc.dataLen -= rsp.hdr.sl;
-		rsp.hdr.sl = len*2;
-		dsc.dataLen += rsp.hdr.sl;
-		rsp.hdr.st /= 2;
 	}
+	//else if (filtrType == 3 && (rsp.hdr.st&1) == 0)
+	//{
+	//	u32 len = rsp.hdr.sl;
+
+	//	if (len > 512) len = 512;
+
+	//	u16 *p = d+(len+15)*2+2;
+
+	//	d += len+15;
+
+	//	for (u32 i = len+16; i > 0; i--)
+	//	{
+	//		u16 v = (d[0]+d[1]+1)/2+1;
+
+	//		*(p--) = (i16)((d[1]+v)/2 - 2048);
+	//		*(p--) = (i16)((d[0]+v)/2 - 2048);
+	//		d--;
+	//	};
+
+	//	p[0] = p[1];
+
+	//	dsc.dataLen -= rsp.hdr.sl;
+	//	rsp.hdr.sl = len*2;
+	//	dsc.dataLen += rsp.hdr.sl;
+	//	rsp.hdr.st /= 2;
+	//}
 	else
 	{
 		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
@@ -688,7 +676,8 @@ static void GetAmpTimeIM_3(DSCPPI &dsc, u16 ind, u16 imThr)
 		rsp.hdr.fi_amp = max;
 		u32 t = rsp.hdr.sd + imax * rsp.hdr.st;
 		rsp.hdr.fi_time = (t < 0xFFFF) ? t : 0xFFFF;
-		dsc.fi_index = (imax>8) ? (imax-8) : 0;
+		u16 z = 100 / rsp.hdr.st;
+		dsc.fi_index = (imax>z) ? (imax-z) : 0;
 	};
 
 	if (rsp.hdr.sl > ind)
@@ -1137,7 +1126,7 @@ static void UpdateMode()
 		{				
 			RspHdrCM *rsp = (RspHdrCM*)dsc->data;
 
-			if (rsp->sensType != 2)
+			if (rsp->sensType == 0)
 			{
 				switch (mode)
 				{

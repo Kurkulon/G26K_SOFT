@@ -979,6 +979,7 @@ void UpdateHardware()
 	static i32 filtMV = 0;
 	static u16 correction = 0x200;
 	static u16 dstFV = 0;
+	static byte adr = 0;
 
 	if (!ctm.Check(US2CCLK(50))) return;
 
@@ -990,7 +991,7 @@ void UpdateHardware()
 			{
 				wbuf[0] = 0x60;	
 
-				dsc.adr = 0x28;
+				dsc.adr = 0x28|(adr&1);
 				dsc.wdata = wbuf;
 				dsc.wlen = 1;
 				dsc.rdata = rbuf;
@@ -1050,6 +1051,10 @@ void UpdateHardware()
 						};
 
 					};
+				}
+				else
+				{
+					adr ^= 1;
 				};
 
 				i++;

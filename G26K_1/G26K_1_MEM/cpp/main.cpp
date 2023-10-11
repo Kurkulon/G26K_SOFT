@@ -1310,6 +1310,8 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 
 		if (curManVec50.Valid())
 		{
+			HW::P5->BSET(4);
+
 			RspDsp01 &rsp = *((RspDsp01*)curManVec50->GetDataPtr());
 
 			mtb->data2 = ((u16*)&rsp)+1;
@@ -1339,6 +1341,10 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 	}
 	else if (curManVec50.Valid())
 	{
+		HW::P5->BSET(4);
+		HW::P5->BCLR(4);
+		HW::P5->BSET(4);
+
 		RspDsp01 &rsp = *((RspDsp01*)curManVec50->GetDataPtr());
 
 		u16 off = prevOff + prevLen;
@@ -1361,6 +1367,8 @@ static bool RequestMan_50(u16 *data, u16 reqlen, MTB* mtb)
 			mtb->len2 = len;
 		};
 	};
+
+	HW::P5->BCLR(4);
 
 	return true;
 }

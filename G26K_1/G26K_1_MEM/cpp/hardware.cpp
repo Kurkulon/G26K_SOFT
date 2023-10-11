@@ -327,8 +327,8 @@ static void I2C_Init();
 	// 77	- P5.7	- UpdateMan	
 	// 78	- P5.6	- 	
 	// 79	- P5.5	- 	
-	// 80	- P5.4
-	// 81	- P5.3
+	// 80	- P5.4	- RequestMan_50
+	// 81	- P5.3	- ManRcvSync
 	// 83	- P5.1	- ManRcvIRQ 
 	// 95	- P6.6	- ShaftIRQ
 	// 96	- P6.5	- CRC_CCITT_DMA
@@ -458,8 +458,8 @@ static void I2C_Init();
 	#define Pin_ManTrmIRQ_Set()		HW::P2->BSET(6);
 	#define Pin_ManTrmIRQ_Clr()		HW::P2->BCLR(6);
 
-	#define Pin_ManRcvSync_Set()			
-	#define Pin_ManRcvSync_Clr()			
+	#define Pin_ManRcvSync_Set()	HW::P5->BSET(3);		
+	#define Pin_ManRcvSync_Clr()	HW::P5->BCLR(3);		
 
 	#define PIO_WP					HW::P5 
 	#define PIO_FLREADY				HW::P15
@@ -3734,6 +3734,8 @@ static __irq void ManRcvIRQ2()
 		//ManTmr->TCSET = CC4_TRB;
 
 	#endif
+
+	//manRcvTime.Reset();
 
 	_state = !_state;
 
