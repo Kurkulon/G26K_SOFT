@@ -3,6 +3,10 @@
 #include "CRC16.h"
 //#include "at25df021.h"
 #include "list.h"
+#include "mdct.h"
+
+#define MDCT_LOG2N 9
+#define MDCT_N (1UL<<MDCT_LOG2N)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -102,9 +106,14 @@ const i16 sin_Table[10] = {	0,	11585,	16384,	11585,	0,	-11585,	-16384,	-11585,	0
 const i16 wavelet_Table[32] = {0,-498,-1182,-1320,0,2826,5464,5065,0,-7725,-12741,-10126,0,11476,16381,11290,0,-9669,-12020,-7223,0,4713,5120,2690,0,-1344,-1279,-588,0,226,188,76};
 //const i16 wavelet_Table[32] = {-498,-1182,-1320,0,2826,5464,5065,0,-7725,-12741,-10126,0,11476,16381,11290,0,-9669,-12020,-7223,0,4713,5120,2690,0,-1344,-1279,-588,0,226,188,76,0};
 
-#define K_DEC (1<<2)
-#define K_DEC_MASK (K_DEC-1)
+//#define K_DEC (1<<2)
+//#define K_DEC_MASK (K_DEC-1)
 
+static MDCT_LookUp		lookup;
+static DATA_TYPE_BITREV	mdct_bitrev[MDCT_N/4];
+static DATA_TYPE_T		mdct_T[MDCT_N+MDCT_N/4];
+static DATA_TYPE_IN 	mdct_out[MDCT_N];
+static DATA_TYPE		mdct_w[MDCT_N];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -560,45 +569,22 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 descrIndx)
 
 		d += descrIndx;
 
-		if (mode == 0)
+		for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
 		{
-			for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
+			i32 sum = 0;
+
+			for (i32 j = 0; j < ArraySize(wavelet_Table); j += 2)
 			{
-				i32 sum = 0;
-
-				for (i32 j = 0; j < ArraySize(wavelet_Table); j++)
-				{
-					sum += (i32)d[j*2] * wavelet_Table[j]; //sin_Table[j&7];
-				};
-
-				sum /= 16384*4;
-				
-				d++; //*(d++) = sum;
-
-				if (sum < 0) sum = -sum;
-
-				if (sum > max) { max = sum; imax = i; };
+				sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
 			};
-		}
-		else
-		{
-			for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
-			{
-				i32 sum = 0;
 
-				for (i32 j = 0; j < ArraySize(wavelet_Table); j += 2)
-				{
-					sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
-				};
+			sum /= 16384*2;
+			
+			d++; //*(d++) = sum;
 
-				sum /= 16384*2;
-				
-				d++; //*(d++) = sum;
+			if (sum < 0) sum = -sum;
 
-				if (sum < 0) sum = -sum;
-
-				if (sum > max) { max = sum; imax = i; };
-			};
+			if (sum > max) { max = sum; imax = i; };
 		};
 	};
 
@@ -1081,7 +1067,6 @@ static void UpdateMode()
 
 			if (dsc != 0)
 			{
-				*pPORTFIO_SET = 1<<7;
 				i++;
 			}
 			else
@@ -1095,7 +1080,11 @@ static void UpdateMode()
 		{
 			RspHdrCM *rsp = (RspHdrCM*)dsc->data;
 
+			*pPORTFIO_SET = 1<<7;
+			
 			Filtr_Data(*dsc, sensVars[rsp->sensType].filtr);
+			
+			*pPORTFIO_CLEAR = 1<<7;
 
 			i++;
 
@@ -1108,6 +1097,8 @@ static void UpdateMode()
 
 			const SensVars &sens = sensVars[rsp->sensType];
 
+			*pPORTFIO_SET = 1<<7;
+
 			if (sens.fi_type != 0)
 			{
 				Filtr_Wavelet(*dsc, sens.deadIndx);
@@ -1117,6 +1108,8 @@ static void UpdateMode()
 				GetAmpTimeIM_3(*dsc, sens.deadIndx, sens.threshold);
 			};
 
+			*pPORTFIO_CLEAR = 1<<7;
+
 			i++;
 
 			break;
@@ -1125,6 +1118,8 @@ static void UpdateMode()
 		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		{				
 			RspHdrCM *rsp = (RspHdrCM*)dsc->data;
+
+			*pPORTFIO_SET = 1<<7;
 
 			if (rsp->sensType == 0)
 			{
@@ -1155,9 +1150,22 @@ static void UpdateMode()
 
 			if (dsc != 0)
 			{
+				RspCM *rsp = (RspCM*)dsc->data;
+
 				*pPORTFIO_SET = 1<<7;
 
-				FragDataCM(dsc);
+				//FragDataCM(dsc);
+
+				//mdct_forward(&lookup, (i16*)rsp->data, (i16*)rsp->data, mdct_w);
+
+				*pPORTFIO_CLEAR = 1<<7;
+				*pPORTFIO_SET = 1<<7;
+
+				//FragDataCM(dsc);
+
+				//mdct_backward(&lookup, (i16*)rsp->data, (i16*)rsp->data);
+
+				*pPORTFIO_CLEAR = 1<<7;
 
 				i++;
 			}
@@ -1174,6 +1182,8 @@ static void UpdateMode()
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 	
+			*pPORTFIO_SET = 1<<7;
+
 			PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
 
 			//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
@@ -1250,6 +1260,8 @@ int main( void )
 	com.Connect(6250000, 2);
 
 	//CheckFlash();
+
+	mdct_init(&lookup, MDCT_LOG2N, MDCT_N, mdct_bitrev, mdct_T);
 
 	while (1)
 	{
