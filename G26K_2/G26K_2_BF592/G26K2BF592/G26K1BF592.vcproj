@@ -94,10 +94,6 @@
 				RelativePath=".\cpp\main.cpp"
 				>
 			</File>
-			<File
-				RelativePath=".\cpp\mdct.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -126,10 +122,6 @@
 			</File>
 			<File
 				RelativePath=".\cpp\list.h"
-				>
-			</File>
-			<File
-				RelativePath=".\cpp\mdct.h"
 				>
 			</File>
 			<File

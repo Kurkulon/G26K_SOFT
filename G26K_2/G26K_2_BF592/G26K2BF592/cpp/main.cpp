@@ -3,10 +3,6 @@
 #include "CRC16.h"
 //#include "at25df021.h"
 #include "list.h"
-#include "mdct.h"
-
-#define MDCT_LOG2N 9
-#define MDCT_N (1UL<<MDCT_LOG2N)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -108,12 +104,6 @@ const i16 wavelet_Table[32] = {0,-498,-1182,-1320,0,2826,5464,5065,0,-7725,-1274
 
 //#define K_DEC (1<<2)
 //#define K_DEC_MASK (K_DEC-1)
-
-static MDCT_LookUp		lookup;
-static DATA_TYPE_BITREV	mdct_bitrev[MDCT_N/4];
-static DATA_TYPE_T		mdct_T[MDCT_N+MDCT_N/4];
-static DATA_TYPE_IN 	mdct_out[MDCT_N];
-static DATA_TYPE		mdct_w[MDCT_N];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1154,16 +1144,7 @@ static void UpdateMode()
 
 				*pPORTFIO_SET = 1<<7;
 
-				//FragDataCM(dsc);
-
-				//mdct_forward(&lookup, (i16*)rsp->data, (i16*)rsp->data, mdct_w);
-
-				*pPORTFIO_CLEAR = 1<<7;
-				*pPORTFIO_SET = 1<<7;
-
-				//FragDataCM(dsc);
-
-				//mdct_backward(&lookup, (i16*)rsp->data, (i16*)rsp->data);
+				FragDataCM(dsc);
 
 				*pPORTFIO_CLEAR = 1<<7;
 
@@ -1207,43 +1188,6 @@ static void UpdateMode()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//static void CheckFlash()
-//{
-//	static BOOT_HEADER bh;
-//
-//	byte *p = (byte*)&bh;
-//
-////	u32 stAdr = 0x8000;
-//	u32 adr = 0;
-//
-////	bool ready = false;
-//
-//	while (1)
-//	{
-//		at25df021_Read(p, FLASH_START_ADR + adr, sizeof(bh));
-//
-////		while(!ready) {};
-//
-//		adr += sizeof(bh);
-//
-//		if ((bh.blockCode & BFLAG_FILL) == 0)
-//		{
-//			adr += bh.byteCount;	
-//		};
-//
-//		if (bh.blockCode & BFLAG_FINAL)
-//		{
-//			break;
-//		};
-//	};
-//
-//	flashLen = adr;
-//
-//	flashCRC = at25df021_GetCRC16(FLASH_START_ADR, flashLen);
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 i16 index_max = 0;
 
 int main( void )
@@ -1258,10 +1202,6 @@ int main( void )
 	InitHardware();
 
 	com.Connect(6250000, 2);
-
-	//CheckFlash();
-
-	mdct_init(&lookup, MDCT_LOG2N, MDCT_N, mdct_bitrev, mdct_T);
 
 	while (1)
 	{
