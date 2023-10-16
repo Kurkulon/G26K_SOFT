@@ -3,6 +3,8 @@
 #include "CRC16.h"
 //#include "at25df021.h"
 #include "list.h"
+#include "fdct.h"
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -104,6 +106,8 @@ const i16 wavelet_Table[32] = {0,-498,-1182,-1320,0,2826,5464,5065,0,-7725,-1274
 
 //#define K_DEC (1<<2)
 //#define K_DEC_MASK (K_DEC-1)
+
+static FDCT_DATA fdct_w[FDCT_N];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1144,7 +1148,27 @@ static void UpdateMode()
 
 				*pPORTFIO_SET = 1<<7;
 
-				FragDataCM(dsc);
+				if (sensVars[rsp->hdr.sensType].pack != 0)
+				{
+					for (u32 i = 0; i < FDCT_N; i++) fdct_w[i] = ((i16)rsp->data[i])*16;
+
+					*pPORTFIO_CLEAR = 1<<7;
+
+					FastDctLee_transform(fdct_w, FDCT_LOG2N);
+
+					*pPORTFIO_SET = 1<<7;
+
+					if (sensVars[rsp->hdr.sensType].pack == 2)		for (u32 i = FDCT_N/2; i < FDCT_N; i++) fdct_w[i] = 0;
+					else if (sensVars[rsp->hdr.sensType].pack == 3)	for (u32 i = FDCT_N/4; i < FDCT_N; i++) fdct_w[i] = 0;
+
+					*pPORTFIO_CLEAR = 1<<7;
+
+					FastDctLee_inverseTransform(fdct_w, FDCT_LOG2N);
+
+					*pPORTFIO_SET = 1<<7;
+
+					for (u32 i = 0; i < FDCT_N; i++) rsp->data[i] = fdct_w[i]/16;
+				};
 
 				*pPORTFIO_CLEAR = 1<<7;
 
@@ -1165,7 +1189,7 @@ static void UpdateMode()
 	
 			*pPORTFIO_SET = 1<<7;
 
-			PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
+			//PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
 
 			//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
 			//dsc->dataLen += 1;
@@ -1202,6 +1226,12 @@ int main( void )
 	InitHardware();
 
 	com.Connect(6250000, 2);
+
+	u32 t = cli();
+
+	FDCT_Init();
+
+	sti(t);
 
 	while (1)
 	{

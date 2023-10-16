@@ -27,7 +27,7 @@
 				ReBuildCommandLine="wmake -h -a version=Debug"
 				CleanCommandLine="@del /Q .\Debug\*.*"
 				Output="$(OutDir)\g26p.dxe"
-				PreprocessorDefinitions="_DEBUG;"
+				PreprocessorDefinitions="_DEBUG;CUSTOM_MODES;FIXED_POINT;"
 				IncludeSearchPath="c:\Program Files (x86)\Analog Devices\VisualDSP 5.1.2\Blackfin\include;"
 				ForcedIncludes=""
 				AssemblySearchPath=""
@@ -49,7 +49,7 @@
 				ReBuildCommandLine="wmake -h -a version=Release"
 				CleanCommandLine="@del /Q .\Release\*.*"
 				Output="$(OutDir)\g26p.dxe"
-				PreprocessorDefinitions=""
+				PreprocessorDefinitions="CUSTOM_MODES;FIXED_POINT;"
 				IncludeSearchPath="c:\Program Files (x86)\Analog Devices\VisualDSP 5.1.2\Blackfin\include;"
 				ForcedIncludes=""
 				AssemblySearchPath=""
@@ -72,6 +72,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\fdct.cpp"
 				>
 			</File>
 			<File
@@ -114,6 +118,10 @@
 			</File>
 			<File
 				RelativePath=".\cpp\CRC16.h"
+				>
+			</File>
+			<File
+				RelativePath=".\cpp\fdct.h"
 				>
 			</File>
 			<File
