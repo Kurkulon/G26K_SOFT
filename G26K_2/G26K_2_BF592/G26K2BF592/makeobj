@@ -67,7 +67,7 @@ target_name = G26K1BF592
 ####################################################################################################################################################################################################
 
 compiler_options = $(debug_compiler_options) -c -c++ -g -structs-do-not-overlap -no-multiline &
-	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A -DFIXED_POINT -DCUSTOM_MODES
+	-double-size-32 -decls-strong -warn-protos -si-revision 0.2 -proc ADSP-BF592-A -save-temps -path-output $(objdir)
 
 ####################################################################################################################################################################################################
 

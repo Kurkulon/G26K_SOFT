@@ -27,7 +27,7 @@
 #include <stddef.h>
 #include "types.h"
 
-#define FDCT_LOG2N 6
+#define FDCT_LOG2N 8
 #define FDCT_N (1UL<<FDCT_LOG2N)
 
 #define FDCT_INTEGER
@@ -39,9 +39,10 @@ typedef i16 FDCT_TRIG;
 
 #define TRIGBITS 10
 
-#define FLOAT_TRIG(x) ((int)((x)*(1<<TRIGBITS)+.5))
-#define MULT_TRIG(x) ((((x)>>(TRIGBITS-1))+1)>>1)
-//#define MULT_TRIG(x) ((x)>>TRIGBITS)
+#define FLOAT_TRIG(x)	((int)((x)*(1<<TRIGBITS)+.5))
+#define MULT_TRIG(x)	(((x)+(1<<(TRIGBITS-1)))>>TRIGBITS)
+//#define MULT_TRIG(x)	((((x)>>(TRIGBITS-1))+1)>>1)
+//#define MULT_TRIG(x)	((x)>>TRIGBITS)
 
 #else
 

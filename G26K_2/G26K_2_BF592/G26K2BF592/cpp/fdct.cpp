@@ -72,9 +72,9 @@ bool FastDctLee_transform(FDCT_DATA vector[], u16 log2n)
 	forwardTransform(vector, temp, len);
 
 	#ifdef FDCT_INTEGER
-		for (u16 i = 0; i < len; i++) vector[i] >>= log2n-1;
+		for (u16 i = 0; i < len; i++) vector[i] >>= log2n-3;
 	#else
-		for (u16 i = 0; i < len; i++) vector[i] /= len/2;
+		for (u16 i = 0; i < len; i++) vector[i] /= len/8;
 	#endif
 
 	return true;
@@ -95,29 +95,62 @@ static void forwardTransform2(FDCT_DATA vector[restrict])
 
 inline void forwardTransform4(FDCT_DATA vector[restrict] )
 {
-	FDCT_DATA x = vector[0];
-	FDCT_DATA y = vector[3];
+	FDCT_DATA temp0 =				vector[0] + vector[3];
+	FDCT_DATA temp2 =	MULT_TRIG((	vector[0] - vector[3]	) * fdct_trig[2]);
 
-	FDCT_DATA temp0 = x + y;
-	FDCT_DATA temp2 = MULT_TRIG((x - y) * fdct_trig[2]);
-
-	x = vector[1];
-	y = vector[2];
-
-	FDCT_DATA temp1 = x + y;
-	FDCT_DATA temp3 = MULT_TRIG((x - y) * fdct_trig[3]);
+	FDCT_DATA temp1 =				vector[1] + vector[2];
+	FDCT_DATA temp3 =	MULT_TRIG((	vector[1] - vector[2]	) * fdct_trig[3]);
 
 	vector[0] = temp0 + temp1;
 	vector[2] = MULT_TRIG((temp0 - temp1) * fdct_trig[1]); 
+	vector[3] = MULT_TRIG((temp2 - temp3) * fdct_trig[1]); 
+	vector[1] = temp2 + temp3 + vector[3]; 
+}
 
-	x = temp2;
-	y = temp3;
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	temp2 = x + y;
-	temp3 = MULT_TRIG((x - y) * fdct_trig[1]); 
-	
-	vector[1] = temp2 + temp3; 
-	vector[3] = temp3;
+inline void forwardTransform8(FDCT_DATA vector[restrict])
+{
+	FDCT_DATA temp0 =				vector[0] + vector[7];
+	FDCT_DATA temp4 = MULT_TRIG((	vector[0] - vector[7]) * fdct_trig[4]); // / (cos((i + 0.5) * M_PI / len) * 2);
+
+	FDCT_DATA temp1 =				vector[1] + vector[6];
+	FDCT_DATA temp5 = MULT_TRIG((	vector[1] - vector[6]) * fdct_trig[5]); // / (cos((i + 0.5) * M_PI / len) * 2);
+
+	FDCT_DATA temp2 =				vector[2] + vector[5];
+	FDCT_DATA temp6 = MULT_TRIG((	vector[2] - vector[5]) * fdct_trig[6]); // / (cos((i + 0.5) * M_PI / len) * 2);
+
+	FDCT_DATA temp3 =				vector[3] + vector[4];
+	FDCT_DATA temp7 = MULT_TRIG((	vector[3] - vector[4]) * fdct_trig[7]); // / (cos((i + 0.5) * M_PI / len) * 2);
+
+	FDCT_DATA t0 =				temp0 + temp3;
+	FDCT_DATA x = MULT_TRIG((	temp0 - temp3) * fdct_trig[2]);
+
+	FDCT_DATA t1 =				temp1 + temp2;
+	FDCT_DATA y = MULT_TRIG((	temp1 - temp2) * fdct_trig[3]);
+
+	vector[0] =				t0 + t1;								//temp0
+	vector[4] = MULT_TRIG((	t0 - t1) * fdct_trig[1]);	// temp2
+
+	vector[6] = MULT_TRIG((	x - y) * fdct_trig[1]); 
+	vector[2] =				x + y + vector[6];	// temp1
+
+	t0 =			temp4 + temp7;
+	x = MULT_TRIG((	temp4 - temp7) * fdct_trig[2]);
+
+	t1 =			temp5 + temp6;
+	y = MULT_TRIG((	temp5 - temp6) * fdct_trig[3]);
+
+	temp4 =				t0 + t1;
+	temp6 = MULT_TRIG((	t0 - t1) * fdct_trig[1]); 
+
+	t0 = MULT_TRIG((	x - y) * fdct_trig[1]); 
+	temp5 =				x + y + t0; 
+
+	vector[1] = temp4 + temp5;
+	vector[3] = temp5 + temp6;
+	vector[5] = temp6 + t0;
+	vector[7] = t0;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -139,15 +172,15 @@ static void forwardTransform(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict
 		temp[i + halfLen] = MULT_TRIG((x - y) * trig[i]); // / (cos((i + 0.5) * M_PI / len) * 2);
 	};
 
-	if (halfLen != 4)
+	if (halfLen != 8)
 	{
 		forwardTransform(temp,			vector, halfLen);
 		forwardTransform(temp+halfLen,	vector, halfLen);
 	}
 	else
 	{
-		forwardTransform4(temp			);
-		forwardTransform4(temp+halfLen	);
+		forwardTransform8(temp			);
+		forwardTransform8(temp+halfLen	);
 	}
 
 	for (u16 i = 0; i < halfLen - 1; i++)
@@ -173,7 +206,15 @@ bool FastDctLee_inverseTransform(FDCT_DATA vector[], u16 log2n)
 
 	vector[0] /= 2;
 
-	inverseTransform(vector, temp, 1UL<<log2n);
+	u16 len = 1UL<<log2n;
+
+	inverseTransform(vector, temp, len);
+
+	#ifdef FDCT_INTEGER
+		for (u16 i = 0; i < len; i++) vector[i] >>= 2;
+	#else
+		for (u16 i = 0; i < len; i++) vector[i] /= 4;
+	#endif
 
 	return true;
 }
@@ -252,8 +293,8 @@ static void inverseTransform(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict
 		FDCT_DATA x = temp[i];
 		FDCT_DATA y = MULT_TRIG(temp[i + halfLen] * trig[i]); // / (cos((i + 0.5) * M_PI / len) * 2);
 
-		vector[i] = x + y;
-		vector[len - 1 - i] = x - y;
+		vector[i]			= x + y;
+		vector[len - 1 - i]	= x - y;
 	};
 }
 
