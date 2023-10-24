@@ -21,7 +21,7 @@
  *   Software.
  */
 
-#pragma optimize_for_speed
+//#pragma optimize_for_speed
 
 #include <math.h>
 #include <stdint.h>
@@ -34,6 +34,8 @@
 
 static void forwardTransform(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict], u16 len);
 static void inverseTransform(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict], u16 len);
+static void forwardTransform_v2(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict], u16 len);
+static void forwardTransform_v3(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict], u16 len);
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -69,7 +71,7 @@ bool FastDctLee_transform(FDCT_DATA vector[], u16 log2n)
 
 	u16 len = 1UL<<log2n;
 
-	forwardTransform(vector, temp, len);
+	forwardTransform_v3(vector, temp, len);
 
 	#ifdef FDCT_INTEGER
 		for (u16 i = 0; i < len; i++) vector[i] >>= log2n-3;
@@ -191,6 +193,100 @@ static void forwardTransform(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict
 
 	vector[len - 2] = temp[halfLen - 1];
 	vector[len - 1] = temp[len - 1];
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void forwardTransform_v2(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict], u16 len)
+{
+	//u16 halfLen = len / 2;
+
+	FDCT_DATA *vec = temp;
+	FDCT_DATA *tmp = vector;
+
+    for (u16 halfLen = len / 2; halfLen > 0; halfLen /= 2)
+    {
+		FDCT_TRIG *trig = fdct_trig + halfLen;
+
+		FDCT_DATA *t = tmp; tmp = vec; vec = t;
+
+		for (u16 off = 0; off < len; off += halfLen*2)
+        {
+            for (u16 i = 0; i < halfLen; i++)
+            {
+                FDCT_DATA x = vec[off + i];
+                FDCT_DATA y = vec[off + halfLen*2 - 1 - i];
+                tmp[off + i] = x + y;
+                tmp[off + i + halfLen] = MULT_TRIG((x - y) * trig[i]);
+            };
+        };
+        
+    };
+
+    for (u16 halfLen = 1; halfLen < len; halfLen *= 2)
+    {
+        for (u16 off = 0; off < len; off += halfLen*2)
+        {
+            for (u16 i = 0; i < halfLen - 1; i++)
+            {
+                vec[off + i * 2 + 0] = tmp[off + i];
+                vec[off + i * 2 + 1] = tmp[off + i + halfLen] + tmp[off + i + halfLen + 1];
+            };
+        
+            vec[off + halfLen*2 - 2] = tmp[off + halfLen - 1];
+            vec[off + halfLen*2 - 1] = tmp[off + halfLen*2 - 1];
+        };
+
+		FDCT_DATA *t = tmp; tmp = vec; vec = t;
+    };
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void forwardTransform_v3(FDCT_DATA vector[restrict], FDCT_DATA temp[restrict], u16 len)
+{
+	//u16 halfLen = len / 2;
+
+	FDCT_DATA *vec = temp;
+	FDCT_DATA *tmp = vector;
+
+    for (u16 halfLen = len / 2; halfLen > 4; halfLen /= 2)
+    {
+		FDCT_TRIG *trig = fdct_trig + halfLen;
+
+		FDCT_DATA *t = tmp; tmp = vec; vec = t;
+
+		for (u16 off = 0; off < len; off += halfLen*2)
+        {
+            for (u16 i = 0; i < halfLen; i++)
+            {
+                FDCT_DATA x = vec[off + i];
+                FDCT_DATA y = vec[off + halfLen*2 - 1 - i];
+                tmp[off + i] = x + y;
+                tmp[off + i + halfLen] = MULT_TRIG((x - y) * trig[i]);
+            };
+        };
+        
+    };
+
+	for (u16 i = 0; i < len; i += 8) forwardTransform8(tmp+i);
+
+    for (u16 halfLen = 8; halfLen < len; halfLen *= 2)
+    {
+        for (u16 off = 0; off < len; off += halfLen*2)
+        {
+            for (u16 i = 0; i < halfLen - 1; i++)
+            {
+                vec[off + i * 2 + 0] = tmp[off + i];
+                vec[off + i * 2 + 1] = tmp[off + i + halfLen] + tmp[off + i + halfLen + 1];
+            };
+        
+            vec[off + halfLen*2 - 2] = tmp[off + halfLen - 1];
+            vec[off + halfLen*2 - 1] = tmp[off + halfLen*2 - 1];
+        };
+
+		FDCT_DATA *t = tmp; tmp = vec; vec = t;
+    };
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

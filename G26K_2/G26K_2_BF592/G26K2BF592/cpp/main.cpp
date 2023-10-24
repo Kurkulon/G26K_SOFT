@@ -1189,7 +1189,11 @@ static void UpdateMode()
 			*pPORTFIO_CLEAR = 1<<7;
 			*pPORTFIO_SET = 1<<7;
 
+			u32 t = cli();
+
 			FastDctLee_transform(fdct_w, FDCT_LOG2N);
+
+			sti(t);
 
 			*pPORTFIO_CLEAR = 1<<7;
 

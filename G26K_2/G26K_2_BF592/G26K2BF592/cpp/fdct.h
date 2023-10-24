@@ -27,7 +27,7 @@
 #include <stddef.h>
 #include "types.h"
 
-#define FDCT_LOG2N 8
+#define FDCT_LOG2N 6
 #define FDCT_N (1UL<<FDCT_LOG2N)
 
 #define FDCT_INTEGER
