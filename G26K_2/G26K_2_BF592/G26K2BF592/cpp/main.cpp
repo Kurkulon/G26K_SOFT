@@ -1036,6 +1036,165 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void UpdateCM()
+{
+	static byte i = 0;
+	static DSCPPI *dsc = 0;
+
+	switch (i)
+	{
+		case 0: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+			
+			dsc = cmWave.Get();
+
+			if (dsc != 0)
+			{
+				RspCM *rsp = (RspCM*)dsc->data;
+
+				*pPORTFIO_SET = 1<<7;
+
+				FragDataCM(dsc);
+
+				*pPORTFIO_CLEAR = 1<<7;
+
+				i++;
+			};
+
+			break;
+
+		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		{
+			RspCM *rsp = (RspCM*)dsc->data; 
+	
+			*pPORTFIO_SET = 1<<7;
+
+			if (sensVars[rsp->hdr.sensType].pack < PACK_DCT0)
+			{
+				PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
+
+				//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
+				//dsc->dataLen += 1;
+
+				processedPPI.Add(dsc);
+
+				i = 0;
+			}
+			else
+			{
+				i++;
+			}
+
+			*pPORTFIO_CLEAR = 1<<7;
+
+			break;
+		};
+
+		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		{
+			RspCM *rsp = (RspCM*)dsc->data; 
+
+			*pPORTFIO_SET = 1<<7;
+
+			for (u32 n = 0; n < FDCT_N; n++) fdct_w[n] = (i16)rsp->data[n];
+
+			*pPORTFIO_CLEAR = 1<<7;
+			*pPORTFIO_SET = 1<<7;
+
+			//u32 t = cli();
+
+			FastDctLee_transform(fdct_w, FDCT_LOG2N);
+
+			//sti(t);
+
+			*pPORTFIO_CLEAR = 1<<7;
+
+			i++;
+
+			break;
+		};
+
+		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		{
+			RspCM *rsp = (RspCM*)dsc->data; 
+
+			*pPORTFIO_SET = 1<<7;
+
+			//fdct_w[0] = 0;
+
+			if (sensVars[rsp->hdr.sensType].pack > PACK_DCT0)
+			{
+				byte shift = 4 - (sensVars[rsp->hdr.sensType].pack- PACK_DCT1);
+
+				FDCT_DATA max = 0;
+				 
+				for (u32 i = 0; i < FDCT_N; i++)
+				{
+					FDCT_DATA t = fdct_w[i];
+
+					if (t < 0) t = -t;
+
+					if (t > max) max = t;
+				};
+
+				FDCT_DATA *p = fdct_w + FDCT_N - 1;
+				FDCT_DATA lim = max >> shift;
+
+				for (u32 i = FDCT_N; i > 0; i++)
+				{
+					FDCT_DATA t = p[0];
+
+					if (t < 0) t = -t;
+
+					if (t < lim)
+					{
+						*(p--) = 0;
+					}
+					else
+					{
+						break;
+					};
+				};
+			};
+
+			*pPORTFIO_CLEAR = 1<<7;
+
+			i++;
+
+			break;
+		};
+
+		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		{
+			RspCM *rsp = (RspCM*)dsc->data; 
+
+			//*pPORTFIO_SET = 1<<7;
+
+			//FastDctLee_inverseTransform(fdct_w, FDCT_LOG2N);
+
+			//*pPORTFIO_CLEAR = 1<<7;
+			*pPORTFIO_SET = 1<<7;
+
+			for (u32 n = 0; n < FDCT_N; n++) rsp->data[n] = (i16)fdct_w[n];
+
+			rsp->hdr.packType = 4;
+			rsp->hdr.packLen = FDCT_N;
+			dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
+			rsp->hdr.sl = FDCT_N;
+
+			*pPORTFIO_CLEAR = 1<<7;
+
+			processedPPI.Add(dsc);
+
+			i = 0;
+
+			break;
+		};
+	}; // switch (i);
+};
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateMode()
 {
 	static byte i = 0;
@@ -1121,131 +1280,14 @@ static void UpdateMode()
 
 			*pPORTFIO_CLEAR = 1<<7;
 
-			i++;
-
-			break;
-		};
-
-		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-			
-			dsc = cmWave.Get();
-
-			if (dsc != 0)
-			{
-				RspCM *rsp = (RspCM*)dsc->data;
-
-				*pPORTFIO_SET = 1<<7;
-
-				FragDataCM(dsc);
-
-				*pPORTFIO_CLEAR = 1<<7;
-
-				i++;
-			}
-			else
-			{
-				Update();
-
-				i = 0; 
-			};
-
-			break;
-
-		case 5: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		{
-			RspCM *rsp = (RspCM*)dsc->data; 
-	
-			*pPORTFIO_SET = 1<<7;
-
-			if (sensVars[rsp->hdr.sensType].pack < PACK_DCT0)
-			{
-				PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
-
-				//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
-				//dsc->dataLen += 1;
-
-				processedPPI.Add(dsc);
-
-				i = 0;
-			}
-			else
-			{
-				i++;
-			}
-
-			*pPORTFIO_CLEAR = 1<<7;
-
-			break;
-		};
-
-		case 6: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-		{
-			RspCM *rsp = (RspCM*)dsc->data; 
-
-			*pPORTFIO_SET = 1<<7;
-
-			for (u32 n = 0; n < FDCT_N; n++) fdct_w[n] = (i16)rsp->data[n];
-
-			*pPORTFIO_CLEAR = 1<<7;
-			*pPORTFIO_SET = 1<<7;
-
-			u32 t = cli();
-
-			FastDctLee_transform(fdct_w, FDCT_LOG2N);
-
-			sti(t);
-
-			*pPORTFIO_CLEAR = 1<<7;
-
-			i++;
-
-			break;
-		};
-
-		case 7: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-		{
-			RspCM *rsp = (RspCM*)dsc->data; 
-
-			*pPORTFIO_SET = 1<<7;
-
-			fdct_w[0] = 0;
-
-			if (sensVars[rsp->hdr.sensType].pack == PACK_DCT1)
-			{
-				fdct_w[1] = 0;
-
-				for (u32 i = FDCT_N/2; i < FDCT_N; i++) fdct_w[i] = 0;
-			}
-			else if (sensVars[rsp->hdr.sensType].pack == PACK_DCT2)
-			{
-				for (u32 i = 0; i < 4; i++) fdct_w[i] = 0;
-				for (u32 i = FDCT_N/4; i < FDCT_N; i++) fdct_w[i] = 0;
-			};
-
-			*pPORTFIO_CLEAR = 1<<7;
-			//*pPORTFIO_SET = 1<<7;
-
-			//FastDctLee_inverseTransform(fdct_w, FDCT_LOG2N);
-
-			//*pPORTFIO_CLEAR = 1<<7;
-			*pPORTFIO_SET = 1<<7;
-
-			for (u32 n = 0; n < FDCT_N; n++) rsp->data[n] = (i16)fdct_w[n];
-
-			rsp->hdr.packType = 4;
-			rsp->hdr.packLen = FDCT_N;
-			dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
-			rsp->hdr.sl = FDCT_N;
-
-			*pPORTFIO_CLEAR = 1<<7;
-
-			processedPPI.Add(dsc);
-
 			i = 0;
 
 			break;
 		};
+
 	}; // switch (i);
+
+	UpdateCM();
 
 	if ((i&1) == 0) Update();
 }

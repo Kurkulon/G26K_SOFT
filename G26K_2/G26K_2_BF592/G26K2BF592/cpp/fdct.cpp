@@ -74,10 +74,12 @@ bool FastDctLee_transform(FDCT_DATA vector[], u16 log2n)
 	forwardTransform_v3(vector, temp, len);
 
 	#ifdef FDCT_INTEGER
-		for (u16 i = 0; i < len; i++) vector[i] >>= log2n-3;
+		//for (u16 i = 0; i < len; i++) vector[i] >>= log2n-3;
 	#else
 		for (u16 i = 0; i < len; i++) vector[i] /= len/8;
 	#endif
+
+	vector[0] /= 2;
 
 	return true;
 }
