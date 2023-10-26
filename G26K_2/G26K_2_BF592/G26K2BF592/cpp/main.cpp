@@ -148,6 +148,8 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.st == 0) sens.st = 1;
 
+		if (sens.pack >= PACK_DCT0) sens.sl = (sens.sl + FDCT_N - 1) & ~(FDCT_N-1);
+
 		if (sens.fi_Type != 0)
 		{
 			if (fr != sens.freq || forced)
@@ -1036,10 +1038,46 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void Pack_DCT_uLaw(FDCT_DATA *s, byte *d, u16 len)
+{
+    byte sign, exponent, mantissa, sample_out;
+
+	for (; len > 0; len--)
+	{
+		u16 sample_in = (i16)(*(s++));
+
+		sign = 0;
+
+		if ((i16)sample_in < 0)
+		{
+			sign = 0x80;
+			sample_in = -sample_in;
+		};
+
+		//if (sample_in > ulaw_0816_clip) sample_in = ulaw_0816_clip;
+
+		sample_in += 0x84;//ulaw_0816_bias;
+
+		exponent = ulaw_0816_expenc[(sample_in >> 7) & 0xff];
+
+		mantissa = (sample_in >> (exponent + 3)) & 0xf;
+
+		sample_out = (sign | (exponent << 4) | mantissa);
+
+		//if (sample_out == 0) sample_out = 2;
+
+		*(d++) = sample_out;
+	};
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateCM()
 {
 	static byte i = 0;
 	static DSCPPI *dsc = 0;
+	static u16 packLen = 0;
+	static u16 index = 0;
 
 	switch (i)
 	{
@@ -1081,6 +1119,9 @@ static void UpdateCM()
 			}
 			else
 			{
+				index = 0;
+				rsp->hdr.packType = sensVars[rsp->hdr.sensType].pack;
+				rsp->hdr.packLen = 0;
 				i++;
 			}
 
@@ -1095,7 +1136,9 @@ static void UpdateCM()
 
 			*pPORTFIO_SET = 1<<7;
 
-			for (u32 n = 0; n < FDCT_N; n++) fdct_w[n] = (i16)rsp->data[n];
+			i16 *p = (i16*)(rsp->data + index);
+
+			for (u32 n = 0; n < FDCT_N; n++) fdct_w[n] = *(p++);
 
 			*pPORTFIO_CLEAR = 1<<7;
 			*pPORTFIO_SET = 1<<7;
@@ -1121,9 +1164,9 @@ static void UpdateCM()
 
 			//fdct_w[0] = 0;
 
-			if (sensVars[rsp->hdr.sensType].pack > PACK_DCT0)
+			if (sensVars[rsp->hdr.sensType].pack >= PACK_DCT0)
 			{
-				byte shift = 4 - (sensVars[rsp->hdr.sensType].pack- PACK_DCT1);
+				byte shift = 5 - (sensVars[rsp->hdr.sensType].pack- PACK_DCT0);
 
 				FDCT_DATA max = 0;
 				 
@@ -1139,7 +1182,9 @@ static void UpdateCM()
 				FDCT_DATA *p = fdct_w + FDCT_N - 1;
 				FDCT_DATA lim = max >> shift;
 
-				for (u32 i = FDCT_N; i > 0; i++)
+				packLen = FDCT_N;
+
+				for (u32 i = FDCT_N; i > 0; i--)
 				{
 					FDCT_DATA t = p[0];
 
@@ -1151,9 +1196,12 @@ static void UpdateCM()
 					}
 					else
 					{
+						packLen = i;
 						break;
 					};
 				};
+
+				packLen = (packLen+1) & ~1;
 			};
 
 			*pPORTFIO_CLEAR = 1<<7;
@@ -1167,6 +1215,8 @@ static void UpdateCM()
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 
+			PackDCT *pdct = (PackDCT*)(rsp->data+rsp->hdr.packLen);
+
 			//*pPORTFIO_SET = 1<<7;
 
 			//FastDctLee_inverseTransform(fdct_w, FDCT_LOG2N);
@@ -1174,18 +1224,28 @@ static void UpdateCM()
 			//*pPORTFIO_CLEAR = 1<<7;
 			*pPORTFIO_SET = 1<<7;
 
-			for (u32 n = 0; n < FDCT_N; n++) rsp->data[n] = (i16)fdct_w[n];
+			Pack_DCT_uLaw(fdct_w, pdct->data, packLen);
+			pdct->len = packLen;
+			pdct->scale = 1;
+			rsp->hdr.packLen += 1 + packLen/2;
 
-			rsp->hdr.packType = 4;
-			rsp->hdr.packLen = FDCT_N;
-			dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
-			rsp->hdr.sl = FDCT_N;
+			index += FDCT_N;
+
+			if (index < rsp->hdr.sl)
+			{
+				i = 2;
+			}
+			else
+			{
+				dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
+
+				processedPPI.Add(dsc);
+
+				i = 0;
+			};
 
 			*pPORTFIO_CLEAR = 1<<7;
 
-			processedPPI.Add(dsc);
-
-			i = 0;
 
 			break;
 		};
