@@ -90,7 +90,11 @@ const i16 sin_Table[10] = {	0,	11585,	16384,	11585,	0,	-11585,	-16384,	-11585,	0
 //const i16 wavelet_Table[32] = {-1683,-3326,-3184,0,5304,9229,7777,0,-10037,-15372,-11402,0,11402,15372,10037,0,-7777,-9229,-5304,0,3184,3326,1683,0,-783,-720,-321,0,116,94,37,0};
 //const i16 wavelet_Table[32] = {0,385,1090,1156,0,-1927,-3270,-2698,0,3468,5450,4239,0,-5010,-7630,-5781,0,6551,9810,7322,0,-8093,-11990,-8864,0,9634,14170,10405,0,-11176,-16350,-11947};
 const i16 wavelet_Table[32] = {0,-498,-1182,-1320,0,2826,5464,5065,0,-7725,-12741,-10126,0,11476,16381,11290,0,-9669,-12020,-7223,0,4713,5120,2690,0,-1344,-1279,-588,0,226,188,76};
-//const i16 wavelet_Table[32] = {-498,-1182,-1320,0,2826,5464,5065,0,-7725,-12741,-10126,0,11476,16381,11290,0,-9669,-12020,-7223,0,4713,5120,2690,0,-1344,-1279,-588,0,226,188,76,0};
+//const i16 wavelet_Table2[8] = {0,4738,0,-16283,0,16283,0,-4738};
+//const i16 wavelet_Table2[16] = {0,276,0,-1649,0,5904,0,-12692,0,16380,0,-12692,0,5904,0,-1649};
+const i16 wavelet_Table2[16] = {0,-1182,0,5464,0,-12741,0,16381,0,-12020,0,5120,0,-1279,0,188};
+
+
 
 //#define K_DEC (1<<2)
 //#define K_DEC_MASK (K_DEC-1)
@@ -150,7 +154,7 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.pack >= PACK_DCT0) sens.sl = (sens.sl + FDCT_N - 1) & ~(FDCT_N-1);
 
-		if (sens.fi_Type != 0)
+		if (sens.fi_Type == 1)
 		{
 			if (fr != sens.freq || forced)
 			{
@@ -159,6 +163,19 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 				u16 f = (fr > 400) ? 400 : fr;
 
 				s = (20000/8 + f/2) / f;
+			};
+
+			sens.st = s;
+		}
+		else if (sens.fi_Type == 2)
+		{
+			if (fr != sens.freq || forced)
+			{
+				fr = sens.freq;
+
+				u16 f = (fr > 400) ? 400 : fr;
+
+				s = (20000/4 + f/2) / f;
 			};
 
 			sens.st = s;
@@ -557,9 +574,65 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 descrIndx)
 		{
 			i32 sum = 0;
 
-			for (i32 j = 0; j < ArraySize(wavelet_Table); j += 2)
+			for (i32 j = 1; j < ArraySize(wavelet_Table); j += 2)
 			{
 				sum += (i32)d[j] * wavelet_Table[j]; //sin_Table[j&7];
+			};
+
+			sum /= 16384*2;
+			
+			d++; //*(d++) = sum;
+
+			if (sum < 0) sum = -sum;
+
+			if (sum > max) { max = sum; imax = i; };
+		};
+	};
+
+	if (imax >= 0)
+	{
+		imax = rsp.hdr.sl - imax;
+		u32 t = rsp.hdr.sd + imax * rsp.hdr.st;
+		rsp.hdr.fi_time  = (t < 0xFFFF) ? t : 0xFFFF;
+		rsp.hdr.fi_amp = max;
+		rsp.hdr.maxAmp = max;
+		dsc.fi_index = imax;
+	}
+	else
+	{
+		rsp.hdr.fi_time	= ~0;
+		rsp.hdr.fi_amp	= 0;
+		rsp.hdr.maxAmp	= 0;
+		dsc.fi_index	= ~0;
+	};
+}
+
+#pragma optimize_as_cmd_line
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#pragma optimize_for_speed
+
+static void Filtr_Wavelet2(DSCPPI &dsc, u16 descrIndx)
+{
+	RspCM &rsp = *((RspCM*)dsc.data);
+
+	i16 *d = (i16*)(rsp.data);
+
+	i32 max = -32768;
+	i32 imax = -1;
+
+	if (expected_true(descrIndx < rsp.hdr.sl))
+	{
+		d += descrIndx;
+
+		for (i32 i = rsp.hdr.sl - descrIndx; i > 0 ; i--)
+		{
+			i32 sum = 0;
+
+			for (i32 j = 1; j < ArraySize(wavelet_Table2); j += 2)
+			{
+				sum += (i32)d[j] * wavelet_Table2[j];
 			};
 
 			sum /= 16384*2;
@@ -1038,13 +1111,13 @@ static void ProcessDataIM(DSCPPI &dsc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void Pack_DCT_uLaw(FDCT_DATA *s, byte *d, u16 len)
+static void Pack_DCT_uLaw(FDCT_DATA *s, byte *d, u16 len, byte scale)
 {
     byte sign, exponent, mantissa, sample_out;
 
 	for (; len > 0; len--)
 	{
-		u16 sample_in = (i16)(*(s++));
+		u16 sample_in = (i16)((*(s++))>>scale);
 
 		sign = 0;
 
@@ -1074,12 +1147,14 @@ static void Pack_DCT_uLaw(FDCT_DATA *s, byte *d, u16 len)
 
 static void UpdateCM()
 {
-	static byte i = 0;
+	static byte state = 0;
 	static DSCPPI *dsc = 0;
 	static u16 packLen = 0;
 	static u16 index = 0;
+	static byte OVRLAP = 3;
+	static u16 scale = 0;
 
-	switch (i)
+	switch (state)
 	{
 		case 0: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 			
@@ -1095,7 +1170,7 @@ static void UpdateCM()
 
 				*pPORTFIO_CLEAR = 1<<7;
 
-				i++;
+				state++;
 			};
 
 			break;
@@ -1115,14 +1190,15 @@ static void UpdateCM()
 
 				processedPPI.Add(dsc);
 
-				i = 0;
+				state = 0;
 			}
 			else
 			{
 				index = 0;
 				rsp->hdr.packType = sensVars[rsp->hdr.sensType].pack;
 				rsp->hdr.packLen = 0;
-				i++;
+				OVRLAP = (rsp->hdr.packType > PACK_DCT0) ? 7 : 3;
+				state++;
 			}
 
 			*pPORTFIO_CLEAR = 1<<7;
@@ -1151,7 +1227,7 @@ static void UpdateCM()
 
 			*pPORTFIO_CLEAR = 1<<7;
 
-			i++;
+			state++;
 
 			break;
 		};
@@ -1164,49 +1240,50 @@ static void UpdateCM()
 
 			//fdct_w[0] = 0;
 
-			if (sensVars[rsp->hdr.sensType].pack >= PACK_DCT0)
+			byte shift = 5 - (sensVars[rsp->hdr.sensType].pack- PACK_DCT0);
+
+			FDCT_DATA max = 0;
+			 
+			for (u32 i = 0; i < FDCT_N; i++)
 			{
-				byte shift = 5 - (sensVars[rsp->hdr.sensType].pack- PACK_DCT0);
+				FDCT_DATA t = fdct_w[i];
 
-				FDCT_DATA max = 0;
-				 
-				for (u32 i = 0; i < FDCT_N; i++)
-				{
-					FDCT_DATA t = fdct_w[i];
+				if (t < 0) t = -t;
 
-					if (t < 0) t = -t;
-
-					if (t > max) max = t;
-				};
-
-				FDCT_DATA *p = fdct_w + FDCT_N - 1;
-				FDCT_DATA lim = max >> shift;
-
-				packLen = FDCT_N;
-
-				for (u32 i = FDCT_N; i > 0; i--)
-				{
-					FDCT_DATA t = p[0];
-
-					if (t < 0) t = -t;
-
-					if (t < lim)
-					{
-						*(p--) = 0;
-					}
-					else
-					{
-						packLen = i;
-						break;
-					};
-				};
-
-				packLen = (packLen+1) & ~1;
+				if (t > max) max = t;
 			};
+
+			FDCT_DATA *p = fdct_w + FDCT_N - 1;
+			FDCT_DATA lim = max >> shift;
+
+			scale = 0;
+
+			while (max > 32000) { max /= 2; scale += 1; };
+
+			packLen = FDCT_N;
+
+			for (u32 i = FDCT_N; i > 0; i--)
+			{
+				FDCT_DATA t = p[0];
+
+				if (t < 0) t = -t;
+
+				if (t < lim)
+				{
+					*(p--) = 0;
+				}
+				else
+				{
+					packLen = i;
+					break;
+				};
+			};
+
+			packLen = (packLen+1) & ~1;
 
 			*pPORTFIO_CLEAR = 1<<7;
 
-			i++;
+			state++;
 
 			break;
 		};
@@ -1224,24 +1301,26 @@ static void UpdateCM()
 			//*pPORTFIO_CLEAR = 1<<7;
 			*pPORTFIO_SET = 1<<7;
 
-			Pack_DCT_uLaw(fdct_w, pdct->data, packLen);
+			Pack_DCT_uLaw(fdct_w, pdct->data, packLen, scale);
 			pdct->len = packLen;
-			pdct->scale = 1;
+			pdct->scale = scale;
 			rsp->hdr.packLen += 1 + packLen/2;
 
-			index += FDCT_N;
+			index += FDCT_N - OVRLAP;
 
-			if (index < rsp->hdr.sl)
+			if ((index+FDCT_N) <= rsp->hdr.sl)
 			{
-				i = 2;
+				state = 2;
 			}
 			else
 			{
 				dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
 
+				rsp->hdr.sl = index + OVRLAP;
+
 				processedPPI.Add(dsc);
 
-				i = 0;
+				state = 0;
 			};
 
 			*pPORTFIO_CLEAR = 1<<7;
@@ -1300,13 +1379,17 @@ static void UpdateMode()
 
 			*pPORTFIO_SET = 1<<7;
 
-			if (sens.fi_type != 0)
+			if (sens.fi_type == 0)
+			{
+				GetAmpTimeIM_3(*dsc, sens.deadIndx, sens.threshold);
+			}
+			else if (sens.fi_type == 1)
 			{
 				Filtr_Wavelet(*dsc, sens.deadIndx);
 			}
 			else
 			{
-				GetAmpTimeIM_3(*dsc, sens.deadIndx, sens.threshold);
+				Filtr_Wavelet2(*dsc, sens.deadIndx);
 			};
 
 			*pPORTFIO_CLEAR = 1<<7;
