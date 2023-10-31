@@ -21,9 +21,9 @@ inline void __enable_irq() {}
 #endif 
 
 #ifdef __DEBUG
-#define __breakpoint() asm("EMUEXCPT;")
+inline void __breakpoint() { asm("EMUEXCPT;"); }
 #else
-#define __breakpoint() asm("EMUEXCPT;")
+inline void __breakpoint() { asm("EMUEXCPT;"); }
 #endif
 
 typedef unsigned char byte, u8;

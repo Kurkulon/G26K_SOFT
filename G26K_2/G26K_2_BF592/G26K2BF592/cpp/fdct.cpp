@@ -24,8 +24,8 @@
 //#pragma optimize_for_speed
 
 #include <math.h>
-#include <stdint.h>
-#include <stdlib.h>
+//#include <stdint.h>
+//#include <stdlib.h>
 #include "fdct.h"
 
 #ifndef M_PI

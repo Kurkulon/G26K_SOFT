@@ -14,7 +14,7 @@ static byte build_date[512] = "\n" "G26K2BF592" "\n" __DATE__ "\n" __TIME__ "\n"
 
 static ComPort com;
 
-enum Pack { PACK_NO = 0, PACK_BIT12, PACK_ULAW, PACK_ADPCM, PACK_DCT0, PACK_DCT1, PACK_DCT2, PACK_FWT0, PACK_FWT1, PACK_FWT2 };
+enum Pack { PACK_NO = 0, PACK_BIT12, PACK_ULAW, PACK_ADPCM, PACK_DCT0, PACK_DCT1, PACK_DCT2 };
 
 static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
@@ -101,7 +101,7 @@ const i16 wavelet_Table2[16] = {0,-1182,0,5464,0,-12741,0,16381,0,-12020,0,5120,
 //#define K_DEC_MASK (K_DEC-1)
 
 static FDCT_DATA	fdct_w[FDCT_N];
-static FWT_DATA		fwt_w[FWT_N];
+//static FWT_DATA		fwt_w[FWT_N];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -154,7 +154,7 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.st == 0) sens.st = 1;
 
-		if (sens.pack >= PACK_DCT0 && sens.pack < PACK_FWT0) sens.sl = (sens.sl + FDCT_N - 1) & ~(FDCT_N-1);
+		if (sens.pack >= PACK_DCT0) sens.sl = (sens.sl + FDCT_N - 1) & ~(FDCT_N-1);
 
 		if (sens.fi_Type == 1)
 		{
@@ -1196,21 +1196,13 @@ static void UpdateCM()
 
 				state = 0;
 			}
-			else if (pack < PACK_FWT0)
+			else
 			{
 				index = 0;
 				rsp->hdr.packType = pack;
 				rsp->hdr.packLen = 0;
 				OVRLAP = (rsp->hdr.packType > PACK_DCT0) ? 7 : 3;
 				state++;
-			}
-			else
-			{
-				index = 0;
-				rsp->hdr.packType = pack;
-				rsp->hdr.packLen = 0;
-				OVRLAP = (rsp->hdr.packType > PACK_FWT0) ? 7 : 3;
-				state = 5;
 			};
 
 			*pPORTFIO_CLEAR = 1<<7;
@@ -1276,15 +1268,11 @@ static void UpdateCM()
 
 			for (u32 i = FDCT_N; i > 0; i--)
 			{
-				FDCT_DATA t = p[0];
+				FDCT_DATA t = *(p--);
 
 				if (t < 0) t = -t;
 
-				if (t < lim)
-				{
-					*(p--) = 0;
-				}
-				else
+				if (t > lim)
 				{
 					packLen = i;
 					break;
@@ -1334,54 +1322,6 @@ static void UpdateCM()
 
 				state = 0;
 			};
-
-			*pPORTFIO_CLEAR = 1<<7;
-
-			break;
-		};
-
-		case 5: // Wavelet transform +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-		{
-			RspCM *rsp = (RspCM*)dsc->data; 
-
-			*pPORTFIO_SET = 1<<7;
-
-			i16 *p = (i16*)(rsp->data + index);
-
-			for (u32 n = 0; n < FWT_N; n++) fwt_w[n] = *(p++);
-
-			*pPORTFIO_CLEAR = 1<<7;
-			*pPORTFIO_SET = 1<<7;
-
-			//u32 t = cli();
-
-			Wavelet(fwt_w, FWT_LOG2N);
-
-			//sti(t);
-
-			*pPORTFIO_CLEAR = 1<<7;
-
-			if (sensVars[rsp->hdr.sensType].pack > PACK_FWT0) 
-			{
-				for (u32 n = FWT_N*3/4; n < FWT_N; n++) fwt_w[n] = 0;
-
-				InvWavelet(fwt_w, FWT_LOG2N);
-			};
-
-			*pPORTFIO_SET = 1<<7;
-
-			rsp->hdr.packType = 0;
-			rsp->hdr.packLen = 0;
-
-			p = (i16*)(rsp->data + index);
-
-			for (u32 n = 0; n < FWT_N; n++) *(p++) = -fwt_w[n];
-
-			//dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
-
-			processedPPI.Add(dsc);
-
-			state = 0;
 
 			*pPORTFIO_CLEAR = 1<<7;
 

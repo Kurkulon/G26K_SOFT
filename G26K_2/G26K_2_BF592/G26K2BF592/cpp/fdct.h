@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
+//#include <stdbool.h>
+//#include <stddef.h>
 #include "types.h"
 
 #define FDCT_LOG2N 6

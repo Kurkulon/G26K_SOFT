@@ -3,22 +3,21 @@
 
 #include "types.h"
 
-#define FWT_LOG2N 7
-#define FWT_N (1UL<<FWT_LOG2N)
+#define FWT_LOG2N	6
+#define FWT_MIN		2
+#define FWT_DAUB1
 
-#define FWT_DAUB8
+//#define FWT_FLOAT
 
-#define FWT_INTEGER
+#ifndef FWT_FLOAT
 
-#ifdef FWT_INTEGER
-
-typedef i32 FWT_DATA;
+typedef i16 FWT_DATA;
 typedef i16 FWT_FLTR;
 
-#define FWT_FIXBITS 14
+#define FWT_FIXBITS 10
 
 #define FLOAT_FWT(x)	((int)((x)*(1<<FWT_FIXBITS)+.5))
-#define MULT_FWT(x)	(((x)+(1<<(FWT_FIXBITS-1)))>>FWT_FIXBITS)
+#define MULT_FWT(x)		(((x)+(1<<(FWT_FIXBITS-1)))>>FWT_FIXBITS)
 
 #else
 
