@@ -11,7 +11,8 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#define PPI_BUF_LEN (1024+64)
+#define PPI_MAX_LEN (1024)
+#define PPI_BUF_LEN (PPI_MAX_LEN+64)
 #define SENS_NUM	2
 
 struct DSCPPI

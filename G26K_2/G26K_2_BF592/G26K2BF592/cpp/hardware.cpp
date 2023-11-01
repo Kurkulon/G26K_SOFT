@@ -220,7 +220,7 @@ static void SetPPI(PPI &ppi, SENS &sens, u16 sensType, bool forced)
 {
 	ppi.len = sens.sl;
 
-	if (ppi.len < 16) ppi.len = 16;
+	if (ppi.len > PPI_MAX_LEN) ppi.len = PPI_MAX_LEN; else if (ppi.len < 16) ppi.len = 16;
 
 	if (ppi.sd != sens.sd || ppi.st != sens.st || forced)
 	{

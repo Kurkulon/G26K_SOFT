@@ -154,7 +154,11 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.st == 0) sens.st = 1;
 
-		if (sens.pack >= PACK_DCT0) sens.sl = (sens.sl + FDCT_N - 1) & ~(FDCT_N-1);
+		if (sens.pack >= PACK_DCT0)
+		{
+			u16 n = (sens.sl + FDCT_N - 1) / FDCT_N;
+			sens.sl = (sens.sl + FDCT_N*3/4 + (n-1)*7) & ~(FDCT_N-1);
+		};
 
 		if (sens.fi_Type == 1)
 		{
@@ -165,19 +169,6 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 				u16 f = (fr > 400) ? 400 : fr;
 
 				s = (20000/8 + f/2) / f;
-			};
-
-			sens.st = s;
-		}
-		else if (sens.fi_Type == 2)
-		{
-			if (fr != sens.freq || forced)
-			{
-				fr = sens.freq;
-
-				u16 f = (fr > 400) ? 400 : fr;
-
-				s = (20000/4 + f/2) / f;
 			};
 
 			sens.st = s;
@@ -1244,7 +1235,7 @@ static void UpdateCM()
 
 			//fdct_w[0] = 0;
 
-			byte shift = 5 - (sensVars[rsp->hdr.sensType].pack- PACK_DCT0);
+			byte shift = 5 - (sensVars[rsp->hdr.sensType].pack - PACK_DCT0);
 
 			FDCT_DATA max = 0;
 			 
@@ -1258,13 +1249,19 @@ static void UpdateCM()
 			};
 
 			FDCT_DATA *p = fdct_w + FDCT_N - 1;
-			FDCT_DATA lim = max >> shift;
+			FDCT_DATA lim = max;
+			
+			//if (/*shift < 5 && */lim < FDCT_N*8) lim = FDCT_N*8;
+
+			lim >>= shift;
+
+			if (lim < 16) lim = 16;
 
 			scale = 0;
 
 			while (max > 32000) { max /= 2; scale += 1; };
 
-			packLen = FDCT_N;
+			packLen = 8;
 
 			for (u32 i = FDCT_N; i > 0; i--)
 			{
