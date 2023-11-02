@@ -55,6 +55,10 @@ struct SensVars
 	u16 fi_type;
 	u16 pack;
 	u16 fragLen;
+	u16 freq;
+	u16 st;
+	u16 packLen;
+
 };
 
 static SensVars sensVars[3] = {0}; //{{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
@@ -143,14 +147,10 @@ static const u16 adpcmima_0416_stepsize_tab[89] = {
 
 static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 {
-	static u16 freq[SENS_NUM] = {0};
-	static u16 st[SENS_NUM] = {0};
-
 	for (byte n = 0; n < SENS_NUM; n++)
 	{
 		SENS &sens = v->sens[n];
-		u16 &fr = freq[n];
-		u16 &s = st[n];
+		SensVars &sv = sensVars[n];
 
 		if (sens.st == 0) sens.st = 1;
 
@@ -160,19 +160,24 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 			sens.sl = (sens.sl + FDCT_N*3/4 + (n-1)*7) & ~(FDCT_N-1);
 		};
 
-		if (sens.fi_Type == 1)
+		if (sv.freq != sens.freq || forced)
 		{
-			if (fr != sens.freq || forced)
-			{
-				fr = sens.freq;
+			sv.freq = sens.freq;
 
-				u16 f = (fr > 400) ? 400 : fr;
+			u16 f = (sv.freq > 400) ? 400 : sv.freq;
 
-				s = (20000/8 + f/2) / f;
-			};
+			sv.st = (20000/8 + f/2) / f;
 
-			sens.st = s;
+			sv.packLen = sv.freq*sens.st*13/(65536/FDCT_N);
+
+			if (sv.packLen > FDCT_N) sv.packLen = FDCT_N;
 		};
+
+		if (sv.packLen == 0) sv.packLen = FDCT_N;
+
+		if (sens.fi_Type == 1) sens.st = sv.st;
+
+		if (sens.st == 0) sens.st = 1;
 	};
 
 	SetDspVars(v);
@@ -1238,8 +1243,11 @@ static void UpdateCM()
 			byte shift = 5 - (sensVars[rsp->hdr.sensType].pack - PACK_DCT0);
 
 			FDCT_DATA max = 0;
+
+			packLen = sensVars[rsp->hdr.sensType].packLen;
+			packLen = (packLen+1) & ~1;
 			 
-			for (u32 i = 0; i < FDCT_N; i++)
+			for (u32 i = 1; i < packLen; i++)
 			{
 				FDCT_DATA t = fdct_w[i];
 
@@ -1248,22 +1256,22 @@ static void UpdateCM()
 				if (t > max) max = t;
 			};
 
-			FDCT_DATA *p = fdct_w + FDCT_N - 1;
+			FDCT_DATA *p = fdct_w + packLen - 1;
 			FDCT_DATA lim = max;
 			
 			//if (/*shift < 5 && */lim < FDCT_N*8) lim = FDCT_N*8;
 
 			lim >>= shift;
 
-			if (lim < 16) lim = 16;
+			if (lim < 8) lim = 8;
 
 			scale = 0;
 
 			while (max > 32000) { max /= 2; scale += 1; };
 
-			packLen = 8;
+			//packLen = 8;
 
-			for (u32 i = FDCT_N; i > 0; i--)
+			for (u32 i = packLen; i > 0; i--)
 			{
 				FDCT_DATA t = *(p--);
 

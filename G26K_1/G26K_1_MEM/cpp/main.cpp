@@ -12,6 +12,8 @@
 
 #include "SEGGER_RTT.h"
 
+#include <string.h>
+
 #ifdef WIN32
 
 #include <conio.h>
@@ -27,7 +29,10 @@ static const bool __WIN32__ = false;
 
 #endif
 
-enum { VERSION = 0x106 };
+enum { VERSION	= 0x106 }; // Версия телеметрии
+enum { FIRMWARE = 0x106 }; // Версия прошивки
+
+extern "C" char _Firmware_str[];
 
 //#pragma O3
 //#pragma Otime
@@ -963,13 +968,24 @@ Ptr<REQ> CreateBootMotoReq03()
 
 static u32 InitRspMan_00(__packed u16 *data)
 {
-	__packed u16 *start = data;
-
-	*(data++)	= (manReqWord & manReqMask) | 0;
-	*(data++)	= mv.numDevice;
-	*(data++)	= verDevice;
+	//__packed u16 *start = data;
 	
-	return data - start;
+	DataPointer p(data); 
+
+	*(p.w++)	= (manReqWord & manReqMask) | 0;
+	*(p.w++)	= mv.numDevice;
+	*(p.w++)	= verDevice;
+	*(p.w++)	= FIRMWARE;
+
+	u16 len = strlen(_Firmware_str);
+
+	len = (len+1) & ~2;
+
+	*(p.w++)	= len / 2;
+
+	for (u16 i = 0; i < len; i++) *(p.b++) = _Firmware_str[i];
+	
+	return p.w - data;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -989,10 +1005,10 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	InitRspMan_00(manTrmData);
+	len = InitRspMan_00(manTrmData);
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 3;
+	mtb->len1 = len;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
