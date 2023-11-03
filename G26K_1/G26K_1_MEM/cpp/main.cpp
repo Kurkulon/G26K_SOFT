@@ -972,18 +972,18 @@ static u32 InitRspMan_00(__packed u16 *data)
 	
 	DataPointer p(data); 
 
-	*(p.w++)	= (manReqWord & manReqMask) | 0;
-	*(p.w++)	= mv.numDevice;
-	*(p.w++)	= verDevice;
-	*(p.w++)	= FIRMWARE;
-
 	u16 len = strlen(_Firmware_str);
 
 	len = (len+1) & ~2;
 
-	*(p.w++)	= len / 2;
-
-	for (u16 i = 0; i < len; i++) *(p.b++) = _Firmware_str[i];
+	*(p.w++)	= (manReqWord & manReqMask) | 0;				//1. ответное слово
+	*(p.w++)	= mv.numDevice;									//2. номер прибора	(мен€ет пользователь)
+	*(p.w++)	= FIRMWARE;										//3. верси€ прошивки
+	*(p.w++)	= 0x100;										//4. верси€ структуры идентификатора 0х0100
+	*(p.w++)	= 0;											//5. идентификатор 0х0001 (мен€ет пользователь)
+	*(p.w++)	= verDevice;									//6. верси€ телеметрии (1.6)
+	*(p.w++)	= len / 2;										//7.  ол-во слов строки идентификации
+	for (u16 i = 0; i < len; i++) *(p.b++) = _Firmware_str[i];	//8.... —трока идентификации (char*2) 
 	
 	return p.w - data;
 }
