@@ -1198,6 +1198,8 @@ static void UpdateCM()
 				rsp->hdr.packType = pack;
 				rsp->hdr.packLen = 0;
 				OVRLAP = (rsp->hdr.packType > PACK_DCT0) ? 7 : 3;
+				dsc->dataLen -= rsp->hdr.sl;
+				rsp->hdr.sl += 32;
 				state++;
 			};
 
@@ -1321,7 +1323,7 @@ static void UpdateCM()
 			}
 			else
 			{
-				dsc->dataLen = dsc->dataLen - rsp->hdr.sl + rsp->hdr.packLen;
+				dsc->dataLen += rsp->hdr.packLen;
 
 				rsp->hdr.sl = index + OVRLAP;
 
