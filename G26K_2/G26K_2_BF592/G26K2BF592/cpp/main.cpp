@@ -220,14 +220,7 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 			t = (t > sv.delay) ? (t - sv.delay) : 0;
 
-			if (t != 0)
-			{
-				sv.deadIndx = (t + rs.st/2) / rs.st;
-			}
-			else
-			{
-				sv.deadIndx = 0;
-			};
+			sv.deadIndx = (t != 0) ? ((t + rs.st/2) / rs.st) : 0;
 		};
 	};
 
@@ -269,67 +262,6 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-//static bool RequestFunc_05(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
-//{
-//	const ReqDsp05 *req = (ReqDsp05*)data;
-//	static RspDsp05 rsp;
-//
-//	if (len < sizeof(ReqDsp05)/2) return  false;
-//
-//	rsp.rw = req->rw;
-//	rsp.flashLen = flashLen;
-//	rsp.flashCRC = flashCRC;
-//
-//	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-//
-//	wb->data = &rsp;
-//	wb->len = sizeof(rsp);
-//
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//static bool RequestFunc_06(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
-//{
-//	const ReqDsp06 *req = (ReqDsp06*)data;
-//	static RspDsp06 rsp;
-//
-//	ERROR_CODE Result = NO_ERR;
-//
-//	u16 xl = req->len + sizeof(ReqDsp06) - sizeof(req->data);
-//
-//	if (len < xl/2) return  false;
-//
-//	u32 stAdr = FLASH_START_ADR + req->stAdr;
-//
-//	u16 block = stAdr/4096;
-//
-//	if (lastErasedBlock != block)
-//	{
-//		Result = EraseBlock(block);
-//		lastErasedBlock = block;
-//	};
-//
-//	if (Result == NO_ERR)
-//	{
-//		Result = at25df021_Write(req->data, stAdr, req->len, true);
-//	};
-//
-//	rsp.res = Result;
-//
-//	rsp.rw = req->rw;
-//
-//	rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
-//
-//	wb->data = &rsp;
-//	wb->len = sizeof(rsp);
-//
-//	return true;
-//}
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static void RequestFunc_07(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 {
@@ -360,8 +292,6 @@ static bool RequestFunc(ComPort::WriteBuffer *wb, ComPort::ReadBuffer *rb)
 	switch (t)
 	{
 		case 1: 	r = RequestFunc_01(p, len, wb); break;
-//		case 5: 	r = RequestFunc_05(p, len, wb); break;
-//		case 6: 	r = RequestFunc_06(p, len, wb); break;
 		case 7: 		RequestFunc_07(p, len, wb); break;
 	};
 
