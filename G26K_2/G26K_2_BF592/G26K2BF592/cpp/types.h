@@ -50,6 +50,22 @@ inline bool dIsValid(float v) { return (((u32*)&v)[2] & 0x7FF0) != 0x7FF0; }
 #define GD(adr, t, i) (*(((t*)adr)+i))
 #define GB(adr,i) (*(((byte*)adr)+i))
 
+#define LIM(v, min, max)	(((v) < (min)) ? (min) : (((v) > (max)) ? (max) : (v)))
+#define MIN(a, b)			(((a) < (b)) ? (a) : (b))
+#define MAX(a, b)			(((a) >= (b)) ? (a) : (b))
+
+#if defined(CPU_BF592) || defined(__ADSPBLACKFIN__)
+	#pragma always_inline
+	inline i32	ABS(i32 v)			{ return __builtin_abs(v); }
+	#pragma always_inline
+	inline i32	Max32(i32 a, i32 b)	{ return __builtin_max(a,b); }
+	#pragma always_inline
+	inline i32	Min32(i32 a, i32 b)	{ return __builtin_min(a,b); }
+#else
+	__forceinline i32	ABS(i32 v)			{ return (v<0) ? -v : v; }
+	__forceinline i32	Max32(i32 a, i32 b)	{ return MAX(a,b); }
+	__forceinline i32	Min32(i32 a, i32 b)	{ return MIN(a,b); }
+#endif
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 union DataCRC

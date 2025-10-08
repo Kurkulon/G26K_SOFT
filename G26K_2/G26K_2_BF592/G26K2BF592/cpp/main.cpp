@@ -4,7 +4,8 @@
 //#include "at25df021.h"
 #include "list.h"
 #include "fdct.h"
-#include "wavelet.h"
+#include "mqcoder.h"
+#include "arith32.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -57,8 +58,8 @@ struct SensVars
 	u16 fragLen;
 	u16 freq;
 	u16 st;
-	u16 packLen;
-
+	u16 dctLB;
+	u16 dctRB;
 };
 
 static SensVars sensVars[3] = {0}; //{{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
@@ -154,6 +155,8 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.st == 0) sens.st = 1;
 
+		//if (sens.pack == PACK_NO) sens.pack = PACK_BIT12;
+
 		if (sens.pack >= PACK_DCT0)
 		{
 			u16 n = (sens.sl + FDCT_N - 1) / FDCT_N;
@@ -169,15 +172,16 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 			sv.st = (20000/8 + f/2) / f;
 		};
 
-		if (sv.packLen == 0) sv.packLen = FDCT_N;
+		//if (sv.packLen == 0) sv.packLen = FDCT_N;
 
 		if (sens.fi_Type == 1) sens.st = sv.st;
 
 		if (sens.st == 0) sens.st = 1;
 
-		sv.packLen = sv.freq*sens.st*13/(65536/FDCT_N);
+		sv.dctRB = sv.freq*sens.st*(19-(sens.pack-PACK_DCT0)*3)/(65536/FDCT_N);
+		sv.dctLB = sv.freq*sens.st*(4+sens.pack-PACK_DCT0)/(0x20000/FDCT_N);
 
-		if (sv.packLen > FDCT_N) sv.packLen = FDCT_N;
+		if (sv.dctRB > (FDCT_N-1)) sv.dctRB = FDCT_N-1;
 	};
 
 	SetDspVars(v);
@@ -844,11 +848,11 @@ static void ProcessDataCM(DSCPPI &dsc)
 	//rsp.fi_amp		= dsc.fi_amp;
 	//rsp.fi_time		= dsc.fi_time;
 	//rsp.gain		= dsc.gain;
-	//rsp.st 			= dsc.sampleTime;			//15. Шаг оцифровки
-	//rsp.sl 			= dsc.len;					//16. Длина оцифровки (макс 2028)
-	//rsp.sd 			= dsc.sampleDelay;			//17. Задержка оцифровки  
-	rsp.packType	= 0;						//18. Упаковка
-	rsp.packLen		= 0;						//19. Размер упакованных данных
+	//rsp.st 			= dsc.sampleTime;				//15. Шаг оцифровки
+	//rsp.sl 			= dsc.len;						//16. Длина оцифровки (макс 2028)
+	//rsp.sd 			= dsc.sampleDelay;				//17. Задержка оцифровки  
+	rsp.packType	= sensVars[rsp.sensType].pack;	//18. Упаковка
+	rsp.packLen		= 0;								//19. Размер упакованных данных
 	
 	//u32 t = dsc.shaftTime - dsc.shaftPrev;
 
@@ -876,18 +880,24 @@ static void FragDataCM(DSCPPI *dsc)
 
 	u16 fragLen = sensVars[rsp.hdr.sensType].fragLen;
 
+	//if (sensVars[rsp.hdr.sensType].pack >= PACK_DCT0) fragLen += FDCT_N/2;
+
 	u16 stind = dsc->fi_index;
 
-	if (fragLen == 0 || stind >= rsp.hdr.sl) return;
+	stind = (stind > 8) ? (stind-8) : 0;
 
-	if (fragLen > rsp.hdr.sl)
+	u16 sl = rsp.hdr.sl;// + FDCT_N;
+
+	if (fragLen == 0 || stind >= sl) return;
+
+	if (fragLen > sl)
 	{
-		fragLen = rsp.hdr.sl;
+		fragLen = sl;
 		stind = 0;
 	}
-	else if ((stind + fragLen) > rsp.hdr.sl)
+	else if ((stind + fragLen) > sl)
 	{
-		stind = rsp.hdr.sl - fragLen;
+		stind = sl - fragLen;
 	};
 
 	if (stind > 0)
@@ -895,7 +905,7 @@ static void FragDataCM(DSCPPI *dsc)
 		u16 *s = rsp.data + stind;
 		u16 *d = rsp.data;
 
-		for (u32 i = fragLen; i > 0; i--) *(d++) = *(s++);
+		for (u32 i = fragLen+FDCT_N; i > 0; i--) *(d++) = *(s++);
 
 		rsp.hdr.sd += stind * rsp.hdr.st;
 	};
@@ -1078,6 +1088,7 @@ static void UpdateCM()
 	static byte state = 0;
 	static DSCPPI *dsc = 0;
 	static u16 packLen = 0;
+	//static u16 dctLB = 0;
 	static u16 index = 0;
 	static byte OVRLAP = 3;
 	static u16 scale = 0;
@@ -1109,11 +1120,11 @@ static void UpdateCM()
 	
 			*pPORTFIO_SET = 1<<7;
 			
-			u16 pack = sensVars[rsp->hdr.sensType].pack;
+			u16 pack = rsp->hdr.packType;
 
 			if (pack < PACK_DCT0)
 			{
-				PackDataCM(dsc, sensVars[rsp->hdr.sensType].pack);
+				PackDataCM(dsc, pack);
 
 				//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
 				//dsc->dataLen += 1;
@@ -1125,11 +1136,11 @@ static void UpdateCM()
 			else
 			{
 				index = 0;
-				rsp->hdr.packType = pack;
+				//rsp->hdr.packType = pack;
 				rsp->hdr.packLen = 0;
 				OVRLAP = (rsp->hdr.packType > PACK_DCT0) ? 7 : 3;
 				dsc->dataLen -= rsp->hdr.sl;
-				rsp->hdr.sl += 32;
+				//rsp->hdr.sl += 32;
 				state++;
 			};
 
@@ -1170,55 +1181,52 @@ static void UpdateCM()
 
 			*pPORTFIO_SET = 1<<7;
 
-			//fdct_w[0] = 0;
+			byte shift = 4 - (rsp->hdr.packType - PACK_DCT0);
 
-			byte shift = 3 - (sensVars[rsp->hdr.sensType].pack - PACK_DCT0);
+			u16 dctRB = sensVars[rsp->hdr.sensType].dctRB;
 
-			packLen = sensVars[rsp->hdr.sensType].packLen;
-			packLen = (packLen+1) & ~1;
-			 
+			dctRB = MIN(dctRB, FDCT_N-1);
+
 			FDCT_DATA max = 0;
-
-			for (u32 i = 1; i < packLen; i++)
+			FDCT_DATA avrmax = 0;
+			FDCT_DATA sum = 0;
+			
+			for (u32 n = 0, i = 1; i <= dctRB; i++,n++)
 			{
-				FDCT_DATA t = fdct_w[i];
+				FDCT_DATA t = ABS(fdct_w[i]);
 
-				if (t < 0) t = -t;
+				sum += t; 
+				//if (t < 0) t = -t;
 
-				if (t > max) max = t;
+				max = Max32(max,t); // if (t > max) max = t;
+				if ((n&7) == 0) avrmax = Max32(avrmax, sum), sum = 0;
 			};
 
-			FDCT_DATA *p = fdct_w + packLen - 1;
-			FDCT_DATA lim = max;
+			avrmax = Max32(avrmax, sum);
+
+			//FDCT_DATA *p = fdct_w + packLen - 1;
+			FDCT_DATA lim = avrmax/8;
 			
 			lim = (i32)lim >> shift;
 
 			scale = 0;
 
-			if (fdct_w[0] > max) max = fdct_w[0];
+			max = Max32(max, ABS(fdct_w[0]));
 
 			while (max > 32000) { max /= 2; scale += 1; };
 
-			u32 xx = 8<<scale;
+			u32 xx = 1<<scale;
 
 			if (lim < xx) lim = xx;
 
-			//packLen = 8;
-
-			for (u32 i = packLen; i > 0; i--)
+			for (u32 i = dctRB; i > 0; i--)
 			{
-				FDCT_DATA t = *(p--);
+				FDCT_DATA t = ABS(fdct_w[i]);
 
-				if (t < 0) t = -t;
-
-				if (t > lim)
-				{
-					packLen = i;
-					break;
-				};
+				if (t > lim) { dctRB = i; break; };
 			};
 
-			packLen = (packLen+1) & ~1;
+			packLen = (dctRB + 2) & ~1;
 
 			*pPORTFIO_CLEAR = 1<<7;
 
@@ -1247,7 +1255,7 @@ static void UpdateCM()
 
 			index += FDCT_N - OVRLAP;
 
-			if ((index+FDCT_N) <= rsp->hdr.sl)
+			if ((index+OVRLAP) < rsp->hdr.sl)
 			{
 				state = 2;
 			}

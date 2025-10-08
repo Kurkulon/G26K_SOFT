@@ -3,6 +3,7 @@
   
 #include "types.h"
 #include "core.h"
+#include "fdct.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -12,39 +13,8 @@
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #define PPI_MAX_LEN (1024)
-#define PPI_BUF_LEN (PPI_MAX_LEN+64)
+#define PPI_BUF_LEN (PPI_MAX_LEN+FDCT_N)
 #define SENS_NUM	2
-
-struct DSCPPI
-{
-	DSCPPI	*next;
-	//u32		mmsec;
-	u32		rotCount;
-	u32		rotMMSEC;
-	//u32		shaftTime;
-	u32		shaftPrev;
-	u32		fireIndex;
-	u16		ppidelay;
-	//u16		ppiclkdiv;
-	//u16		motoCount;
-	//u16		shaftCount;
-	//u16		sensType;
-	//u16		gain;
-	u16		fi_index;
-	u16		dataLen;
-	//u16		offset;
-	//u16		sampleTime;
-	//u16		sampleDelay;
-	//u16		maxAmp;
-	//u16		fi_amp;
-	//u16		fi_time;
-	//u16		ax;
-	//u16		ay;
-	//u16		az;
-	//u16		at;
-	u16		busy;
-	u16		data[PPI_BUF_LEN];
-};
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -101,6 +71,7 @@ struct PackDCT
 {
 	byte	len;
 	byte	scale;
+
 	byte	data[16];
 };
 
@@ -132,6 +103,39 @@ struct RspIM
 };
 
 #pragma pack()
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+struct DSCPPI
+{
+	DSCPPI	*next;
+	//u32		mmsec;
+	u32		rotCount;
+	u32		rotMMSEC;
+	//u32		shaftTime;
+	u32		shaftPrev;
+	u32		fireIndex;
+	u16		ppidelay;
+	//u16		ppiclkdiv;
+	//u16		motoCount;
+	//u16		shaftCount;
+	//u16		sensType;
+	//u16		gain;
+	u16		fi_index;
+	u16		dataLen;
+	//u16		offset;
+	//u16		sampleTime;
+	//u16		sampleDelay;
+	//u16		maxAmp;
+	//u16		fi_amp;
+	//u16		fi_time;
+	//u16		ax;
+	//u16		ay;
+	//u16		az;
+	//u16		at;
+	u16		busy;
+	u16		data[PPI_BUF_LEN+sizeof(RspHdrCM)/2];
+};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

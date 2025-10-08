@@ -400,7 +400,7 @@ static void ReadPPI(PPI &ppi)
 			_dsc1.DMACFG	= FLOW_LARGE|NDSIZE_9|WDSIZE_16|SYNC|WNR|DMAEN;
 
 			_dsc2.SA		= rsp.data;
-			_dsc2.XCNT		= ppi.len + 32;
+			_dsc2.XCNT		= ppi.len + FDCT_N;
 			_dsc2.XMOD		= 2;
 			_dsc2.DMACFG	= FLOW_STOP|DI_EN|WDSIZE_16|SYNC|WNR|DMAEN;
 
