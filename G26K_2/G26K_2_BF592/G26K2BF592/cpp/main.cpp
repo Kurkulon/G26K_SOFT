@@ -155,13 +155,13 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.st == 0) sens.st = 1;
 
-		//if (sens.pack == PACK_NO) sens.pack = PACK_BIT12;
+		if (sens.pack == PACK_NO) sens.pack = PACK_BIT12;
 
-		if (sens.pack >= PACK_DCT0)
-		{
-			u16 n = (sens.sl + FDCT_N - 1) / FDCT_N;
-			sens.sl = (sens.sl + FDCT_N*3/4 + (n-1)*7) & ~(FDCT_N-1);
-		};
+		//if (sens.pack >= PACK_DCT0)
+		//{
+		//	u16 n = (sens.sl + FDCT_N - 1) / FDCT_N;
+		//	sens.sl = (sens.sl + FDCT_N*3/4 + (n-1)*7) & ~(FDCT_N-1);
+		//};
 
 		if (sv.freq != sens.freq || forced)
 		{
@@ -400,7 +400,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	{
 		i32 *ab = avrBuf;
 
-		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+FDCT_N; i > 0; i--)
 		{
 			i16 v = d[0] - 2048;
 
@@ -413,7 +413,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	{
 		//i32 av = 0;
 
-		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+FDCT_N; i > 0; i--)
 		{
 			i16 v = (d[0] + d[1])/2 - 2048;
 
@@ -432,7 +432,7 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 		i32 av = 0;
 		i32 *ab = avrBuf;
 
-		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
+		for (u32 i = rsp.hdr.sl+FDCT_N; i > 0; i--)
 		{
 			i16 v = (d[2] - d[0] + d[3] - d[1])/4;// - 2048;
 
@@ -467,9 +467,22 @@ static void Filtr_Data(DSCPPI &dsc, u32 filtrType)
 	//}
 	else
 	{
-		for (u32 i = rsp.hdr.sl+32; i > 0; i--)
+		u32 sum = 0;
+		u16 *p = d;
+
+		for (u32 i = rsp.hdr.sl+FDCT_N; i > 0; i--) sum += *p++;
+
+		sum /= rsp.hdr.sl+FDCT_N;
+
+		if (sum < 1948 || sum > 2148) sum = 2048;
+
+		//sum =  Min32(Max32(sum, 2048-100), 2048+100);
+
+		for (u32 i = rsp.hdr.sl+FDCT_N; i > 0; i--)
 		{
-			*d = d[0] - 2048; d++;
+			i32 t = (i16)d[0];
+			t -= sum;
+			*d++ = Min32(Max32(t, -2048), 2047);
 		};
 	};
 }
@@ -1083,6 +1096,40 @@ static void Pack_DCT_uLaw(FDCT_DATA *s, byte *d, u16 len, byte scale)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static void Pack_uLaw12_FDCT(FDCT_DATA* src, byte* dst, u16 len, u16 scale)
+{
+	byte sign, exponent, mantissa, sample_out;
+
+	for (; len > 0; len--)
+	{
+		u16 sample_in = (i16)((i32)(*(src++)) >> scale);
+
+		sign = 0;
+
+		if ((i16)sample_in < 0)
+		{
+			sign = 0x80;
+			sample_in = -sample_in;
+		};
+
+		//if (sample_in > ulaw_0816_clip) sample_in = ulaw_0816_clip;
+
+		sample_in += 0x10;//ulaw_0816_bias;
+
+		exponent = ulaw_0816_expenc[(sample_in >> 4) & 0xff];
+
+		mantissa = (sample_in >> (exponent + 0)) & 0xf;
+
+		sample_out = (sign | (exponent << 4) | mantissa);
+
+		//if (sample_out == 0) sample_out = 2;
+
+		*(dst++) = sample_out;
+	};
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static void UpdateCM()
 {
 	static byte state = 0;
@@ -1124,6 +1171,9 @@ static void UpdateCM()
 
 			if (pack < PACK_DCT0)
 			{
+				//rsp->hdr.sl += FDCT_N;
+				//dsc->dataLen += FDCT_N;
+
 				PackDataCM(dsc, pack);
 
 				//dsc->data[dsc->dataLen] = GetCRC16(&rsp->hdr, sizeof(rsp->hdr));
@@ -1213,7 +1263,7 @@ static void UpdateCM()
 
 			max = Max32(max, ABS(fdct_w[0]));
 
-			while (max > 32000) { max /= 2; scale += 1; };
+			while (max > 2047) { max /= 2; scale += 1; };
 
 			u32 xx = 1<<scale;
 
@@ -1248,7 +1298,7 @@ static void UpdateCM()
 			//*pPORTFIO_CLEAR = 1<<7;
 			*pPORTFIO_SET = 1<<7;
 
-			Pack_DCT_uLaw(fdct_w, pdct->data, packLen, scale);
+			Pack_uLaw12_FDCT(fdct_w, pdct->data, packLen, scale);
 			pdct->len = packLen;
 			pdct->scale = scale;
 			rsp->hdr.packLen += 1 + packLen/2;
