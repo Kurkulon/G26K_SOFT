@@ -541,7 +541,7 @@ static void Filtr_Wavelet(DSCPPI &dsc, u16 descrIndx)
 		rsp.hdr.fi_time  = (t < 0xFFFF) ? t : 0xFFFF;
 		rsp.hdr.fi_amp = max;
 		rsp.hdr.maxAmp = max;
-		dsc.fi_index = imax;
+		dsc.fi_index = (imax > 8) ? (imax-8) : 0;
 	}
 	else
 	{
@@ -597,7 +597,7 @@ static void Filtr_Wavelet2(DSCPPI &dsc, u16 descrIndx)
 		rsp.hdr.fi_time  = (t < 0xFFFF) ? t : 0xFFFF;
 		rsp.hdr.fi_amp = max;
 		rsp.hdr.maxAmp = max;
-		dsc.fi_index = imax;
+		dsc.fi_index = (imax > 8) ? (imax-8) : 0;
 	}
 	else
 	{
@@ -897,8 +897,6 @@ static void FragDataCM(DSCPPI *dsc)
 
 	u16 stind = dsc->fi_index;
 
-	stind = (stind > 8) ? (stind-8) : 0;
-
 	u16 sl = rsp.hdr.sl;// + FDCT_N;
 
 	if (fragLen == 0 || stind >= sl) return;
@@ -1183,6 +1181,45 @@ static void UpdateCM()
 
 				state = 0;
 			}
+			//else if (pack == PACK_ADPCM)
+			//{
+			//	DSCPPI *mqdsc = AllocDscPPI();
+
+			//	if (mqdsc == 0) break;
+
+			//	RspCM *mqrsp = (RspCM*)mqdsc->data; 
+
+			//	mqrsp->hdr = rsp->hdr;
+
+			//	u16 *p = rsp->data;
+
+			//	for (u16 i = 0; i < rsp->hdr.sl; i++)
+			//	{
+			//		i16 t = *p;
+			//		*p++ = (t << 1) ^ (t>>15);
+			//	};
+
+			//	mqrsp->hdr.packType = PACK_ADPCM;
+			//	mqrsp->hdr.packLen = MQcompressFast((byte*)rsp->data, rsp->hdr.sl*2, (byte*)mqrsp->data);
+			//	//mqrsp->hdr.packLen = ArithEncode32((byte*)rsp->data, rsp->hdr.sl*2, (byte*)mqrsp->data, sizeof(mqrsp->data));
+
+			//	if (mqrsp->hdr.packLen & 1)
+			//	{
+			//		((byte*)mqrsp->data)[mqrsp->hdr.packLen] = 0xFF;
+
+			//		mqrsp->hdr.packLen += 1;
+			//	};
+
+			//	mqrsp->hdr.packLen /= 2;
+
+			//	mqdsc->dataLen = dsc->dataLen - rsp->hdr.sl + mqrsp->hdr.packLen;
+
+			//	processedPPI.Add(mqdsc);
+
+			//	FreeDscPPI(dsc); dsc = 0;
+
+			//	state = 0;
+			//}
 			else
 			{
 				index = 0;

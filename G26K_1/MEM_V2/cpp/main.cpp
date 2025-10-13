@@ -1,7 +1,7 @@
-#include <xtrap.h>
-#include <flash.h>
-#include <CRC16.h>
-#include <CRC16_CCIT.h>
+//#include <xtrap.h>
+#include <FLASH\NandFlash.h>
+#include <CRC\CRC16.h>
+#include <CRC\CRC16_CCIT.h>
 #include <list.h>
 #include <PointerCRC.h>
 #include <SEGGER_RTT.h>

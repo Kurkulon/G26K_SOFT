@@ -1,17 +1,30 @@
+#include "hw_conf.h"
 #include <types.h>
 #include <core.h>
-#include <SEGGER_RTT.h>
+#include <SEGGER_RTT\SEGGER_RTT.h>
 #include <list.h>
-#include <flash.h>
+#include <FLASH\NandFlash.h>
 
 #include "hardware.h"
-#include "hw_conf.h"
 #include "hw_rtm.h"
 #include "hw_nand.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //#define NAND_SAMSUNG
 #define NAND_MICRON
+#define NANDFLASH_IMP_VERSION 2
+
+//#define NAND_READ_CRC_SOFT
+//#define NAND_READ_CRC_HW
+#define NAND_READ_CRC_PIO
+//#define NAND_WRITE_CRC_SOFT
+#define NAND_WRITE_CRC_HW
+//#define NAND_WRITE_CRC_PIO
+
+#define NAND_ECC_LEN 256
+#define NAND_ECC_SPARE
+//#define NAND_ECC_PAGE
+//#define NAND_ECC_PAGEBUF
 
 #define NAND_CHIP_BITS			3
 #define NAND_MAX_CHIP			(1<<NAND_CHIP_BITS)
@@ -25,8 +38,15 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static const bool verifyWritePage = false; // Проверка записаной страницы, путём чтения страницы и сравнения с буфером
-static const bool verifySpare = true;	// Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+#define NAND_VERIFY_WRITEPAGE		// Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+
+#ifndef NANDFLASH_IMP_VERSION
+static const bool verifyWritePage = false;		// Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+static const bool verifySpare = true;				// Проверка записаной страницы, путём чтения страницы и сравнения с буфером
+#endif
+
+static const bool readPageCheckSpareCRC = false;	// Проверка CRC при чтении страницы. Если CRC неправильная, то страница отбрасывается 
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -72,10 +92,10 @@ static const bool forceEraseWrite = true;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include <hw_nand_imp.h>
+#include <FLASH\hw_nand_imp.h>
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include <flash_imp.h>
+#include "FLASH\NandFlash_imp.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

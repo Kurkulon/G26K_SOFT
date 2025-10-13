@@ -9,7 +9,7 @@ version = Release
 
 curdir = $+ $(%cdrive):$(%cwd) $-
 hdir = cpp
-libdir = $(curdir)\..\..\..\G_LIBS_ARM
+libdir = $(curdir)\..\..\..\G_LIBS
 bindir = $(%ARMCC50BIN)
 
 !ifeq version Debug

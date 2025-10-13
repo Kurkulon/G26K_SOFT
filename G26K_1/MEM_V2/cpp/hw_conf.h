@@ -20,6 +20,10 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define TRAP_PACKET_VERSION	0x2
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #define __CONCAT1(s1)						s1
 #define __CONCAT2(s1,s2)					s1##s2
 #define __CONCAT3(s1,s2,s3)					s1##s2##s3
@@ -629,19 +633,19 @@
 
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define	UART0_DMA				DMA_CH0
-	#define	UART2_DMA				DMA_CH1
-	//#define						DMA_CH2
-	//#define						DMA_CH3
-	#define	NAND_MEMCOPY_DMA		DMA_CH4
-	#define	SPI_DMA					DMA_CH5
-	#define	DSP_DMA					DMA_CH6
-	#define	NAND_DMA				DMA_CH7
+	#define	UART0_DMA				0
+	#define	UART2_DMA				1
+	//#define						2
+	//#define						3
+	#define	NAND_MEMCOPY_DMA_CH		4
+	#define	SPI_DMA					5
+	#define	DSP_DMA					6
+	#define	NAND_DMA_CH				7
 
-	#define	I2C_DMA					DMA_CH8
-	#define	UART1_DMA				DMA_CH9
-	#define	CRC_DMA					DMA_CH10
-	//#define						DMA_CH11
+	#define	I2C_DMA					8
+	#define	UART1_DMA				9
+	#define	CRC_DMA					10
+	//#define						11
 
 	// ++++++++++++++	CCU4x	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

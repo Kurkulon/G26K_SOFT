@@ -5,7 +5,7 @@
 #include <time.h>
 #include <i2c.h>
 #include <spi.h>
-#include <manch.h>
+#include <MANCH\manch.h>
 
 #include "hw_nand.h"
 #include "hw_rtm.h"
