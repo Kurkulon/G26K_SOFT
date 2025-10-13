@@ -1,10 +1,10 @@
 #ifndef REQ_H__09_10_2014__10_31
 #define REQ_H__09_10_2014__10_31
 
-#include "ComPort.h"
+#include "ComPort\ComPort.h"
 
 #include "list.h"
-#include "flash.h"
+#include "FLASH\NandFlash.h"
 
 //struct Request
 //{

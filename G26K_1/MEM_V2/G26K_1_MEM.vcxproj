@@ -77,7 +77,7 @@
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_XMC48.axf</NMakeOutput>
     <NMakePreprocessorDefinitions>_DEBUG;__softfp=;CPU_XMC48;</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='XMC48_Release|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
@@ -87,7 +87,7 @@
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_XMC48.axf</NMakeOutput>
     <NMakePreprocessorDefinitions>__softfp=;CPU_XMC48</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SAME53_Debug|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
@@ -97,7 +97,7 @@
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_SAME53.axf</NMakeOutput>
     <NMakePreprocessorDefinitions>_DEBUG;__softfp=;CPU_SAME53;</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SAME53_Release|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
@@ -107,7 +107,7 @@
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_SAME53.axf</NMakeOutput>
     <NMakePreprocessorDefinitions>__softfp=;CPU_SAME53</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS\cpp;$(ARMCC50INC);</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win32_Debug|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
@@ -117,7 +117,7 @@
     <NMakeCleanCommandLine>%40del /Q $(OutDir)*.*</NMakeCleanCommandLine>
     <NMakeOutput>$(OutDir)G26K_WIN32.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>_DEBUG;__softfp=;WIN32</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS_ARM\cpp;C:\Program Files %28x86%29\Microsoft Visual Studio 8\VC\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(ProjectDir)..\..\..\G_LIBS\cpp;C:\Program Files %28x86%29\Microsoft Visual Studio 8\VC\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>

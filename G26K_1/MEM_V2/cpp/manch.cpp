@@ -5,7 +5,7 @@
 
 //#include "hardware.h"
 
-#include "SEGGER_RTT.h"
+#include "SEGGER_RTT\SEGGER_RTT.h"
 #include "hw_conf.h"
 #include "hardware.h"
 
@@ -16,6 +16,6 @@
 #endif
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include <manch_imp.h>
+#include <MANCH\manch_imp.h>
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

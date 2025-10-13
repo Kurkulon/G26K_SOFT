@@ -119,16 +119,16 @@
 
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define	NAND_DMA			DMA_CH0
-	#define	UART0_DMA			DMA_CH1
-	//#define	COM2_DMA			DMA_CH2
-	#define	UART2_DMA			DMA_CH3
-	#define	SPI_DMA_TX			DMA_CH4
-	#define	SPI_DMA_RX			DMA_CH5
-	#define	NAND_MEMCOPY_DMA	DMA_CH6
-	#define	I2C_DMA				DMA_CH7
-	//#define	DSP_DMA				DMA_CH30
-	#define	CRC_DMA				DMA_CH31
+	#define	NAND_DMA_CH			0
+	#define	UART0_DMA_CH		1
+	//#define	COM2_DMA		2
+	#define	UART2_DMA_CH		3
+	#define	SPI_DMA_TX_CH		4
+	#define	SPI_DMA_RX_CH		5
+	#define	NAND_MEMCOPY_DMA_CH	6
+	#define	I2C_DMA_CH			7
+	//#define	DSP_DMA			30
+	#define	CRC_DMA_CH			31
 
 	// ++++++++++++++	EVENT	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -383,9 +383,13 @@
 
 	#ifdef nandTCC
 	
-		#define NAND_RE_PER		(NS2CLK(100)-1)
-		#define NAND_RE_CC0		NS2CLK(55) 
-		#define NAND_RE_CC1		NS2CLK(50)
+		#define NAND_RE_PER_SLOW	(NS2CLK(200)-1)
+		#define NAND_RE_CC0_SLOW	NS2CLK(110) 
+		#define NAND_RE_CC1_SLOW	NS2CLK(100)
+
+		#define NAND_RE_PER_FAST	(NS2CLK(100)-1)
+		#define NAND_RE_CC0_FAST	NS2CLK(55) 
+		#define NAND_RE_CC1_FAST	NS2CLK(50)
 
 		#define WE_PORT_PMUX	(PORT_PMUX_F) 
 		#define RE_PORT_PMUX	(PORT_PMUX_F) 
@@ -519,7 +523,11 @@
 
 	// ++++++++++++++	CLOCK	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define CLOCK_IRQ		0//SCU_0_IRQn
+	#define PIO_RTCINT		HW::PIOC
+	#define PIN_RTCINT		25 
+	#define CLOCK_EXTINT	(PIN_RTCINT&15)
+	#define CLOCK_IRQ		(EIC_0_IRQ+(PIN_RTCINT&15))
+	#define RTCINT			(1UL<<PIN_RTCINT) 
 	#define PIO_32kHz		HW::PIOB 
 	#define PIN_32kHz		19 
 
@@ -633,18 +641,18 @@
 
 	// ++++++++++++++	DMA	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	#define	UART0_DMA				0
-	#define	UART2_DMA				1
+	#define	UART0_DMA_CH			0
+	#define	UART2_DMA_CH			1
 	//#define						2
 	//#define						3
 	#define	NAND_MEMCOPY_DMA_CH		4
-	#define	SPI_DMA					5
-	#define	DSP_DMA					6
+	#define	SPI_DMA_CH				5
+	#define	DSP_DMA_CH				6
 	#define	NAND_DMA_CH				7
 
-	#define	I2C_DMA					8
-	#define	UART1_DMA				9
-	#define	CRC_DMA					10
+	#define	I2C_DMA_CH				8
+	#define	UART1_DMA_CH			9
+	#define	CRC_DMA_CH				10
 	//#define						11
 
 	// ++++++++++++++	CCU4x	++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

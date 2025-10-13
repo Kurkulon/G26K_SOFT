@@ -1,6 +1,7 @@
+#include "hw_conf.h"
 #include "req.h"
 
-#include "CRC16.h"
+#include "CRC\CRC16.h"
 #include "time.h"
 
 //#pragma O3

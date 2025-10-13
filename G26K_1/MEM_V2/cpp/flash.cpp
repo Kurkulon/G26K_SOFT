@@ -68,8 +68,8 @@ static const bool forceEraseWrite = true;
 
 #ifdef CPU_SAME53	
 
-	#define NAND_DIR_IN() { PIO_NAND_DATA->DIRCLR = 0xFF; }
-	#define NAND_DIR_OUT() { PIO_NAND_DATA->DIRSET = 0xFF; }
+	#define NAND_DIR_IN()	{ PIO_NAND_DATA->DIRCLR = 0xFF; }
+	#define NAND_DIR_OUT()	{ PIO_NAND_DATA->DIRSET = 0xFF; }
 
 #elif defined(CPU_XMC48)
 
@@ -96,6 +96,22 @@ static const bool forceEraseWrite = true;
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include "FLASH\NandFlash_imp.h"
+#include <FLASH\NandFlash_imp.h>
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define SMALL_BUF_LEN	512
+#define MEDIUM_BUF_LEN	1536
+
+#ifndef WIN32
+#define HUGE_BUF_LEN	(MT29_PAGE_SIZE+MT29_SPARE_SIZE) // NAND Flash Page Size
+#else
+#define HUGE_BUF_LEN	0x4100    
+#endif
+#define	NUM_SMALL_BUF	16       
+#define	NUM_MEDIUM_BUF	8
+#define	NUM_HUGE_BUF	8
+
+#include <MEM\mem_imp.h>
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

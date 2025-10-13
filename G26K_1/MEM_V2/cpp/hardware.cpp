@@ -1,28 +1,11 @@
 #include <types.h>
 #include <core.h>
 #include <time.h>
-#include <CRC16_8005.h>
-#include <DMA.h>
-#include <SEGGER_RTT.h>
+#include <CRC\CRC16_8005.h>
+#include <DMA\DMA.h>
+#include <SEGGER_RTT\SEGGER_RTT.h>
 
 #include "hardware.h"
-
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#define SMALL_BUF_LEN	512
-#define MEDIUM_BUF_LEN	1536
-
-#ifndef WIN32
-#define HUGE_BUF_LEN	0x900 //2034
-#else
-#define HUGE_BUF_LEN	0x4100    
-#endif
-#define	NUM_SMALL_BUF	16       
-#define	NUM_MEDIUM_BUF	8
-#define	NUM_HUGE_BUF	8
-
-#include <mem_imp.h>
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -59,7 +42,6 @@ static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
 volatile u16 curShaftCounter = 0;
 
-static bool busy_CRC_CCITT_DMA = false;
 
 //static void I2C_Init();
 
@@ -82,9 +64,22 @@ __forceinline 	void DisableVCORE()	{ PIO_ENVCORE->SET(ENVCORE); 	}
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-#include <system_imp.h>
+#include <ARM\system_imp.h>
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#include <Clock_imp.h>
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#include <CRC\CRC_CCITT_DMA_IMP.h>
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#include <time_imp.h>
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 /*----------------------------------------------------------------------------
   Initialize the system
  *----------------------------------------------------------------------------*/
@@ -1054,359 +1049,7 @@ void I2C_Destroy()
 #endif
 */
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void SetClock(const RTC &t)
-{
-	static DSCI2C dsc;
-
-//	static byte reg = 0;
-//	static u16 rbuf = 0;
-	static byte buf[10];
-
-	buf[0] = 0;
-	buf[1] = ((t.sec/10) << 4)|(t.sec%10);
-	buf[2] = ((t.min/10) << 4)|(t.min%10);
-	buf[3] = ((t.hour/10) << 4)|(t.hour%10);
-	buf[4] = 1;
-	buf[5] = ((t.day/10) << 4)|(t.day%10);
-	buf[6] = ((t.mon/10) << 4)|(t.mon%10);
-
-	byte y = t.year % 100;
-
-	buf[7] = ((y/10) << 4)|(y%10);
-
-	dsc.adr = 0x68;
-	dsc.wdata = buf;
-	dsc.wlen = 8;
-	dsc.rdata = 0;
-	dsc.rlen = 0;
-	dsc.wdata2 = 0;
-	dsc.wlen2 = 0;
-
-	if (SetTime(t))
-	{
-		I2C_AddRequest(&dsc);
-	};
-}
-
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifdef CPU_SAME53
-
-static __irq void Clock_IRQ()
-{
-	//if (HW::SCU_HIBERNATE->HDSTAT & SCU_HIBERNATE_HDSTAT_ULPWDG_Msk)
-	//{
-	//	if ((HW::SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCLR_Msk) == 0)	HW::SCU_HIBERNATE->HDCLR = SCU_HIBERNATE_HDCLR_ULPWDG_Msk;
-	//}
-	//else
-	//{
-	//	timeBDC.msec = (timeBDC.msec < 500) ? 0 : 999;
-	//};
-
-	//HW::SCU_GCU->SRCLR = SCU_INTERRUPT_SRCLR_PI_Msk;
-}
-
-#elif defined(CPU_XMC48)
-
-static __irq void Clock_IRQ()
-{
-	if (HW::SCU_HIBERNATE->HDSTAT & SCU_HIBERNATE_HDSTAT_ULPWDG_Msk)
-	{
-		if ((HW::SCU_GENERAL->MIRRSTS & SCU_GENERAL_MIRRSTS_HDCLR_Msk) == 0)	HW::SCU_HIBERNATE->HDCLR = SCU_HIBERNATE_HDCLR_ULPWDG_Msk;
-	}
-	else
-	{
-		timeBDC.msec = (timeBDC.msec < 500) ? 0 : 999;
-	};
-
-	HW::SCU_GCU->SRCLR = SCU_INTERRUPT_SRCLR_PI_Msk;
-}
-
-#endif
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#ifndef WIN32
-
-static void InitClock()
-{
-	DSCI2C dsc;
-
-	byte reg = 0;
-	byte buf[10];
-	
-	RTC t;
-
-	buf[0] = 0x0F;
-	buf[1] = 0x88;
-	dsc.adr = 0x68;
-	dsc.wdata = buf;
-	dsc.wlen = 2;
-	dsc.rdata = 0;
-	dsc.rlen = 0;
-	dsc.wdata2 = 0;
-	dsc.wlen2 = 0;
-
-	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Init DS3232 ... ");
-
-	I2C_AddRequest(&dsc);
-
-	while (!dsc.ready) { I2C_Update(); };
-
-	SEGGER_RTT_WriteString(0, (dsc.ready && dsc.ack) ? (RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n") : (RTT_CTRL_TEXT_BRIGHT_RED "!!! ERROR !!!\n"));
-
-	dsc.adr = 0x68;
-	dsc.wdata = &reg;
-	dsc.wlen = 1;
-	dsc.rdata = buf;
-	dsc.rlen = 7;
-	dsc.wdata2 = 0;
-	dsc.wlen2 = 0;
-
-	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Sync with DS3232 ... ");
-
-	I2C_AddRequest(&dsc);
-
-	while (!dsc.ready) { I2C_Update(); };
-
-	if (dsc.ready && dsc.ack)
-	{
-		t.sec	= (buf[0]&0xF) + ((buf[0]>>4)*10);
-		t.min	= (buf[1]&0xF) + ((buf[1]>>4)*10);
-		t.hour	= (buf[2]&0xF) + ((buf[2]>>4)*10);
-		t.day	= (buf[4]&0xF) + ((buf[4]>>4)*10);
-		t.mon	= (buf[5]&0xF) + ((buf[5]>>4)*10);
-		t.year	= (buf[6]&0xF) + ((buf[6]>>4)*10) + 2000;
-
-		SetTime(t);
-
-		SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_GREEN "OK\n");
-	}
-	else
-	{
-		SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_RED "!!! ERROR !!!\n");
-	};
-
-	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_WHITE "Clock Init ... ");
-
-	VectorTableExt[CLOCK_IRQ] = Clock_IRQ;
-	CM4::NVIC->CLR_PR(CLOCK_IRQ);
-	CM4::NVIC->SET_ER(CLOCK_IRQ);	
-
-#ifdef CPU_SAME53
-
-#elif defined(CPU_XMC48)
-
-	HW::RTC->CTR = (0x7FFFUL << RTC_CTR_DIV_Pos) | RTC_CTR_ENB_Msk;
-
-	while (HW::SCU_GCU->MIRRSTS & SCU_GENERAL_MIRRSTS_RTC_MSKSR_Msk);
-
-	HW::RTC->MSKSR = RTC_MSKSR_MPSE_Msk;
-	HW::SCU_GCU->SRMSK = SCU_INTERRUPT_SRMSK_PI_Msk;
-
-#endif
-
-	SEGGER_RTT_WriteString(0, "OK\n");
-}
-
-#endif
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#ifdef CPU_XMC48
-
-u16 CRC_CCITT_PIO(const void *data, u32 len, u16 init)
-{
-	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
-
-	__packed const byte *s = (__packed const byte*)data;
-
-	for ( ; len > 0; len--)
-	{
-		CRC_FCE->IR = *(s++);
-	};
-
-	//if (len > 0)
-	//{
-	//	CRC_FCE->IR = *(s++)&0xFF;
-	//}
-
-	__dsb(15);
-
-	return CRC_FCE->RES;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
-{
-	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
-
-	CRC_DMA.MemCopySrcInc(data, &CRC_FCE->IR, len);
-
-	while (!CRC_DMA.CheckMemCopyComplete());
-
-	__dsb(15);
-
-	return (byte)CRC_FCE->RES;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
-{
-	if (busy_CRC_CCITT_DMA) return false;
-
-	busy_CRC_CCITT_DMA = true;
-
-	CRC_FCE->CRC = init;	//	DataCRC CRC = { init };
-
-	CRC_DMA.MemCopySrcInc(data, &CRC_FCE->IR, len);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool CRC_CCITT_DMA_CheckComplete(u16* crc)
-{
-	if (CRC_DMA.CheckMemCopyComplete())
-	{
-		__dsb(15);
-
-		*crc = (byte)CRC_FCE->RES;
-
-		busy_CRC_CCITT_DMA = false;
-
-		return true;
-	}
-	else
-	{
-		return false;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void Init_CRC_CCITT_DMA()
-{
-	SEGGER_RTT_WriteString(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "Init_CRC_CCITT_DMA ... ");
-
-	HW::Peripheral_Enable(PID_FCE);
-
-	HW::FCE->CLC = 0;
-	CRC_FCE->CFG = 0;
-
-	SEGGER_RTT_WriteString(0, "OK\n");
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#elif defined(CPU_SAME53)
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
-{
-	CRC_DMA.CRC_CCITT(data, len, init);
-
-	while (!CRC_DMA.CheckComplete());
-
-	__dsb(15);
-
-	return CRC_DMA.Get_CRC_CCITT_Result();
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
-{
-	if (busy_CRC_CCITT_DMA) return false;
-
-	busy_CRC_CCITT_DMA = true;
-
-	CRC_DMA.CRC_CCITT(data, len, init);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool CRC_CCITT_DMA_CheckComplete(u16* crc)
-{
-	if (CRC_DMA.CheckComplete())
-	{
-		__dsb(15);
-
-		*crc = CRC_DMA.Get_CRC_CCITT_Result();
-
-		busy_CRC_CCITT_DMA = false;
-
-		return true;
-	}
-	else
-	{
-		return false;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void Init_CRC_CCITT_DMA()
-{
-	//T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
-	//T_HW::S_DMAC::S_DMAC_CH	&dmach = HW::DMAC->CH[CRC_DMACH];
-
-	//HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE|DMAC_CRCPOLY_CRC16|DMAC_CRCMODE_CRCGEN|DMAC_CRCSRC(0x3F);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#elif defined(WIN32)
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-u16 CRC_CCITT_DMA(const void *data, u32 len, u16 init)
-{
-	return 0;//GetCRC16_CCIT(data, len, init);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool CRC_CCITT_DMA_Async(const void* data, u32 len, u16 init)
-{
-	crc_ccit_result = 0;//GetCRC16_CCIT(data, len, init);
-
-	return true;
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-bool CRC_CCITT_DMA_CheckComplete(u16* crc)
-{
-	if (crc != 0)
-	{
-		*crc = crc_ccit_result;
-
-		return true;
-	}
-	else
-	{
-		return false;
-	};
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-static void Init_CRC_CCITT_DMA()
-{
-	//T_HW::DMADESC &dmadsc = DmaTable[CRC_DMACH];
-	//T_HW::S_DMAC::S_DMAC_CH	&dmach = HW::DMAC->CH[CRC_DMACH];
-
-	//HW::DMAC->CRCCTRL = DMAC_CRCBEATSIZE_BYTE|DMAC_CRCPOLY_CRC16|DMAC_CRCMODE_CRCGEN|DMAC_CRCSRC(0x3F);
-}
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-#endif
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

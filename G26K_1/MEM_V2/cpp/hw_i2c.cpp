@@ -2,12 +2,12 @@
 #include "core.h"
 #include "time.h"
 #include "COM_DEF.h"
-#include "CRC16_8005.h"
+#include "CRC\CRC16_8005.h"
 #include "list.h"
 #include "PointerCRC.h"
 
 #include "hardware.h"
-#include "SEGGER_RTT.h"
+#include "SEGGER_RTT\SEGGER_RTT.h"
 #include "hw_conf.h"
 #include "hw_rtm.h"
 
@@ -70,11 +70,11 @@ static byte fram_I2c_Mem[0x10000];
 
 #elif defined(CPU_SAME53)
 
-static S_I2C i2c(I2C_SERCOM_NUM, PIO_I2C, SCL, I2C_PMUX_SCL, PIO_I2C, SDA, I2C_PMUX_SDA, I2C_GEN_SRC, I2C_GEN_CLK, &I2C_DMA );
+static S_I2C i2c(I2C_SERCOM_NUM, PIO_I2C, SCL, I2C_PMUX_SCL, PIO_I2C, SDA, I2C_PMUX_SDA, I2C_GEN_SRC, I2C_GEN_CLK, I2C_DMA_CH );
 
 #elif defined(CPU_XMC48)
 
-static S_I2C i2c(I2C_USIC_NUM, PIO_SCL, PIN_SCL, MUX_SCL, PIO_SDA, PIN_SDA, MUX_SDA, &I2C_DMA, I2C_DX0CR, I2C_DX1CR, SYSCLK);
+static S_I2C i2c(I2C_USIC_NUM, PIO_SCL, PIN_SCL, MUX_SCL, PIO_SDA, PIN_SDA, MUX_SDA, I2C_DMA_CH, I2C_DX0CR, I2C_DX1CR, SYSCLK);
 
 #endif 
 
@@ -234,6 +234,11 @@ void I2C_Destroy()
 }
 
 #endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#include <i2c_imp.h>
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
