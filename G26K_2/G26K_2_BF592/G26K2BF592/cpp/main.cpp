@@ -58,7 +58,7 @@ struct SensVars
 	u16 fragLen;
 	u16 freq;
 	u16 st;
-	u16 dctLB;
+	//u16 dctLB;
 	u16 dctRB;
 };
 
@@ -178,8 +178,8 @@ static void PreProcessDspVars(ReqDsp01 *v, bool forced = false)
 
 		if (sens.st == 0) sens.st = 1;
 
-		sv.dctRB = sv.freq*sens.st*(19-(sens.pack-PACK_DCT0)*3)/(65536/FDCT_N);
-		sv.dctLB = sv.freq*sens.st*(4+sens.pack-PACK_DCT0)/(0x20000/FDCT_N);
+		sv.dctRB = sv.freq*sens.st/(4096/FDCT_N);
+		//sv.dctLB = sv.freq*sens.st*(4+sens.pack-PACK_DCT0)/(0x20000/FDCT_N);
 
 		if (sv.dctRB > (FDCT_N-1)) sv.dctRB = FDCT_N-1;
 	};

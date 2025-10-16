@@ -2470,7 +2470,7 @@ static void UpdateDSP()
 #ifndef WIN32
 
 static const u32 dspFlashPages[] = {
-#include "G26K1BF592.LDR.H"
+#include "G26K.2.DSP.LDR.H"
 };
 
 //u16 dspFlashLen = 0;
