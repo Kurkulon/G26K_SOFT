@@ -214,13 +214,16 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		sv.fi_type		= rs.fi_Type;
 		sv.pack			= rs.pack;
 		sv.fragLen		= rs.fragLen;
+		sv.delay		=0;
 
-		if (sv.deadTime != rs.deadTime || sv.delay != rs.sd || forced)
+		if (sv.deadTime != rs.deadTime /*|| sv.delay != rs.sd*/ || forced)
 		{
 			sv.deadTime = rs.deadTime;
-			sv.delay = rs.sd;
+			//sv.delay = rs.sd;
 
 			u16 t = sv.deadTime;
+
+			if (sv.fi_type > 0 && t < 20*20) t = 20*20;
 
 			t = (t > sv.delay) ? (t - sv.delay) : 0;
 
@@ -887,7 +890,7 @@ static void ProcessDataCM(DSCPPI &dsc)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void FragDataCM(DSCPPI *dsc)
+static bool FragDataCM(DSCPPI *dsc)
 {
 	RspCM &rsp = *((RspCM*)dsc->data);
 
@@ -899,7 +902,7 @@ static void FragDataCM(DSCPPI *dsc)
 
 	u16 sl = rsp.hdr.sl;// + FDCT_N;
 
-	if (fragLen == 0 || stind >= sl) return;
+	if (fragLen == 0 || stind >= sl) return false;
 
 	if (fragLen > sl)
 	{
@@ -924,6 +927,8 @@ static void FragDataCM(DSCPPI *dsc)
 	dsc->dataLen = dsc->dataLen - rsp.hdr.sl + fragLen;
 	
 	rsp.hdr.sl = fragLen;
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1132,6 +1137,7 @@ static void UpdateCM()
 {
 	static byte state = 0;
 	static DSCPPI *dsc = 0;
+	static DSCPPI *rawdsc = 0;
 	static u16 packLen = 0;
 	//static u16 dctLB = 0;
 	static u16 index = 0;
@@ -1146,11 +1152,35 @@ static void UpdateCM()
 
 			if (dsc != 0)
 			{
-				RspCM *rsp = (RspCM*)dsc->data;
+				RspCM &rsp = *((RspCM*)dsc->data); 
 
+				if (sensVars[rsp.hdr.sensType].fragLen != 0 && rsp.hdr.packType > 1)
+				{
+					state++;
+				}
+				else
+				{
+					state = 3;
+				};
+			};
+
+			break;
+
+		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+			
+			rawdsc = AllocDscPPI();
+
+			if (rawdsc != 0)
+			{
 				*pPORTFIO_SET = 1<<7;
 
-				FragDataCM(dsc);
+				*rawdsc = *dsc;
+
+				//u16 n = dsc->dataLen;
+				//u16 *s = dsc->data;
+				//u16 *d = rawdsc->data;
+
+				//while (n > 0) *d++ = *s++, n--;
 
 				*pPORTFIO_CLEAR = 1<<7;
 
@@ -1159,7 +1189,47 @@ static void UpdateCM()
 
 			break;
 
-		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+			
+			*pPORTFIO_SET = 1<<7;
+
+			Pack_1_Bit12(rawdsc);
+
+			processedPPI.Add(rawdsc); rawdsc = 0;
+
+			*pPORTFIO_CLEAR = 1<<7;
+
+			state++;
+
+			break;
+
+
+		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		{			
+			RspCM &rsp = *((RspCM*)dsc->data); 
+
+			*pPORTFIO_SET = 1<<7;
+
+			bool c = FragDataCM(dsc);
+
+			*pPORTFIO_CLEAR = 1<<7;
+
+			if (c || rsp.hdr.packType > PACK_BIT12)
+			{
+				rsp.hdr.rw |= 1;
+				state++;
+			}
+			else
+			{
+				FreeDscPPI(dsc); dsc = 0;
+				state = 0;
+			};
+
+			break;
+		};
+
+		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 	
@@ -1181,45 +1251,6 @@ static void UpdateCM()
 
 				state = 0;
 			}
-			//else if (pack == PACK_ADPCM)
-			//{
-			//	DSCPPI *mqdsc = AllocDscPPI();
-
-			//	if (mqdsc == 0) break;
-
-			//	RspCM *mqrsp = (RspCM*)mqdsc->data; 
-
-			//	mqrsp->hdr = rsp->hdr;
-
-			//	u16 *p = rsp->data;
-
-			//	for (u16 i = 0; i < rsp->hdr.sl; i++)
-			//	{
-			//		i16 t = *p;
-			//		*p++ = (t << 1) ^ (t>>15);
-			//	};
-
-			//	mqrsp->hdr.packType = PACK_ADPCM;
-			//	mqrsp->hdr.packLen = MQcompressFast((byte*)rsp->data, rsp->hdr.sl*2, (byte*)mqrsp->data);
-			//	//mqrsp->hdr.packLen = ArithEncode32((byte*)rsp->data, rsp->hdr.sl*2, (byte*)mqrsp->data, sizeof(mqrsp->data));
-
-			//	if (mqrsp->hdr.packLen & 1)
-			//	{
-			//		((byte*)mqrsp->data)[mqrsp->hdr.packLen] = 0xFF;
-
-			//		mqrsp->hdr.packLen += 1;
-			//	};
-
-			//	mqrsp->hdr.packLen /= 2;
-
-			//	mqdsc->dataLen = dsc->dataLen - rsp->hdr.sl + mqrsp->hdr.packLen;
-
-			//	processedPPI.Add(mqdsc);
-
-			//	FreeDscPPI(dsc); dsc = 0;
-
-			//	state = 0;
-			//}
 			else
 			{
 				index = 0;
@@ -1236,7 +1267,7 @@ static void UpdateCM()
 			break;
 		};
 
-		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		case 5: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 
@@ -1262,7 +1293,7 @@ static void UpdateCM()
 			break;
 		};
 
-		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		case 6: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 
@@ -1322,7 +1353,7 @@ static void UpdateCM()
 			break;
 		};
 
-		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		case 7: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 

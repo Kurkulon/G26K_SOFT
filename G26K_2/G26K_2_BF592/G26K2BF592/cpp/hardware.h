@@ -135,6 +135,27 @@ struct DSCPPI
 	//u16		at;
 	u16		busy;
 	u16		data[PPI_BUF_LEN+sizeof(RspHdrCM)/2];
+
+	DSCPPI& operator=(const DSCPPI &v)
+	{
+		next		= 0;
+		rotCount	= v.rotCount;
+		rotMMSEC	= v.rotMMSEC;
+		shaftPrev	= v.shaftPrev;
+		fireIndex	= v.fireIndex;
+		ppidelay	= v.ppidelay;
+		fi_index	= v.fi_index;
+		dataLen		= v.dataLen;
+		busy		= v.busy;
+
+		u16 n = dataLen;
+		const u16 *s = v.data;
+		u16 *d = data;
+
+		while (n > 0) *d++ = *s++, n--;
+
+		return *this;
+	}
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

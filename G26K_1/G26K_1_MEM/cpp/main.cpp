@@ -30,7 +30,7 @@ static const bool __WIN32__ = false;
 #endif
 
 enum { VERSION		= 0x106 }; // Версия телеметрии
-enum { FIRMWARE		= 0x107 }; // Версия прошивки
+enum { FIRMWARE		= 0x108 }; // Версия прошивки
 
 extern "C" char _Firmware_str[];
 
@@ -313,7 +313,7 @@ void CallBackDspReq01(Ptr<REQ> &q)
 	 
 	if (q->rb.recieved)
 	{
-		if (rsp.CM.hdr.rw == (dspReqWord|0x40))
+		if ((rsp.CM.hdr.rw & ~1) == (dspReqWord|0x40))
 		{
 			//q->crcOK = (q->rb.len == (rsp.CM.hdr.sl*2 + sizeof(rsp.CM.hdr)));
 			
@@ -2440,7 +2440,27 @@ static void UpdateDSP()
 			{
 				if (rq->crcOK)
 				{
-					readyR01.Add(rq);
+					RspDsp01 &rsp = *((RspDsp01*)(rq->rsp->GetDataPtr()));
+
+					bool c40 = (rsp.CM.hdr.rw & 0xFF) == 0x40;
+					bool c41 = (rsp.CM.hdr.rw & 0xFF) == 0x41;
+
+					if (!c41) RequestFlashWrite(rq->rsp, rsp.CM.hdr.rw);
+
+					bool c = true;
+
+					if (c40 || c41)
+					{
+						SENS &sens = (rsp.CM.hdr.sensType == 0) ? (mv.sens1) : (mv.refSens);
+
+						bool x = sens.fragLen == 0 && sens.packType <= 1;
+
+						c = (c40 && x) || (c41 && !x);
+						
+						rsp.CM.hdr.rw &= ~1;
+					};
+
+					if (c) readyR01.Add(rq);
 				};
 				
 				i = 0;
