@@ -850,7 +850,7 @@ static void ProcessDataCM(DSCPPI &dsc)
 
 	RspHdrCM &rsp = *((RspHdrCM*)dsc.data);
 
-	rsp.rw			= manReqWord|0x40;			//1. ответное слово
+	//rsp.rw		= manReqWord|0x40;			//1. ответное слово
 	//rsp.mmsecTime	= dsc.mmsec;
 	//rsp.shaftTime	= dsc.shaftTime;
 	//rsp.motoCount	= dsc.motoCount;
@@ -860,15 +860,15 @@ static void ProcessDataCM(DSCPPI &dsc)
 	rsp.az			= req->az;
 	rsp.at			= req->at;
 	//rsp.sensType	= dsc.sensType;
-	//rsp.maxAmp		= dsc.maxAmp;
-	//rsp.fi_amp		= dsc.fi_amp;
-	//rsp.fi_time		= dsc.fi_time;
+	//rsp.maxAmp	= dsc.maxAmp;
+	//rsp.fi_amp	= dsc.fi_amp;
+	//rsp.fi_time	= dsc.fi_time;
 	//rsp.gain		= dsc.gain;
-	//rsp.st 			= dsc.sampleTime;				//15. Шаг оцифровки
-	//rsp.sl 			= dsc.len;						//16. Длина оцифровки (макс 2028)
-	//rsp.sd 			= dsc.sampleDelay;				//17. Задержка оцифровки  
-	rsp.packType	= sensVars[rsp.sensType].pack;	//18. Упаковка
-	rsp.packLen		= 0;								//19. Размер упакованных данных
+	//rsp.st 		= dsc.sampleTime;				//15. Шаг оцифровки
+	//rsp.sl 		= dsc.len;						//16. Длина оцифровки (макс 2028)
+	//rsp.sd 		= dsc.sampleDelay;				//17. Задержка оцифровки  
+	//rsp.packType	= sensVars[rsp.sensType].pack;	//18. Упаковка
+	rsp.packLen		= 0;							//19. Размер упакованных данных
 	
 	//u32 t = dsc.shaftTime - dsc.shaftPrev;
 
@@ -1137,7 +1137,6 @@ static void UpdateCM()
 {
 	static byte state = 0;
 	static DSCPPI *dsc = 0;
-	static DSCPPI *rawdsc = 0;
 	static u16 packLen = 0;
 	//static u16 dctLB = 0;
 	static u16 index = 0;
@@ -1152,84 +1151,30 @@ static void UpdateCM()
 
 			if (dsc != 0)
 			{
-				RspCM &rsp = *((RspCM*)dsc->data); 
-
-				if (sensVars[rsp.hdr.sensType].fragLen != 0 && rsp.hdr.packType > 1)
-				{
-					state++;
-				}
-				else
-				{
-					state = 3;
-				};
+				state++;
 			};
 
 			break;
 
 		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-			
-			rawdsc = AllocDscPPI();
+		{			
+			RspCM &rsp = *((RspCM*)dsc->data); 
 
-			if (rawdsc != 0)
+			if (rsp.hdr.rw & 1)
 			{
 				*pPORTFIO_SET = 1<<7;
 
-				*rawdsc = *dsc;
-
-				//u16 n = dsc->dataLen;
-				//u16 *s = dsc->data;
-				//u16 *d = rawdsc->data;
-
-				//while (n > 0) *d++ = *s++, n--;
+				FragDataCM(dsc);
 
 				*pPORTFIO_CLEAR = 1<<7;
-
-				state++;
 			};
-
-			break;
-
-
-		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-			
-			*pPORTFIO_SET = 1<<7;
-
-			Pack_1_Bit12(rawdsc);
-
-			processedPPI.Add(rawdsc); rawdsc = 0;
-
-			*pPORTFIO_CLEAR = 1<<7;
 
 			state++;
 
 			break;
-
-
-		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-		{			
-			RspCM &rsp = *((RspCM*)dsc->data); 
-
-			*pPORTFIO_SET = 1<<7;
-
-			bool c = FragDataCM(dsc);
-
-			*pPORTFIO_CLEAR = 1<<7;
-
-			if (c || rsp.hdr.packType > PACK_BIT12)
-			{
-				rsp.hdr.rw |= 1;
-				state++;
-			}
-			else
-			{
-				FreeDscPPI(dsc); dsc = 0;
-				state = 0;
-			};
-
-			break;
 		};
 
-		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 	
@@ -1267,7 +1212,7 @@ static void UpdateCM()
 			break;
 		};
 
-		case 5: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 
@@ -1293,7 +1238,7 @@ static void UpdateCM()
 			break;
 		};
 
-		case 6: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 
@@ -1353,7 +1298,7 @@ static void UpdateCM()
 			break;
 		};
 
-		case 7: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+		case 5: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspCM *rsp = (RspCM*)dsc->data; 
 
@@ -1375,7 +1320,7 @@ static void UpdateCM()
 
 			if ((index+OVRLAP) < rsp->hdr.sl)
 			{
-				state = 2;
+				state = 3;
 			}
 			else
 			{
@@ -1403,6 +1348,7 @@ static void UpdateMode()
 {
 	static byte i = 0;
 	static DSCPPI *dsc = 0;
+	static DSCPPI *rawdsc = 0;
 
 	switch (i)
 	{
@@ -1412,7 +1358,23 @@ static void UpdateMode()
 
 			if (dsc != 0)
 			{
-				i++;
+				RspHdrCM &rsp = *(RspHdrCM*)dsc->data;
+
+				rsp.packType = sensVars[rsp.sensType].pack;
+
+				if (mode == 0 && (sensVars[rsp.sensType].filtr != 0 || sensVars[rsp.sensType].fragLen != 0 || sensVars[rsp.sensType].pack > PACK_BIT12))
+				{
+					rsp.rw = manReqWord|0x41;
+
+					i++;
+				}
+				else
+				{
+					rsp.rw = manReqWord|0x42;
+
+					i = 2;
+				};
+
 			}
 			else
 			{
@@ -1421,7 +1383,37 @@ static void UpdateMode()
 
 			break;
 
-		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		case 1: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+			
+			rawdsc = AllocDscPPI();
+
+			if (rawdsc != 0)
+			{
+				*pPORTFIO_SET = 1<<7;
+
+				*rawdsc = *dsc;
+
+				RspHdrCM &rsp = *(RspHdrCM*)rawdsc->data;
+
+				rsp.rw = manReqWord|0x40;
+				rsp.packType = PACK_BIT12;
+
+				Filtr_Data(*rawdsc, 0);
+
+				//u16 n = dsc->dataLen;
+				//u16 *s = dsc->data;
+				//u16 *d = rawdsc->data;
+
+				//while (n > 0) *d++ = *s++, n--;
+
+				*pPORTFIO_CLEAR = 1<<7;
+
+				i++;
+			};
+
+			break;
+
+		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 		{
 			RspHdrCM *rsp = (RspHdrCM*)dsc->data;
 
@@ -1436,7 +1428,7 @@ static void UpdateMode()
 			break;
 		};
 
-		case 2: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		{
 			RspHdrCM *rsp = (RspHdrCM*)dsc->data;
 
@@ -1457,6 +1449,17 @@ static void UpdateMode()
 				Filtr_Wavelet2(*dsc, sens.deadIndx);
 			};
 
+			if (rawdsc != 0)
+			{
+				RspHdrCM &raw = *(RspHdrCM*)rawdsc->data;
+
+				raw.maxAmp	= rsp->maxAmp	;
+				raw.fi_amp	= rsp->fi_amp	;
+				raw.fi_time	= rsp->fi_time	;
+
+				ProcessDataCM(*rawdsc); rawdsc = 0;
+			};
+
 			*pPORTFIO_CLEAR = 1<<7;
 
 			i++;
@@ -1464,7 +1467,7 @@ static void UpdateMode()
 			break;
 		};
 
-		case 3: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+		case 4: //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		{				
 			RspHdrCM *rsp = (RspHdrCM*)dsc->data;
 
