@@ -104,7 +104,9 @@ struct UNIBUF : public PtrItem<UNIBUF>
 
 	byte	data[UNIBUF_LEN]; // Последние 2 байта CRC16
 
-	void*	GetDataPtr() { return data+dataOffset; }
+	void*	GetDataPtr()	{ return data+dataOffset; }
+	u16		GetMaxLen()		{ return sizeof(data) - dataOffset; }
+	u16		GetFreeLen()	{ return sizeof(data) - dataOffset - dataLen; }
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

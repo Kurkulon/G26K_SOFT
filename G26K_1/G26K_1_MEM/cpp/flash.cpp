@@ -65,7 +65,7 @@ static bool __memcmp(ConstDataPointer s, ConstDataPointer d, u32 len)
 
 
 List<ListItem> ListItem::freeItemList;
-static ListItem listItems[128];
+static ListItem listItems[256];
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -74,8 +74,8 @@ static ListItem listItems[128];
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //List<UNIBUF> UNIBUF::freeBufList;
-static UNIBUF flashWriteBuffer[8];
-static FLRB flashReadBuffer[8];
+static UNIBUF flashWriteBuffer[16];
+static FLRB flashReadBuffer[16];
 
 //List<PtrFLWB> PtrFLWB::freePtrList;
 

@@ -52,14 +52,14 @@ __packed struct MainVars // NonVolatileVars
 	u16 numDevice;
 	u16 numMemDevice;
 
-	SENS	sens1;
-	SENS	refSens;
-
-	u16 cmSPR;
-	u16 imSPR;
-	u16 fireVoltage;
-	u16 motoLimCur;
-	u16 motoMaxCur;
+	SENS	sens1;		//	измерительный датчик
+	SENS	refSens;	//  опорный датчик
+						
+	u16 cmSPR;			//	Количество волновых картин на оборот головки в режиме цементомера
+	u16 imSPR;			//	Количество точек на оборот головки в режиме имиджера
+	u16 fireVoltage;	//	Напряжение излучателя(В)
+	u16 motoLimCur;		//	Ограничение тока двигателя (мА)
+	u16 motoMaxCur;		//	Аварийный ток двигателя (мА)
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -100,9 +100,6 @@ static ComPort commoto;
 
 static RequestQuery qmoto(&commoto);
 static RequestQuery qdsp(&comdsp);
-//static RequestQuery qmem(&commem);
-
-//static R01 r02[8];
 
 static Ptr<UNIBUF> manVec40[2];
 
@@ -110,40 +107,7 @@ static Ptr<UNIBUF> curManVec40;
 static Ptr<UNIBUF> manVec50;
 static Ptr<UNIBUF> curManVec50;
 
-//static RspMan60 rspMan60;
-
-//static byte curRcv[3] = {0};
-//static byte curVec[3] = {0};
-
-//static List<R01> freeR01;
-//static List<R01> readyR01;
 static ListPtr<REQ> readyR01;
-
-//static RMEM rmem[4];
-//static List<RMEM> lstRmem;
-//static List<RMEM> freeRmem;
-
-//static byte fireType = 0;
-
-//static u16 gain = 0;
-//static u16 sampleTime = 5;
-//static u16 sampleLen = 1024;
-//static u16 sampleDelay = 200;
-//static u16 deadTime = 400;
-//static u16 descriminant = 400;
-//static u16 freq = 500;
-
-//static u16 gainRef = 0;
-//static u16 sampleTimeRef = 5;
-//static u16 sampleLenRef = 1024;
-//static u16 sampleDelayRef = 200;
-//static u16 deadTimeRef = 400;
-//static u16 descriminantRef = 400;
-//static u16 refFreq = 500;
-//static u16 filtrType = 0;
-//static u16 packType = 0;
-//static u16 vavesPerRoundCM = 100;	
-//static u16 vavesPerRoundIM = 100;
 
 static u16 mode = 0;
 
@@ -1845,37 +1809,51 @@ static void UpdateMan()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+static ListRef<UNIBUF> manPack40[2];
+static byte indPack40 = 0;
+static u16 prevHeadCount = 0;
+static u16 firePacketCount = 0;
+
+static Ptr<UNIBUF> buf_MainMode;
+static Ptr<UNIBUF> pkt_MainMode;
+
 static void MainMode()
 {
-	static Ptr<REQ> rq;
-	//static Ptr<UNIBUF> flwb;
 	static TM32 tm;
-	static RspDsp01 *rsp = 0;
+	static RspDsp01		*rsp = 0;
+	static PacketHdrCM *curpkt = 0;
+	static u32 pktTime = 0;
+
+	Ptr<UNIBUF> &buf = buf_MainMode;
+	Ptr<UNIBUF> &pkt = pkt_MainMode;
 
 	switch (mainModeState)
 	{
 		case 0:
-
-			rq = readyR01.Get();
+		{
+			Ptr<REQ> rq = readyR01.Get();
 
 			if (rq.Valid())
 			{
-				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
+				buf = rq->rsp;
 
-				RequestFlashWrite(rq->rsp, rsp->CM.hdr.rw);
+				if (buf.Valid())
+				{
+					rsp = (RspDsp01*)(buf->GetDataPtr());
+					mainModeState++;
+				};
 
-				mainModeState++;
+				rq.Free();
 			};
 
 			break;
+		};
 
 		case 1:
 
 			if ((rsp->CM.hdr.rw & 0xFF) == 0x40)
 			{
 				byte n = rsp->CM.hdr.sensType & 1;
-
-				manVec40[n] = rq->rsp;
 
 				AmpTimeMinMax& mm = sensMinMaxTemp[n];
 
@@ -1888,18 +1866,85 @@ static void MainMode()
 				if (time < mm.timeMin) mm.timeMin = time;
 
 				mm.valid = true;
+
+				if (n != 0 || rsp->CM.hdr.sl > MAX_WAVEPACKET_LEN)
+				{
+					manVec40[n] = buf;
+				}
+				else
+				{
+					if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount > mv.cmSPR)
+					{
+						prevHeadCount = rsp->CM.hdr.headCount;
+						firePacketCount = 0;
+
+						byte i = (indPack40+1)&1;
+
+						if (pkt.Valid())
+						{
+							manPack40[indPack40].Add(pkt);
+							indPack40 = i;
+							pkt.Free();
+							curpkt = 0;
+						};
+
+						if (manPack40[indPack40].Empty())
+						{
+							pkt = buf;
+							curpkt = (PacketHdrCM*)(rsp->CM.data + rsp->CM.hdr.packLen);
+							pktTime = rsp->CM.hdr.time;
+						};
+					}
+					else if (pkt.Valid() && curpkt != 0)
+					{
+						firePacketCount += 1;
+
+						u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdrCM);
+
+						if (pkt->GetFreeLen() >= dlen)
+						{
+							u32 t = rsp->CM.hdr.time;
+							curpkt->deltatime = t - pktTime; pktTime = t;
+							curpkt->angle = rsp->CM.hdr.angle;	
+							curpkt->fi_amp = rsp->CM.hdr.fi_amp;	
+							curpkt->fi_time = rsp->CM.hdr.fi_time;
+							curpkt->packLen = rsp->CM.hdr.packLen;
+
+							ConstDataPointer s(rsp->CM.data);
+							DataPointer d(curpkt->data);
+
+							u32 len = curpkt->packLen;
+
+							while (len > 1) *d.d++ = *s.d++, len -= 2;
+							while (len > 0) *d.w++ = *s.w++, len -= 1;
+
+							curpkt = (PacketHdrCM*)(curpkt->data + curpkt->packLen);
+							pkt->dataLen += dlen;
+						}
+						else
+						{
+							manPack40[indPack40].Add(pkt);
+							pkt = buf;
+							curpkt = (PacketHdrCM*)(rsp->CM.data + rsp->CM.hdr.packLen);
+						};
+					}
+					else
+					{
+						manVec40[0] = buf;
+					};
+
+					buf.Free();
+				};
 			}
 			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)
 			{
-				manVec50 = rq->rsp;
+				manVec50 = buf;
 			};
 
 			if (imModeTimeout.Check(10000))
 			{
 				SetModeCM();
 			};
-
-			rq.Free();
 
 			mainModeState++;
 

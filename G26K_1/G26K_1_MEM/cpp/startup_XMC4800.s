@@ -114,6 +114,15 @@ _MainAppStart	PROC
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+__aeabi_atexit  PROC
+				EXPORT  __aeabi_atexit
+				BX		lr
+
+                ENDP
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 ; Reset Handler
 
 Reset_Handler   PROC

@@ -170,12 +170,12 @@ public:
 	void Init() { if (_selfPtr != this) first = 0, last = 0, _selfPtr = this; }
 
 	ListPtr() { Init(); }
+	bool	Empty() { return first == 0; }
 
 	Ptr<T> Get();
 
 	void	Add(const Ptr<T> &r);
 
-	//bool	Empty() { return first == 0; }
 };
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -246,6 +246,7 @@ public:
 	void Init() { if (_selfPtr != this) first = 0, last = 0, _selfPtr = this; }
 
 	ListRef() { Init(); }
+	bool Empty() { return first == 0; }
 
 	Ptr<T> Get();
 
