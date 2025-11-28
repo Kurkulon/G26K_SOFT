@@ -107,6 +107,9 @@ static Ptr<UNIBUF> curManVec40;
 static Ptr<UNIBUF> manVec50;
 static Ptr<UNIBUF> curManVec50;
 
+static ListRef<UNIBUF> manPack40[2];
+static byte indPack40 = 0;
+
 static ListPtr<REQ> readyR01;
 
 static u16 mode = 0;
@@ -322,6 +325,10 @@ void CallBackDspReq01(Ptr<REQ> &q)
 				
 				dspStatus |= 1;
 				dspRcvCount++;
+
+				q->rsp->dataLen = 0;
+				q->crcOK = false;
+				q->tryCount = 0;
 			};
 		};
 	}
@@ -1147,9 +1154,15 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
-		curManVec40 = manVec40[sensInd&1];
+		byte i = sensInd&1;
 
-		manVec40[sensInd&1].Free();
+		if (i == 0) curManVec40 = manPack40[(indPack40+1)&1].Get();
+		
+		if (i != 0 || !curManVec40.Valid())
+		{
+			curManVec40 = manVec40[i];
+			manVec40[i].Free();
+		};
 
 		if (!curManVec40.Valid())
 		{
@@ -1809,8 +1822,6 @@ static void UpdateMan()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static ListRef<UNIBUF> manPack40[2];
-static byte indPack40 = 0;
 static u16 prevHeadCount = 0;
 static u16 firePacketCount = 0;
 
@@ -1878,12 +1889,10 @@ static void MainMode()
 						prevHeadCount = rsp->CM.hdr.headCount;
 						firePacketCount = 0;
 
-						byte i = (indPack40+1)&1;
-
 						if (pkt.Valid())
 						{
 							manPack40[indPack40].Add(pkt);
-							indPack40 = i;
+							indPack40 = (indPack40+1)&1;
 							pkt.Free();
 							curpkt = 0;
 						};
@@ -1897,8 +1906,6 @@ static void MainMode()
 					}
 					else if (pkt.Valid() && curpkt != 0)
 					{
-						firePacketCount += 1;
-
 						u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdrCM);
 
 						if (pkt->GetFreeLen() >= dlen)
@@ -1934,6 +1941,8 @@ static void MainMode()
 					};
 
 					buf.Free();
+
+					firePacketCount += 1;
 				};
 			}
 			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)

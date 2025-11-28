@@ -1,11 +1,6 @@
-//#pragma O3
-//#pragma Otime
-
-//#include <stdio.h>
-//#include <conio.h>
+#include "hw_conf.h"
 
 #include <ComPort\ComPort.h>
-#include "hw_conf.h"
 #include "hw_com.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

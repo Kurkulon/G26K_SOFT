@@ -6,6 +6,7 @@
 #include <list.h>
 #include <PointerCRC.h>
 #include <SEGGER_RTT\SEGGER_RTT.h>
+#include <string.h>
 
 
 #include "req.h"
@@ -28,7 +29,10 @@ static const bool __WIN32__ = false;
 
 //#define __TEST__
 
-enum { VERSION = 0x106 };
+enum { VERSION		= 0x106 }; // Версия телеметрии
+enum { FIRMWARE		= 0x108 }; // Версия прошивки
+
+extern "C" char _Firmware_str[];
 
 //#pragma O3
 //#pragma Otime
@@ -67,14 +71,14 @@ __packed struct MainVars // NonVolatileVars
 	u16 numDevice;
 	u16 numMemDevice;
 
-	SENS	sens1;
-	SENS	refSens;
+	SENS	sens1;		//	измерительный датчик
+	SENS	refSens;	//  опорный датчик
 
-	u16 cmSPR;
-	u16 imSPR;
-	u16 fireVoltage;
-	u16 motoLimCur;
-	u16 motoMaxCur;
+	u16 cmSPR;			//	Количество волновых картин на оборот головки в режиме цементомера
+	u16 imSPR;			//	Количество точек на оборот головки в режиме имиджера
+	u16 fireVoltage;	//	Напряжение излучателя(В)
+	u16 motoLimCur;		//	Ограничение тока двигателя (мА)
+	u16 motoMaxCur;		//	Аварийный ток двигателя (мА)
 };
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -125,40 +129,10 @@ static Ptr<MB> curManVec40;
 static Ptr<MB> manVec50;
 static Ptr<MB> curManVec50;
 
-//static RspMan60 rspMan60;
+static ListRef<MB> manPack40[2];
+static byte indPack40 = 0;
 
-//static byte curRcv[3] = {0};
-//static byte curVec[3] = {0};
-
-//static List<R01> freeR01;
-//static List<R01> readyR01;
 static ListPtr<REQ> readyR01;
-
-//static RMEM rmem[4];
-//static List<RMEM> lstRmem;
-//static List<RMEM> freeRmem;
-
-//static byte fireType = 0;
-
-//static u16 gain = 0;
-//static u16 sampleTime = 5;
-//static u16 sampleLen = 1024;
-//static u16 sampleDelay = 200;
-//static u16 deadTime = 400;
-//static u16 descriminant = 400;
-//static u16 freq = 500;
-
-//static u16 gainRef = 0;
-//static u16 sampleTimeRef = 5;
-//static u16 sampleLenRef = 1024;
-//static u16 sampleDelayRef = 200;
-//static u16 deadTimeRef = 400;
-//static u16 descriminantRef = 400;
-//static u16 refFreq = 500;
-//static u16 filtrType = 0;
-//static u16 packType = 0;
-//static u16 vavesPerRoundCM = 100;	
-//static u16 vavesPerRoundIM = 100;
 
 static u16 mode = 0;
 
@@ -329,13 +303,13 @@ static void SetModeIM()
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackDspReq01(Ptr<REQ> &q)
+bool CallBackDspReq01(Ptr<REQ> &q)
 {
 	RspDsp01 &rsp = *((RspDsp01*)q->rb.data);
 	 
 	if (q->rb.recieved)
 	{
-		if (rsp.CM.hdr.rw == (dspReqWord|0x40))
+		if ((rsp.CM.hdr.rw & ~3) == (dspReqWord|0x40))
 		{
 			if (rsp.CM.hdr.packType == 0)
 			{
@@ -405,21 +379,17 @@ void CallBackDspReq01(Ptr<REQ> &q)
 			//q.Free();
 		};
 	};
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Ptr<REQ> CreateDspReq01(u16 tryCount)
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();//= REQ::Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
-	if (!rq.Valid()) 
-	{
-		rq.Free();
-		return rq;
-	};
+	if (!rq.Valid()) return rq;
 
 	rq->rsp = NandFlash_AllocWB(sizeof(RspDsp01));
 
@@ -519,7 +489,7 @@ Ptr<MB> CreateTestDspReq01()
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackDspReq05(Ptr<REQ> &q)
+bool CallBackDspReq05(Ptr<REQ> &q)
 {
 	if (!q->crcOK) 
 	{
@@ -529,15 +499,15 @@ void CallBackDspReq05(Ptr<REQ> &q)
 			qdsp.Add(q);
 		};
 	};
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Ptr<REQ> CreateDspReq05(u16 tryCount)
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();//= REQ::Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -574,7 +544,7 @@ Ptr<REQ> CreateDspReq05(u16 tryCount)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackDspReq06(Ptr<REQ> &q)
+bool CallBackDspReq06(Ptr<REQ> &q)
 {
 	bool retry = false;
 
@@ -597,15 +567,14 @@ void CallBackDspReq06(Ptr<REQ> &q)
 		qdsp.Add(q);
 	};
 
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Ptr<REQ> CreateDspReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data2, u16 tryCount)
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();//= REQ::Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -685,9 +654,7 @@ Ptr<REQ> CreateDspReq06(u16 stAdr, u16 count, void* data, u16 count2, void* data
 
 Ptr<REQ> CreateDspReq07()
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();//= REQ::Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -730,7 +697,7 @@ Ptr<REQ> CreateDspReq07()
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void CallBackMotoReq(Ptr<REQ> &q)
+static bool CallBackMotoReq(Ptr<REQ> &q)
 {
 	if (!q->crcOK) 
 	{
@@ -753,15 +720,15 @@ static void CallBackMotoReq(Ptr<REQ> &q)
 			motoRcvCount++;
 		};
 	};
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 static Ptr<REQ> CreateMotoReq()
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -802,7 +769,7 @@ static Ptr<REQ> CreateMotoReq()
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackBootMotoReq01(Ptr<REQ> &q)
+bool CallBackBootMotoReq01(Ptr<REQ> &q)
 {
 	if (!q->crcOK) 
 	{
@@ -812,15 +779,15 @@ void CallBackBootMotoReq01(Ptr<REQ> &q)
 			qmoto.Add(q);
 		};
 	};
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Ptr<REQ> CreateBootMotoReq01(u16 flashLen, u16 tryCount)
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -860,7 +827,7 @@ Ptr<REQ> CreateBootMotoReq01(u16 flashLen, u16 tryCount)
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void CallBackBootMotoReq02(Ptr<REQ> &q)
+bool CallBackBootMotoReq02(Ptr<REQ> &q)
 {
 	if (!q->crcOK) 
 	{
@@ -870,15 +837,15 @@ void CallBackBootMotoReq02(Ptr<REQ> &q)
 			qmoto.Add(q);
 		};
 	};
+
+	return true;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Ptr<REQ> CreateBootMotoReq02(u16 stAdr, u16 count, const u32* data, u16 tryCount)
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -946,9 +913,7 @@ Ptr<REQ> CreateBootMotoReq02(u16 stAdr, u16 count, const u32* data, u16 tryCount
 
 Ptr<REQ> CreateBootMotoReq03()
 {
-	Ptr<REQ> rq;
-	
-	rq.Alloc();
+	Ptr<REQ> rq(AllocREQ());
 
 	if (!rq.Valid()) return rq;
 
@@ -1001,13 +966,24 @@ Ptr<REQ> CreateBootMotoReq03()
 
 static u32 InitRspMan_00(__packed u16 *data)
 {
-	__packed u16 *start = data;
+	//__packed u16 *start = data;
 
-	*(data++)	= (manReqWord & manReqMask) | 0;
-	*(data++)	= mv.numDevice;
-	*(data++)	= verDevice;
-	
-	return data - start;
+	DataPointer p(data); 
+
+	u16 len = strlen(_Firmware_str);
+
+	len = (len+1) & ~2;
+
+	*(p.w++)	= (manReqWord & manReqMask) | 0;				//1. ответное слово
+	*(p.w++)	= mv.numDevice;									//2. номер прибора	(меняет пользователь)
+	*(p.w++)	= FIRMWARE;										//3. версия прошивки
+	*(p.w++)	= 0x100;										//4. версия структуры идентификатора 0х0100
+	*(p.w++)	= 0;											//5. идентификатор 0х0001 (меняет пользователь)
+	*(p.w++)	= verDevice;									//6. версия телеметрии (1.6)
+	*(p.w++)	= len / 2;										//7. Кол-во слов строки идентификации
+	for (u16 i = 0; i < len; i++) *(p.b++) = _Firmware_str[i];	//8.... Строка идентификации (char*2) 
+
+	return p.w - data;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1027,10 +1003,10 @@ static bool RequestMan_00(u16 *data, u16 len, MTB* mtb)
 {
 	if (data == 0 || len == 0 || len > 2 || mtb == 0) return false;
 
-	InitRspMan_00(manTrmData);
+	len = InitRspMan_00(manTrmData);
 
 	mtb->data1 = manTrmData;
-	mtb->len1 = 3;
+	mtb->len1 = len;
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
@@ -1205,9 +1181,15 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
-		curManVec40 = manVec40[sensInd&1];
+		byte i = sensInd&1;
 
-		manVec40[sensInd&1].Free();
+		if (i == 0) curManVec40 = manPack40[(indPack40+1)&1].Get();
+
+		if (i != 0 || !curManVec40.Valid())
+		{
+			curManVec40 = manVec40[i];
+			manVec40[i].Free();
+		};
 
 		if (!curManVec40.Valid())
 		{
@@ -1856,30 +1838,43 @@ static void UpdateMan()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+static u16 prevHeadCount = 0;
+static u16 firePacketCount = 0;
+
+static Ptr<MB> buf_MainMode;
+static Ptr<MB> pkt_MainMode;
 
 static void MainMode()
 {
-	static Ptr<REQ> rq;
-	//static Ptr<MB> flwb;
 	static TM32 tm;
 	static RspDsp01 *rsp = 0;
+	static PacketHdrCM *curpkt = 0;
+	static u32 pktTime = 0;
+
+	Ptr<MB> &buf = buf_MainMode;
+	Ptr<MB> &pkt = pkt_MainMode;
 
 	switch (mainModeState)
 	{
 		case 0:
-
-			rq = readyR01.Get();
+		{
+			Ptr<REQ> rq = readyR01.Get();
 
 			if (rq.Valid())
 			{
-				rsp = (RspDsp01*)(rq->rsp->GetDataPtr());
+				buf = rq->rsp;
 
-				NandFlash_RequestWrite(rq->rsp, rsp->CM.hdr.rw, true);
+				if (buf.Valid())
+				{
+					rsp = (RspDsp01*)(buf->GetDataPtr());
+					mainModeState++;
+				};
 
-				mainModeState++;
+				rq.Free();
 			};
 
 			break;
+		};
 
 		case 1:
 
@@ -1887,7 +1882,7 @@ static void MainMode()
 			{
 				byte n = rsp->CM.hdr.sensType & 1;
 
-				manVec40[n] = rq->rsp;
+
 
 				AmpTimeMinMax& mm = sensMinMaxTemp[n];
 
@@ -1900,18 +1895,83 @@ static void MainMode()
 				if (time < mm.timeMin) mm.timeMin = time;
 
 				mm.valid = true;
+
+				if (n != 0 || rsp->CM.hdr.sl > MAX_WAVEPACKET_LEN)
+				{
+					manVec40[n] = buf;
+				}
+				else
+				{
+					if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount > mv.cmSPR)
+					{
+						prevHeadCount = rsp->CM.hdr.headCount;
+						firePacketCount = 0;
+
+						if (pkt.Valid())
+						{
+							manPack40[indPack40].Add(pkt);
+							indPack40 = (indPack40+1)&1;
+							pkt.Free();
+							curpkt = 0;
+						};
+
+						if (manPack40[indPack40].Empty())
+						{
+							pkt = buf;
+							curpkt = (PacketHdrCM*)(rsp->CM.data + rsp->CM.hdr.packLen);
+							pktTime = rsp->CM.hdr.time;
+						};
+					}
+					else if (pkt.Valid() && curpkt != 0)
+					{
+						u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdrCM);
+
+						if (pkt->GetDataFreeLen() >= dlen)
+						{
+							u32 t = rsp->CM.hdr.time;
+							curpkt->deltatime = t - pktTime; pktTime = t;
+							curpkt->angle = rsp->CM.hdr.angle;	
+							curpkt->fi_amp = rsp->CM.hdr.fi_amp;	
+							curpkt->fi_time = rsp->CM.hdr.fi_time;
+							curpkt->packLen = rsp->CM.hdr.packLen;
+
+							ConstDataPointer s(rsp->CM.data);
+							DataPointer d(curpkt->data);
+
+							u32 len = curpkt->packLen;
+
+							while (len > 1) *d.d++ = *s.d++, len -= 2;
+							while (len > 0) *d.w++ = *s.w++, len -= 1;
+
+							curpkt = (PacketHdrCM*)(curpkt->data + curpkt->packLen);
+							pkt->len += dlen;
+						}
+						else
+						{
+							manPack40[indPack40].Add(pkt);
+							pkt = buf;
+							curpkt = (PacketHdrCM*)(rsp->CM.data + rsp->CM.hdr.packLen);
+						};
+					}
+					else
+					{
+						manVec40[0] = buf;
+					};
+
+					buf.Free();
+
+					firePacketCount += 1;
+				};
 			}
 			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)
 			{
-				manVec50 = rq->rsp;
+				manVec50 = buf;
 			};
 
 			if (imModeTimeout.Check(10000))
 			{
 				SetModeCM();
 			};
-
-			rq.Free();
 
 			mainModeState++;
 
@@ -2451,7 +2511,23 @@ static void UpdateDSP()
 			{
 				if (rq->crcOK)
 				{
-					readyR01.Add(rq);
+					RspDsp01 &rsp = *((RspDsp01*)(rq->rsp->GetDataPtr()));
+
+					bool c42 = (rsp.CM.hdr.rw & 0xFF) == 0x42;
+					bool c41 = (rsp.CM.hdr.rw & 0xFF) == 0x41;
+
+					if (c41 || c42) rsp.CM.hdr.rw &= ~3;
+
+					if (!c41) NandFlash_RequestWrite(rq->rsp, rsp.CM.hdr.rw, true);
+
+					bool c = true;
+
+					if ((rsp.CM.hdr.rw & 0xFF) == 0x40)
+					{
+						c = c41 || c42;
+					};
+
+					if (c) readyR01.Add(rq);
 				};
 				
 				i = 0;

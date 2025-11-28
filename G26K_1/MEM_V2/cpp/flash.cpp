@@ -6,7 +6,7 @@
 #include <FLASH\NandFlash.h>
 
 #include "hardware.h"
-#include "hw_rtm.h"
+//#include "hw_rtm.h"
 #include "hw_nand.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

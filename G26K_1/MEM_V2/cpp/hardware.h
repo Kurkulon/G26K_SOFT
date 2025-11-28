@@ -10,7 +10,7 @@
 #include <MANCH\manch.h>
 
 #include "hw_nand.h"
-#include "hw_rtm.h"
+//#include "hw_rtm.h"
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

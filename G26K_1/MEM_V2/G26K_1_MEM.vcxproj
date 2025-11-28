@@ -131,19 +131,15 @@
     <ClCompile Include="cpp\hw_spi.cpp" />
     <ClCompile Include="cpp\main.cpp" />
     <ClCompile Include="cpp\manch.cpp" />
-    <ClCompile Include="cpp\options.cpp" />
     <ClCompile Include="cpp\req.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cpp\common.h" />
     <ClInclude Include="cpp\COM_DEF.h" />
     <ClInclude Include="cpp\hardware.h" />
     <ClInclude Include="cpp\hw_com.h" />
     <ClInclude Include="cpp\hw_conf.h" />
     <ClInclude Include="cpp\hw_nand.h" />
     <ClInclude Include="cpp\hw_rtm.h" />
-    <ClInclude Include="cpp\main.h" />
-    <ClInclude Include="cpp\options.h" />
     <ClInclude Include="cpp\req.h" />
     <ClInclude Include="cpp\rtc.h" />
   </ItemGroup>

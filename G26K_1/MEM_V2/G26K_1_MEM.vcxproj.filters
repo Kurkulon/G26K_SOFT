@@ -38,18 +38,12 @@
     <ClCompile Include="cpp\manch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cpp\options.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="cpp\req.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cpp\COM_DEF.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cpp\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cpp\hardware.h">
@@ -65,12 +59,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cpp\hw_rtm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cpp\main.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cpp\options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cpp\req.h">

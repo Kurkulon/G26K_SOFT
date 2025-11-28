@@ -1,3 +1,5 @@
+#include "hw_conf.h"
+
 #include "types.h"
 #include "core.h"
 #include "time.h"
@@ -8,8 +10,7 @@
 
 #include "hardware.h"
 #include "SEGGER_RTT\SEGGER_RTT.h"
-#include "hw_conf.h"
-#include "hw_rtm.h"
+//#include "hw_rtm.h"
 
 
 #ifdef WIN32

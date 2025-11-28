@@ -1,6 +1,8 @@
 #ifndef REQ_H__09_10_2014__10_31
 #define REQ_H__09_10_2014__10_31
 
+#include "RequestQuery.h"
+
 #include "ComPort\ComPort.h"
 
 #include "list.h"
@@ -159,27 +161,41 @@ __packed struct ReqDsp01	// чтение вектора
 
 __packed struct RspHdrCM	// 0xAD40
 {
-	u16 	rw;
-	u32 	time;		//mmsecTime; 
-	u32		hallTime;	//shaftTime; 
-	u16		motoCount; 
-	u16		headCount;
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-	u16		sensType; 
-	u16		angle;
-	u16		maxAmp;
-	u16		fi_amp;
-	u16		fi_time;
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		packType;
-	u16		packLen;
+	u16 	rw;				//1. ответное слово	
+	u32 	time;			//2. Время (0.1мс)
+	u32		hallTime;		//4. Время датчика Холла (0.1мс)
+	u16		motoCount; 		//6. Счётчик оборотов двигателя (1/6 об)
+	u16		headCount;		//7. Счётчик оборотов головки (об)
+	u16		ax; 			//8. AX (уе)
+	u16		ay; 			//9. AY (уе)
+	u16		az; 			//10. AZ (уе)
+	u16		at;				//11. AT (short 0.01 гр)
+	u16		sensType; 		//12. Тип датчика (0 - измерительный датчик, 1 - опорный датчик)
+	u16		angle;			//13. Угол поворота (0.01гр)(ushort)
+	u16		maxAmp;			//14. Амплитуда максимум по всей волне (у.е)
+	u16		fi_amp;			//15. Амплитуда по первому вступлению (у.е)
+	u16		fi_time;		//16. Время по первому вступлению (0.05 мкс)
+	u16 	gain; 			//17. КУ
+	u16 	st;	 			//18. Шаг оцифровки
+	u16 	sl; 			//19. Длина оцифровки (макс 2028)
+	u16 	sd; 			//20. Задержка оцифровки  
+	u16		packType;		//21. Упаковка (1 - 4:3 по 12 бит, 2 - 2:1 u-Law, 3 - 4:1 ADPCM по 4 бита)
+	u16		packLen;		//22. Размер упакованных данных
+};							
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct PacketHdrCM	// 0xAD40
+{
+	u16 	deltatime;		//1. Дельта времени датчика Холла (0.1мс).
+	u16 	angle;			//2. Угол поворота (0.01гр)(ushort)
+	u16		fi_amp;			//3. Амплитуда по первому вступлению (у.е)
+	u16		fi_time; 		//4. Время по первому вступлению (0.05 мкс)
+	u16		packLen;		//5. Размер упакованных данных
+	u16		data[0]; 		//6.... данные волновой картины 
 };
+
+#define MAX_WAVEPACKET_LEN 128
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -270,179 +286,78 @@ union ReqUnion
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//__packed struct ReqTrm01	
+//struct REQ : public PtrItem<REQ>
 //{
-//	byte 	len;
-//	byte 	func;
-//	byte 	n; 
-//	word 	crc;  
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct ReqTrm02	
-//{
-//	byte 	len;
-//	byte 	f;
-//	word 	crc;  
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct RspTrm02	
-//{
-//	byte f; 
-//	u16 hv; 
-//	u16 crc;
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct ReqTrm03	
-//{
-//	byte 	len;
-//	byte	f; 
-//	byte	fireCountM; 
-//	byte	fireCountXY; 
-//	u16		hv;
-//	word 	crc;  
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct RspTrm03	
-//{
-//	byte f; 
-//	u16 crc;
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct ReqMem
-//{
-//	u16 rw; 
-//	u32 cnt; 
-//	u16 gain; 
-//	u16 st; 
-//	u16 len; 
-//	u16 delay; 
-//	u16 data[1024*4]; 
-//	u16 crc;
+//	PTR_LIST_FRIENDS(REQ);
 //
-//	//byte adr;
-//	//byte func;
-//	
-//	//__packed union
-//	//{
-//	//	__packed struct  { word crc; } f1;  // Старт новой сессии
-//	//	__packed struct  { word crc; } f3;  
-//	//};
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct RspMem
-//{
-//	u16 rw; 
-//	u16 crc; 
+//	bool	ready;
+//	bool	crcOK;
+//	bool	checkCRC;
+//	bool	updateCRC;
 //
-//	//byte	adr;
-//	//byte	func;
+//	typedef void tRsp(Ptr<REQ> &q);
+//
+//	u16		tryCount;
 //	
-//	//__packed union
-//	//{
-//	//	__packed struct  { word crc; } f1;  // Старт новой сессии
-//	//	__packed struct  { word crc; } f2;  // Запись вектора
-//	//	__packed struct  { word crc; } f3;  // 
-//	//	__packed struct  { word crc; } fFE;  // Ошибка CRC
-//	//	__packed struct  { word crc; } fFF;  // Неправильный запрос
-//	//};
+//	//REQ *next;
+//
+//	tRsp		*CallBack;
+//	Ptr<MB>	rsp;
+//
+//	ComPort::WriteBuffer wb;
+//	ComPort::ReadBuffer rb;
+//
+//	u32		preTimeOut, postTimeOut;
+//
+//	byte	reqData[(sizeof(ReqUnion)+64) & ~3];
+//
+//protected:
+//
+//	virtual void _FreeCallBack() { rsp.Free(); }
+//
+//public:
+//
+//	//void	Free() { if (this != 0) rsp.Free(), PtrItem<REQ>::Free(); }
+//
+//	REQ() : tryCount(0) { }
 //};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//__packed struct RspMan60
+//class RequestQuery
 //{
-//	u16 rw; 
-//	u32 cnt; 
-//	u16 maxAmp[96]; 
-//	u16 power[96];
+//	//REQ*			_first;
+//	//REQ*			_last;
+//	Ptr<REQ>		_req;
+//
+//	ListPtr<REQ>	reqList;
+//	
+//	byte			_state;
+//
+//	u16				_crc;
+//	u16 			_crcLen;
+//
+//	byte*			_crcPtr;
+//
+//
+//	ComPort			*com;
+//
+//	//u32			count;
+//
+//	bool			_run;
+//
+//public:
+//
+//				RequestQuery(ComPort *p) : _state(0), com(p), _run(true) {}
+//	void		Add(const Ptr<REQ>& req)	{ reqList.Add(req); }
+//	Ptr<REQ>	Get()						{ return reqList.Get(); }
+//	//bool Empty() { return reqList.Empty(); }
+//	//bool Idle() { return (_first == 0) && (_req == 0); }
+//	bool Stoped() { return !_req.Valid(); }
+//	void Update();
+//	void Stop() { _run = false; }
+//	void Start() { _run = true; }
 //};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-struct REQ : public PtrItem<REQ>
-{
-	PTR_LIST_FRIENDS(REQ);
-
-	bool	ready;
-	bool	crcOK;
-	bool	checkCRC;
-	bool	updateCRC;
-
-	typedef void tRsp(Ptr<REQ> &q);
-
-	u16		tryCount;
-	
-	//REQ *next;
-
-	tRsp		*CallBack;
-	Ptr<MB>	rsp;
-
-	ComPort::WriteBuffer wb;
-	ComPort::ReadBuffer rb;
-
-	u32		preTimeOut, postTimeOut;
-
-	byte	reqData[(sizeof(ReqUnion)+64) & ~3];
-
-protected:
-
-	virtual void _FreeCallBack() { rsp.Free(); }
-
-public:
-
-	//void	Free() { if (this != 0) rsp.Free(), PtrItem<REQ>::Free(); }
-
-	REQ() : tryCount(0) { }
-};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-class RequestQuery
-{
-	//REQ*			_first;
-	//REQ*			_last;
-	Ptr<REQ>		_req;
-
-	ListPtr<REQ>	reqList;
-	
-	byte			_state;
-
-	u16				_crc;
-	u16 			_crcLen;
-
-	byte*			_crcPtr;
-
-
-	ComPort			*com;
-
-	//u32			count;
-
-	bool			_run;
-
-public:
-
-				RequestQuery(ComPort *p) : _state(0), com(p), _run(true) {}
-	void		Add(const Ptr<REQ>& req)	{ reqList.Add(req); }
-	Ptr<REQ>	Get()						{ return reqList.Get(); }
-	//bool Empty() { return reqList.Empty(); }
-	//bool Idle() { return (_first == 0) && (_req == 0); }
-	bool Stoped() { return !_req.Valid(); }
-	void Update();
-	void Stop() { _run = false; }
-	void Start() { _run = true; }
-};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
