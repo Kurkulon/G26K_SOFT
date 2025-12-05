@@ -91,6 +91,10 @@ u32 req40_count1 = 0;
 u32 req40_count2 = 0;
 u32 req40_count3 = 0;
 
+u32 req41_count1 = 0;
+u32 req41_count2 = 0;
+u32 req41_count3 = 0;
+
 u32 fps;
 i16 tempClock = 0;
 i16 cpu_temp = 0;
@@ -129,12 +133,13 @@ static Ptr<MB> curManVec40;
 static Ptr<MB> manVec50;
 static Ptr<MB> curManVec50;
 
-static ListRef<MB> manPack40[2];
-static byte indPack40 = 0;
+static ListPtr<MB> manPack41;
+static Ptr<MB> curManVec41;
 
 static ListPtr<REQ> readyR01;
 
 static u16 mode = 0;
+static bool mode41 = false;
 
 static TM32 imModeTimeout;
 
@@ -1183,21 +1188,16 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	{
 		byte i = sensInd&1;
 
-		if (i == 0) curManVec40 = manPack40[(indPack40+1)&1].Get();
-
-		if (i != 0 || !curManVec40.Valid())
-		{
-			curManVec40 = manVec40[i];
-			manVec40[i].Free();
-		};
+		curManVec40 = manVec40[i];
+		manVec40[i].Free();
 
 		if (!curManVec40.Valid())
 		{
-			sensInd = (sensInd + 1) & 1;
+			i = (i + 1) & 1;
 
-			curManVec40 = manVec40[sensInd];
+			curManVec40 = manVec40[i];
 
-			manVec40[sensInd&1].Free();
+			manVec40[i].Free();
 		};
 
 		if (curManVec40.Valid())
@@ -1253,6 +1253,113 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 		if (sz >= off)
 		{
 			req40_count3++;
+
+			u16 ml = sz - off;
+
+			if (len > ml) len = ml;
+
+			mtb->data2 = (u16*)&rsp + data[1]+1;
+			mtb->len2 = len;
+		};
+	};
+
+	return true;
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
+{
+	__packed struct Req { u16 rw; u16 off; u16 len; };
+
+	Req &req = *((Req*)data);
+
+	if (data == 0 || reqlen == 0 || reqlen > 4 || mtb == 0) return false;
+
+	//byte nf = ((req.rw>>4)-3)&3;
+	//byte nr = req.rw & 7;
+
+	//	curRcv[nf] = nr;
+
+	struct Rsp { u16 rw; };
+
+	static Rsp rsp; 
+
+	static u16 prevOff = 0;
+	static u16 prevLen = 0;
+	static u16 maxLen = 200;
+
+	static byte sensInd = 0;
+
+	rsp.rw = req.rw;
+
+	mtb->data1 = (u16*)&rsp;
+	mtb->len1 = sizeof(rsp)/2;
+	mtb->data2 = 0;
+	mtb->len2 = 0;
+
+	//Ptr<MB> &r01 = curManVec40;
+
+	//u16 sz = 18 + r01->rsp.CM.sl;
+
+	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
+	{
+		curManVec41 = manPack41.Get();
+
+		if (curManVec41.Valid())
+		{
+			RspDsp01 &rsp = *((RspDsp01*)(curManVec41->GetDataPtr()));
+			DEBUG_ASSERT(rsp.CM.hdr.rw & 1);
+
+			u16 sz = (rsp.CM.hdr.rw & 1) ? (curManVec41->len/2) : ((sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen));
+
+			mtb->data2 = ((u16*)&rsp)+1;
+
+			prevOff = 0;
+
+			if (reqlen == 1)
+			{
+				mtb->len2 = sz;
+				prevLen = sz;
+			}
+			else 
+			{
+				req41_count1++;
+
+				if (reqlen == 3) maxLen = data[2];
+
+				u16 len = maxLen;
+
+				if (len > sz) len = sz;
+
+				mtb->len2 = len;
+
+				prevLen = len;
+			};
+		};
+
+		sensInd = (sensInd + 1) & 1;
+	}
+	else if (curManVec41.Valid())
+	{
+		RspDsp01 &rsp = *((RspDsp01*)(curManVec41->GetDataPtr()));
+
+		req41_count2++;
+
+		u16 off = prevOff + prevLen;
+		u16 len = prevLen;
+
+		if (reqlen == 3)
+		{
+			off = data[1];
+			len = data[2];
+		};
+
+		u16 sz = (rsp.CM.hdr.rw & 1) ? (curManVec41->len/2) : ((sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen));
+
+		if (sz >= off)
+		{
+			req41_count3++;
 
 			u16 ml = sz - off;
 
@@ -1498,19 +1605,20 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 
 	bool r = false;
 
-	byte i = (buf[0]>>4)&0xF;
+	byte i = buf[0];
 
 	switch (i)
 	{
-		case 0: 	r = RequestMan_00(buf, len, mtb); break;
-		case 1: 	r = RequestMan_10(buf, len, mtb); break;
-		case 2: 	r = RequestMan_20(buf, len, mtb); break;
-		case 3:		r = RequestMan_30(buf, len, mtb); break;
-		case 4:		r = RequestMan_40(buf, len, mtb); break;
-		case 5: 	r = RequestMan_50(buf, len, mtb); break;
-		case 8: 	r = RequestMan_80(buf, len, mtb); break;
-		case 9:		r = RequestMan_90(buf, len, mtb); break;
-		case 0xF:	r = RequestMan_F0(buf, len, mtb); break;
+		case 0x00: 	r = RequestMan_00(buf, len, mtb); break;
+		case 0x10: 	r = RequestMan_10(buf, len, mtb); break;
+		case 0x20: 	r = RequestMan_20(buf, len, mtb); break;
+		case 0x30:	r = RequestMan_30(buf, len, mtb); break;
+		case 0x40:	r = RequestMan_40(buf, len, mtb); break;
+		case 0x41:	r = RequestMan_41(buf, len, mtb); break;
+		case 0x50: 	r = RequestMan_50(buf, len, mtb); break;
+		case 0x80: 	r = RequestMan_80(buf, len, mtb); break;
+		case 0x90:	r = RequestMan_90(buf, len, mtb); break;
+		case 0xF0:	r = RequestMan_F0(buf, len, mtb); break;
 	};
 
 	if (r) { mtb->baud = manTrmBaud; };
@@ -1848,7 +1956,8 @@ static void MainMode()
 {
 	static TM32 tm;
 	static RspDsp01 *rsp = 0;
-	static PacketHdrCM *curpkt = 0;
+	static PacketHdr41 *curpkt = 0;
+	static Rsp41 *r41 = 0;
 	static u32 pktTime = 0;
 
 	Ptr<MB> &buf = buf_MainMode;
@@ -1867,7 +1976,8 @@ static void MainMode()
 				if (buf.Valid())
 				{
 					rsp = (RspDsp01*)(buf->GetDataPtr());
-					mainModeState++;
+					
+					mainModeState += (mode41) ? 2 : 1;
 				};
 
 				rq.Free();
@@ -1876,13 +1986,35 @@ static void MainMode()
 			break;
 		};
 
-		case 1:
+		case 1: // mode 0x40
 
-			if ((rsp->CM.hdr.rw & 0xFF) == 0x40)
+			if ((rsp->CM.hdr.rw & 0xFE) == 0x40)
 			{
+				rsp->CM.hdr.rw &= ~3;
+
 				byte n = rsp->CM.hdr.sensType & 1;
 
+				manVec40[n] = buf;
+			}
+			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)
+			{
+				manVec50 = buf;
+			};
 
+			if (imModeTimeout.Check(10000))
+			{
+				SetModeCM();
+			};
+
+			mainModeState += 2;
+
+			break;
+
+		case 2: // mode 0x41
+
+			if ((rsp->CM.hdr.rw & 0xFE) == 0x40)
+			{
+				byte n = rsp->CM.hdr.sensType & 1;
 
 				AmpTimeMinMax& mm = sensMinMaxTemp[n];
 
@@ -1896,7 +2028,7 @@ static void MainMode()
 
 				mm.valid = true;
 
-				if (n != 0 || rsp->CM.hdr.sl > MAX_WAVEPACKET_LEN)
+				if (n != 0 || (rsp->CM.hdr.rw & 1) == 0)  //rsp->CM.hdr.sl > MAX_WAVEPACKET_LEN
 				{
 					manVec40[n] = buf;
 				}
@@ -1909,22 +2041,52 @@ static void MainMode()
 
 						if (pkt.Valid())
 						{
-							manPack40[indPack40].Add(pkt);
-							indPack40 = (indPack40+1)&1;
+							manPack41.Add(pkt);
 							pkt.Free();
 							curpkt = 0;
 						};
 
-						if (manPack40[indPack40].Empty())
+						if (manPack41.GetCount() < 4)
 						{
-							pkt = buf;
-							curpkt = (PacketHdrCM*)(rsp->CM.data + rsp->CM.hdr.packLen);
-							pktTime = rsp->CM.hdr.time;
+							pkt = AllocMemBuffer(sizeof(Rsp41));
+						};
+
+						if (pkt.Valid())
+						{
+							r41 = (Rsp41*)(buf->GetDataPtr());
+
+							r41->hdr.rw			= rsp->CM.hdr.rw|1;
+							r41->hdr.hallTime	= rsp->CM.hdr.hallTime;
+							r41->hdr.sensType 	= rsp->CM.hdr.sensType;
+							r41->hdr.gain 		= rsp->CM.hdr.gain;
+							r41->hdr.st	 		= rsp->CM.hdr.st;
+							r41->hdr.sl 		= rsp->CM.hdr.sl;
+							r41->hdr.sd 		= rsp->CM.hdr.sd;
+							r41->hdr.packType	= rsp->CM.hdr.packType;
+							r41->hdr.packCount	= 1;
+
+							curpkt = (PacketHdr41*)(r41->data);
+							
+							curpkt->deltatime	= 0; 
+							curpkt->angle		= rsp->CM.hdr.angle;	
+							curpkt->fi_amp		= rsp->CM.hdr.fi_amp;	
+							curpkt->fi_time		= rsp->CM.hdr.fi_time;
+							curpkt->packLen		= rsp->CM.hdr.packLen;
+
+							pktTime = rsp->CM.hdr.hallTime;
+
+							ConstDataPointer s(rsp->CM.data);
+							DataPointer d(curpkt->data);
+
+							u32 len = curpkt->packLen;
+
+							while (len > 1) *d.d++ = *s.d++, len -= 2;
+							while (len > 0) *d.w++ = *s.w++, len -= 1;
 						};
 					}
 					else if (pkt.Valid() && curpkt != 0)
 					{
-						u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdrCM);
+						u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
 
 						if (pkt->GetDataFreeLen() >= dlen)
 						{
@@ -1943,14 +2105,14 @@ static void MainMode()
 							while (len > 1) *d.d++ = *s.d++, len -= 2;
 							while (len > 0) *d.w++ = *s.w++, len -= 1;
 
-							curpkt = (PacketHdrCM*)(curpkt->data + curpkt->packLen);
+							curpkt = (PacketHdr41*)(curpkt->data + curpkt->packLen);
 							pkt->len += dlen;
 						}
 						else
 						{
-							manPack40[indPack40].Add(pkt);
+							manPack41.Add(pkt);
 							pkt = buf;
-							curpkt = (PacketHdrCM*)(rsp->CM.data + rsp->CM.hdr.packLen);
+							curpkt = (PacketHdr41*)(rsp->CM.data + rsp->CM.hdr.packLen);
 						};
 					}
 					else
@@ -1959,9 +2121,9 @@ static void MainMode()
 					};
 
 					buf.Free();
-
-					firePacketCount += 1;
 				};
+					
+				if (n == 0) firePacketCount += 1;
 			}
 			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)
 			{
@@ -1977,7 +2139,7 @@ static void MainMode()
 
 			break;
 
-		case 2:
+		case 3:
 
 			if (cmdWriteStart_00)
 			{
@@ -2516,13 +2678,30 @@ static void UpdateDSP()
 					bool c42 = (rsp.CM.hdr.rw & 0xFF) == 0x42;
 					bool c41 = (rsp.CM.hdr.rw & 0xFF) == 0x41;
 
-					if (c41 || c42) rsp.CM.hdr.rw &= ~3;
+					if (c41 || c42) rsp.CM.hdr.rw &= ~2;
 
-					if (!c41) NandFlash_RequestWrite(rq->rsp, rsp.CM.hdr.rw, true);
+					if (!c41)
+					{
+						NandFlash_RequestWrite(rq->rsp, rsp.CM.hdr.rw, true);
+
+						byte n = rsp.CM.hdr.sensType & 1;
+
+						AmpTimeMinMax& mm = sensMinMaxTemp[n];
+
+						u16 amp = rsp.CM.hdr.maxAmp;
+						u16 time = rsp.CM.hdr.fi_time;
+
+						if (amp > mm.ampMax) mm.ampMax = amp;
+						if (amp < mm.ampMin) mm.ampMin = amp;
+						if (time > mm.timeMax) mm.timeMax = time;
+						if (time < mm.timeMin) mm.timeMin = time;
+
+						mm.valid = true;
+					};
 
 					bool c = true;
 
-					if ((rsp.CM.hdr.rw & 0xFF) == 0x40)
+					if ((rsp.CM.hdr.rw & 0xFE) == 0x40)
 					{
 						c = c41 || c42;
 					};
