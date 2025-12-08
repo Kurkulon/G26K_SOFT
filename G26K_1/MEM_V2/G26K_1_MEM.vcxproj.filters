@@ -9,6 +9,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="Global Include">
+      <UniqueIdentifier>{8dc1969b-cb9f-4ec2-bf5b-ca00933cff97}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cpp\emac.cpp">
@@ -66,6 +69,12 @@
     </ClInclude>
     <ClInclude Include="cpp\rtc.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\G_DSP.h">
+      <Filter>Global Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Include\g_moto.h">
+      <Filter>Global Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

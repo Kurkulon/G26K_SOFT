@@ -29,7 +29,7 @@ static const bool __WIN32__ = false;
 
 //#define __TEST__
 
-enum { VERSION		= 0x106 }; // Версия телеметрии
+enum { VERSION		= 0x107 }; // Версия телеметрии
 enum { FIRMWARE		= 0x108 }; // Версия прошивки
 
 extern "C" char _Firmware_str[];
@@ -128,6 +128,7 @@ static RequestQuery qdsp(&comdsp);
 //static R01 r02[8];
 
 static Ptr<MB> manVec40[2];
+static Ptr<MB> manVec41[2];
 
 static Ptr<MB> curManVec40;
 static Ptr<MB> manVec50;
@@ -331,8 +332,8 @@ bool CallBackDspReq01(Ptr<REQ> &q)
 			dspRcv40++;
 			dspRcvCount++;
 			
-			dspMMSEC = rsp.CM.hdr.time;
-			shaftMMSEC = rsp.CM.hdr.hallTime;
+			dspMMSEC = rsp.CM.hdr.mmsecTime;
+			shaftMMSEC = rsp.CM.hdr.shaftTime;
 		}
 		else if (rsp.IM.hdr.rw == (dspReqWord|0x50))
 		{
@@ -343,8 +344,8 @@ bool CallBackDspReq01(Ptr<REQ> &q)
 			dspRcv50++;
 			dspRcvCount++;
 
-			dspMMSEC = rsp.IM.hdr.time;
-			shaftMMSEC = rsp.IM.hdr.hallTime;
+			dspMMSEC = rsp.IM.hdr.mmsecTime;
+			shaftMMSEC = rsp.IM.hdr.shaftTime;
 		}
 		else
 		{
@@ -437,10 +438,10 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	req.ay				= ay;
 	req.az				= az;
 	req.at				= at;
-	req.sens1 			= mv.sens1;
-	req.refSens 		= mv.refSens;
-	req.vavesPerRoundCM = mv.cmSPR;
-	req.vavesPerRoundIM = mv.imSPR;
+	req.sens[0]			= mv.sens1;
+	req.sens[1] 		= mv.refSens;
+	req.wavesPerRoundCM = mv.cmSPR;
+	req.wavesPerRoundIM = mv.imSPR;
 	req.fireVoltage		= mv.fireVoltage;
 
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
@@ -461,8 +462,8 @@ Ptr<MB> CreateTestDspReq01()
 	RspDsp01 &rsp = *((RspDsp01*)(rq->GetDataPtr()));
 
 	rsp.CM.hdr.rw = manReqWord|0x40;
-	rsp.CM.hdr.time = 1;
-	rsp.CM.hdr.hallTime = 2;
+	rsp.CM.hdr.mmsecTime = 1;
+	rsp.CM.hdr.shaftTime = 2;
 	rsp.CM.hdr.motoCount = 3;
 	rsp.CM.hdr.headCount = 4;
 	rsp.CM.hdr.ax = 5;
@@ -1530,29 +1531,31 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 	switch(data[1])
 	{
 		case 0x01:	mv.sens1.gain			= data[2];			break;
-		case 0x02:	mv.sens1.sampleTime		= data[2];			break;
-		case 0x03:	mv.sens1.sampleLen		= data[2];			break;
-		case 0x04:	mv.sens1.sampleDelay 	= data[2];			break;
+		case 0x02:	mv.sens1.st				= data[2];			break;
+		case 0x03:	mv.sens1.sl				= data[2];			break;
+		case 0x04:	mv.sens1.sd 			= data[2];			break;
 		case 0x05:	mv.sens1.deadTime		= data[2];			break;
-		case 0x06:	mv.sens1.descriminant	= data[2];			break;
+		case 0x06:	mv.sens1.threshold		= data[2];			break;
 		case 0x07:	mv.sens1.freq			= data[2];			break;
-		case 0x08:	mv.sens1.filtrType		= data[2];			break;
-		case 0x09:	mv.sens1.packType		= data[2];			break;
+		case 0x08:	mv.sens1.filtr			= data[2];			break;
+		case 0x09:	mv.sens1.pack			= data[2];			break;
 		case 0x0A:	mv.sens1.fi_Type		= data[2];			break;
 		case 0x0B:	mv.sens1.fragLen		= data[2];			break;
+		case 0x0C:	mv.sens1.fragEnable		= data[2];			break;
 
 
 		case 0x11:	mv.refSens.gain			= data[2];			break;
-		case 0x12:	mv.refSens.sampleTime	= data[2];			break;
-		case 0x13:	mv.refSens.sampleLen	= data[2];			break;
-		case 0x14:	mv.refSens.sampleDelay 	= data[2];			break;
+		case 0x12:	mv.refSens.st			= data[2];			break;
+		case 0x13:	mv.refSens.sl			= data[2];			break;
+		case 0x14:	mv.refSens.sd			= data[2];			break;
 		case 0x15:	mv.refSens.deadTime		= data[2];			break;
-		case 0x16:	mv.refSens.descriminant	= data[2];			break;
+		case 0x16:	mv.refSens.threshold	= data[2];			break;
 		case 0x17:	mv.refSens.freq			= data[2];			break;
-		case 0x18:	mv.refSens.filtrType	= data[2];			break;
-		case 0x19:	mv.refSens.packType		= data[2];			break;
+		case 0x18:	mv.refSens.filtr		= data[2];			break;
+		case 0x19:	mv.refSens.pack			= data[2];			break;
 		case 0x1A:	mv.refSens.fi_Type		= data[2];			break;
 		case 0x1B:	mv.refSens.fragLen		= data[2];			break;
+		case 0x1C:	mv.refSens.fragEnable	= data[2];			break;
 
 //		case 0x20:	mv.filtrType			= data[2];			break;
 //		case 0x21:	mv.packType				= data[2];			break;
@@ -1946,6 +1949,47 @@ static void UpdateMan()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CreatePacket41(Rsp41 *r41, PacketHdr41 *pkt, RspDsp01 *src)
+{
+	r41->hdr.packCount += 1;
+
+	pkt->deltatime	= src->CM.hdr.mmsecTime - r41->hdr.shaftTime; 
+	pkt->angle		= src->CM.hdr.angle;	
+	pkt->fi_amp		= src->CM.hdr.fi_amp;	
+	pkt->fi_time	= src->CM.hdr.fi_time;
+	pkt->packLen	= src->CM.hdr.packLen;
+
+	ConstDataPointer s(src->CM.data);
+	DataPointer d(pkt->data);
+
+	u32 len = pkt->packLen;
+
+	while (len > 1) *d.d++ = *s.d++, len -= 2;
+	while (len > 0) *d.w++ = *s.w++, len -= 1;
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+static void CreateRsp41(Rsp41 *r41, RspDsp01 *src)
+{
+	r41->hdr.rw			= src->CM.hdr.rw|1;
+	r41->hdr.shaftTime	= src->CM.hdr.shaftTime;
+	r41->hdr.sensType 	= src->CM.hdr.sensType;
+	r41->hdr.gain 		= src->CM.hdr.gain;
+	r41->hdr.st	 		= src->CM.hdr.st;
+	r41->hdr.sl 		= src->CM.hdr.sl;
+	r41->hdr.sd 		= src->CM.hdr.sd;
+	r41->hdr.packType	= src->CM.hdr.packType;
+	r41->hdr.packCount	= 0;
+
+	PacketHdr41 *pkt = (PacketHdr41*)(r41->data);
+
+	CreatePacket41(r41, pkt, src);
+}
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 static u16 prevHeadCount = 0;
 static u16 firePacketCount = 0;
 
@@ -1958,7 +2002,7 @@ static void MainMode()
 	static RspDsp01 *rsp = 0;
 	static PacketHdr41 *curpkt = 0;
 	static Rsp41 *r41 = 0;
-	static u32 pktTime = 0;
+	//static u32 pktTime = 0;
 
 	Ptr<MB> &buf = buf_MainMode;
 	Ptr<MB> &pkt = pkt_MainMode;
@@ -2006,138 +2050,103 @@ static void MainMode()
 				SetModeCM();
 			};
 
+			buf.Free();
+
 			mainModeState += 2;
 
 			break;
 
 		case 2: // mode 0x41
+		{
+			byte n = rsp->CM.hdr.sensType & 1;
 
-			if ((rsp->CM.hdr.rw & 0xFE) == 0x40)
+			if (n != 0)
 			{
-				byte n = rsp->CM.hdr.sensType & 1;
+				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen;
+				
+				Ptr<MB> p41 = AllocMemBuffer(len);
 
-				AmpTimeMinMax& mm = sensMinMaxTemp[n];
-
-				u16 amp = rsp->CM.hdr.maxAmp;
-				u16 time = rsp->CM.hdr.fi_time;
-
-				if (amp > mm.ampMax) mm.ampMax = amp;
-				if (amp < mm.ampMin) mm.ampMin = amp;
-				if (time > mm.timeMax) mm.timeMax = time;
-				if (time < mm.timeMin) mm.timeMin = time;
-
-				mm.valid = true;
-
-				if (n != 0 || (rsp->CM.hdr.rw & 1) == 0)  //rsp->CM.hdr.sl > MAX_WAVEPACKET_LEN
+				if (p41.Valid())
 				{
-					manVec40[n] = buf;
+					Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
+
+					CreateRsp41(ref, rsp);
+
+					p41->len = len;
+
+					manVec41[n] = p41;
+				};
+			}
+			else if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount > mv.cmSPR)
+			{
+				prevHeadCount = rsp->CM.hdr.headCount;
+				firePacketCount = 0;
+
+				if (pkt.Valid())
+				{
+					manPack41.Add(pkt);
+					pkt.Free();
+					curpkt = 0;
+				};
+
+				if (manPack41.GetCount() < 4)
+				{
+					pkt = AllocMemBuffer(sizeof(Rsp41));
+				};
+
+				if (pkt.Valid())
+				{
+					r41 = (Rsp41*)(buf->GetDataPtr());
+
+					CreateRsp41(r41, rsp);
+
+					pkt->len = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
+				};
+			}
+			else if (pkt.Valid() && curpkt != 0)
+			{
+				u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
+
+				if (pkt->GetDataFreeLen() >= dlen)
+				{
+					CreatePacket41(r41, curpkt, rsp);
+
+					curpkt = (PacketHdr41*)(curpkt->data + curpkt->packLen);
+					pkt->len += dlen;
 				}
 				else
 				{
-					if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount > mv.cmSPR)
-					{
-						prevHeadCount = rsp->CM.hdr.headCount;
-						firePacketCount = 0;
-
-						if (pkt.Valid())
-						{
-							manPack41.Add(pkt);
-							pkt.Free();
-							curpkt = 0;
-						};
-
-						if (manPack41.GetCount() < 4)
-						{
-							pkt = AllocMemBuffer(sizeof(Rsp41));
-						};
-
-						if (pkt.Valid())
-						{
-							r41 = (Rsp41*)(buf->GetDataPtr());
-
-							r41->hdr.rw			= rsp->CM.hdr.rw|1;
-							r41->hdr.hallTime	= rsp->CM.hdr.hallTime;
-							r41->hdr.sensType 	= rsp->CM.hdr.sensType;
-							r41->hdr.gain 		= rsp->CM.hdr.gain;
-							r41->hdr.st	 		= rsp->CM.hdr.st;
-							r41->hdr.sl 		= rsp->CM.hdr.sl;
-							r41->hdr.sd 		= rsp->CM.hdr.sd;
-							r41->hdr.packType	= rsp->CM.hdr.packType;
-							r41->hdr.packCount	= 1;
-
-							curpkt = (PacketHdr41*)(r41->data);
-							
-							curpkt->deltatime	= 0; 
-							curpkt->angle		= rsp->CM.hdr.angle;	
-							curpkt->fi_amp		= rsp->CM.hdr.fi_amp;	
-							curpkt->fi_time		= rsp->CM.hdr.fi_time;
-							curpkt->packLen		= rsp->CM.hdr.packLen;
-
-							pktTime = rsp->CM.hdr.hallTime;
-
-							ConstDataPointer s(rsp->CM.data);
-							DataPointer d(curpkt->data);
-
-							u32 len = curpkt->packLen;
-
-							while (len > 1) *d.d++ = *s.d++, len -= 2;
-							while (len > 0) *d.w++ = *s.w++, len -= 1;
-						};
-					}
-					else if (pkt.Valid() && curpkt != 0)
-					{
-						u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
-
-						if (pkt->GetDataFreeLen() >= dlen)
-						{
-							u32 t = rsp->CM.hdr.time;
-							curpkt->deltatime = t - pktTime; pktTime = t;
-							curpkt->angle = rsp->CM.hdr.angle;	
-							curpkt->fi_amp = rsp->CM.hdr.fi_amp;	
-							curpkt->fi_time = rsp->CM.hdr.fi_time;
-							curpkt->packLen = rsp->CM.hdr.packLen;
-
-							ConstDataPointer s(rsp->CM.data);
-							DataPointer d(curpkt->data);
-
-							u32 len = curpkt->packLen;
-
-							while (len > 1) *d.d++ = *s.d++, len -= 2;
-							while (len > 0) *d.w++ = *s.w++, len -= 1;
-
-							curpkt = (PacketHdr41*)(curpkt->data + curpkt->packLen);
-							pkt->len += dlen;
-						}
-						else
-						{
-							manPack41.Add(pkt);
-							pkt = buf;
-							curpkt = (PacketHdr41*)(rsp->CM.data + rsp->CM.hdr.packLen);
-						};
-					}
-					else
-					{
-						manVec40[0] = buf;
-					};
-
-					buf.Free();
+					manPack41.Add(pkt);
+					pkt = AllocMemBuffer(sizeof(Rsp41));
+					curpkt = (pkt.Valid()) ? ((PacketHdr41*)(rsp->CM.data + rsp->CM.hdr.packLen)) : 0;
 				};
-					
-				if (n == 0) firePacketCount += 1;
 			}
-			else if ((rsp->IM.hdr.rw & 0xFF) == 0x50)
+			else
 			{
-				manVec50 = buf;
+				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen;
+
+				Ptr<MB> p41 = AllocMemBuffer(len);
+
+				if (p41.Valid())
+				{
+					Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
+
+					CreateRsp41(ref, rsp);
+
+					p41->len = len;
+
+					manVec41[n] = p41;
+				};
 			};
 
-			if (imModeTimeout.Check(10000))
-			{
-				SetModeCM();
-			};
+			buf.Free();
+
+			if (n == 0) firePacketCount += 1;
 
 			mainModeState++;
 
 			break;
+		};
 
 		case 3:
 
@@ -2962,28 +2971,30 @@ static void InitMainVars()
 	mv.numMemDevice			= 0;
 
 	mv.sens1.gain			= 0; 
-	mv.sens1.sampleTime		= 8; 
-	mv.sens1.sampleLen		= 500; 
-	mv.sens1.sampleDelay 	= 400; 
+	mv.sens1.st				= 8; 
+	mv.sens1.sl				= 500; 
+	mv.sens1.sd 			= 400; 
 	mv.sens1.deadTime		= 400; 
-	mv.sens1.descriminant	= 400; 
+	mv.sens1.threshold		= 400; 
 	mv.sens1.freq			= 500; 
-	mv.sens1.filtrType		= 0;
-	mv.sens1.packType		= 0;
+	mv.sens1.filtr			= 0;
+	mv.sens1.pack			= 0;
 	mv.sens1.fi_Type		= 0;
-	mv.sens1.fragLen		= 0;
+	mv.sens1.fragLen		= 64;
+	mv.sens1.fragEnable		= 0;
 
 	mv.refSens.gain			= 0; 
-	mv.refSens.sampleTime	= 8; 
-	mv.refSens.sampleLen	= 500; 
-	mv.refSens.sampleDelay 	= 400; 
+	mv.refSens.st			= 8; 
+	mv.refSens.sl			= 500; 
+	mv.refSens.sd 			= 400; 
 	mv.refSens.deadTime		= 400; 
-	mv.refSens.descriminant	= 400; 
+	mv.refSens.threshold	= 400; 
 	mv.refSens.freq			= 500; 
-	mv.refSens.filtrType	= 0;
-	mv.refSens.packType		= 0;
+	mv.refSens.filtr		= 0;
+	mv.refSens.pack			= 0;
 	mv.refSens.fi_Type		= 0;
-	mv.refSens.fragLen		= 0;
+	mv.refSens.fragLen		= 64;
+	mv.refSens.fragEnable	= 0;
 
 	mv.cmSPR				= 36;
 	mv.imSPR				= 180;

@@ -68,6 +68,7 @@
     <ClCompile Include="cpp\pack.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Include\G_DSP.h" />
     <ClInclude Include="..\Include\G26K_2_DSP_HW_CONF.h" />
     <ClInclude Include="cpp\hardware.h" />
     <ClInclude Include="cpp\pack.h" />

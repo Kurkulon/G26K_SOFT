@@ -37,6 +37,9 @@
     <ClInclude Include="cpp\pack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Include\G_DSP.h">
+      <Filter>Global Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="makeobj" />

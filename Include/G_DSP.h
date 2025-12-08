@@ -1,133 +1,47 @@
-#ifndef REQ_H__09_10_2014__10_31
-#define REQ_H__09_10_2014__10_31
+#ifndef G_DSP_H__08_12_2025__15_02
+#define G_DSP_H__08_12_2025__15_02
 
-#include "RequestQuery.h"
+#pragma once 
 
-#include "ComPort\ComPort.h"
+#include "types.h"
 
-#include "list.h"
-#include "FLASH\NandFlash.h"
-
-#include "G_DSP.h"
-#include "G_MOTO.h"
-
-
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct ReqMoto
-//{
-//	u16 	rw;
-//	u16 	enableMotor; 
-//	u32		tRPM;		// время 1/6 оборота двигателя в мкс
-//	u16		limCurrent; // Ограничение тока двигателя (мА)
-//	u16		maxCurrent; // Аварийный ток двигателя (мА)
-//	u16 	crc;  
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct RspMoto
-//{
-//	u16 	rw;
-//	u16 	mororStatus; 
-//	u16		current;
-//	u16		rpm;
-//	u16		motoCounter;
-//	u16 	crc;  
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct ReqBootMotoHS { unsigned __int64 guid; u16 crc; };
-//__packed struct RspBootMotoHS { unsigned __int64 guid; u16 crc; };
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//struct ReqBootMoto
-//{
-//	u32 func;
-//
-//	union
-//	{
-//		struct { u32 flashLen;  u16 align; u16 crc; } F01; // Get Flash CRC
-//		struct { u32 padr; u32 page[16]; u16 align; u16 crc; } F02; // Write page
-//		struct { u16 align; u16 crc; } F03; // Exit boot loader
-//	};
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//struct RspBootMoto
-//{
-//	u32 func;
-//
-//	union
-//	{
-//		struct { u32 flashLen; u16 flashCRC; u16 crc; } F01;
-//		struct { u32 padr; u32 status; u16 align; u16 crc; } F02;
-//		struct { u16 align; u16 crc; } F03;							// Exit boot loader
-//	};
-//};
-
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-//__packed struct SENS
-//{
-//	u16 gain;
-//	u16 sampleTime;
-//	u16 sampleLen;
-//	u16 sampleDelay;
-//	u16 deadTime;
-//	u16 descriminant;
-//	u16 freq;
-//	u16 filtrType;
-//	u16 packType;
-//	u16 fi_Type;
-//	u16 fragLen;
-//	u16 fragEnable;
-//};
-	
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-//__packed struct ReqDsp01_old	// чтение вектора
-//{
-//	u16 	rw;
-//	u16 	mode; 
-//	u32 	mmsecTime; 
-//	u32		hallTime; 
-//	u16		motoCount; 
-//	u16		headCount;
-//	u16		ax; 
-//	u16		ay; 
-//	u16		az; 
-//	u16		at;
-//	u16		sensType; 
-//	u16		angle;
-//	u16 	gain; 
-//	u16 	st;	 
-//	u16 	sl; 
-//	u16 	sd; 
-//	u16		thr;
-//	u16		descr;
-//	u16		freq;
-//	u16 	refgain; 
-//	u16 	refst;	 
-//	u16 	refsl; 
-//	u16 	refsd; 
-//	u16		refthr;
-//	u16		refdescr;
-//	u16		refFreq;
-//	u16		vavesPerRoundCM;
-//	u16		vavesPerRoundIM;
-//	u16		filtrType;
-//	u16		packType;
-//
-//	u16 	crc;  
-//};
+#ifdef _ADI_COMPILER
+	#pragma pack(1)
+	//#ifndef __packed
+	//	#define __packed /**/
+	//#endif
+#else
+
+#endif
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#define SENS_NUM	2
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+__packed struct SENS
+{
+	u16 gain;
+	u16 st;
+	u16 sl;
+	u16 sd;
+	u16 deadTime;
+	u16 threshold;
+	u16 freq;
+	u16 filtr;
+	u16 pack;
+	u16 fi_Type;
+	u16 fragLen;
+	u16 fragEnable;
+};
+
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/*
+
 __packed struct ReqDsp01	// чтение вектора
 {
 	enum { VERSION = 1 };
@@ -141,10 +55,9 @@ __packed struct ReqDsp01	// чтение вектора
 	u16		ay; 
 	u16		az; 
 	u16		at;
-	SENS	sens1;
-	SENS	refSens;
-	u16		vavesPerRoundCM;
-	u16		vavesPerRoundIM;
+	SENS	sens[SENS_NUM];		// измерительный датчик
+	u16		wavesPerRoundCM;
+	u16		wavesPerRoundIM;
 	u16		fireVoltage;		// Напряжение излучателя (В)
 
 	u16 	crc;  
@@ -155,8 +68,8 @@ __packed struct ReqDsp01	// чтение вектора
 __packed struct RspHdrCM	// 0xAD40
 {
 	u16 	rw;				//1. ответное слово	
-	u32 	time;			//2. Время (0.1мс)
-	u32		hallTime;		//4. Время датчика Холла (0.1мс)
+	u32 	mmsecTime;		//2. Время (0.1мс)
+	u32		shaftTime;		//4. Время датчика Холла (0.1мс)
 	u16		motoCount; 		//6. Счётчик оборотов двигателя (1/6 об)
 	u16		headCount;		//7. Счётчик оборотов головки (об)
 	u16		ax; 			//8. AX (уе)
@@ -181,7 +94,7 @@ __packed struct RspHdrCM	// 0xAD40
 __packed struct RspHdr41	// 0xAD41
 {
 	u16 	rw;				//1. ответное слово	
-	u32		hallTime;		//2. Время датчика Холла (0.1мс)
+	u32		shaftTime;		//2. Время датчика Холла (0.1мс)
 	u16		sensType; 		//4. Тип датчика (0 - измерительный датчик, 1 - опорный датчик)
 	u16 	gain; 			//5. КУ
 	u16 	st;	 			//6. Шаг оцифровки
@@ -219,8 +132,8 @@ __packed struct Rsp41
 __packed struct RspHdrIM	// 0xAD50
 {
 	u16 	rw;
-	u32 	time;		//mmsecTime; 
-	u32		hallTime;	//shaftTime; 
+	u32 	mmsecTime;		//mmsecTime; 
+	u32		shaftTime;		//shaftTime; 
 	u16		ax; 
 	u16		ay; 
 	u16		az; 
@@ -235,6 +148,8 @@ __packed struct RspHdrIM	// 0xAD50
 
 __packed union RspDsp01	// чтение вектора
 {
+	enum { VERSION = 1 };
+
 	__packed struct { RspHdrCM hdr; u16 data[1024]; } CM;
 	__packed struct { RspHdrIM hdr; u16 data[1024]; } IM;
 	__packed struct { u16 rw; u16 len; u16 version; u16 fireVoltage; u16 motoVoltage; u16 crc; } v01;
@@ -288,24 +203,17 @@ __packed struct  ReqDsp07	// перезагрузить блэкфин
 	u16		rw; 
 	word 	crc; 
 };  
-*/
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-union ReqUnion
-{
-	ReqDsp01 	dsp01;	
-	ReqDsp05 	dsp05;	
-	ReqDsp06 	dsp06;	
-	ReqDsp07 	dsp07;	
-	ReqMoto		moto;	
-	ReqBootMoto bootMoto;
-};
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef _ADI_COMPILER
+#pragma pack()
+//#undef __packed
+#endif
 
 
 
-
-#endif //REQ_H__09_10_2014__10_31
+#endif //G_DSP_H__08_12_2025__15_02

@@ -7,7 +7,7 @@
 
 #include "types.h"
 #include "core.h"
-//#include "WAVEPACK\fdct.h"
+#include "G_DSP.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -18,52 +18,51 @@
 
 #define PPI_MAX_LEN (1024)
 #define PPI_BUF_LEN (PPI_MAX_LEN+FDCT_N)
-#define SENS_NUM	2
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct SENS
-{
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		deadTime;
-	u16		threshold;
-	u16		freq;
-	u16 	filtr;
-	u16 	pack;
-	u16 	fi_Type;
-	u16 	fragLen;
-};
+//struct SENS
+//{
+//	u16 	gain; 
+//	u16 	st;	 
+//	u16 	sl; 
+//	u16 	sd; 
+//	u16		deadTime;
+//	u16		threshold;
+//	u16		freq;
+//	u16 	filtr;
+//	u16 	pack;
+//	u16 	fi_Type;
+//	u16 	fragLen;
+//};
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #pragma pack(1)
 
-struct RspHdrCM	// 0xAD40
-{
-	u16 	rw;
-	u32 	mmsecTime; 
-	u32		shaftTime; 
-	u16		motoCount; 
-	u16		headCount;
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-	u16		sensType; 
-	u16		angle;
-	u16		maxAmp;
-	u16		fi_amp;
-	u16		fi_time;
-	u16 	gain; 
-	u16 	st;	 
-	u16 	sl; 
-	u16 	sd; 
-	u16		packType;
-	u16		packLen;
-};
+//struct RspHdrCM	// 0xAD40
+//{
+//	u16 	rw;
+//	u32 	mmsecTime; 
+//	u32		shaftTime; 
+//	u16		motoCount; 
+//	u16		headCount;
+//	u16		ax; 
+//	u16		ay; 
+//	u16		az; 
+//	u16		at;
+//	u16		sensType; 
+//	u16		angle;
+//	u16		maxAmp;
+//	u16		fi_amp;
+//	u16		fi_time;
+//	u16 	gain; 
+//	u16 	st;	 
+//	u16 	sl; 
+//	u16 	sd; 
+//	u16		packType;
+//	u16		packLen;
+//};
 
 struct RspCM
 {
@@ -85,20 +84,20 @@ struct PackDCT
 
 #pragma pack(1)
 
-struct RspHdrIM	// 0xAD50
-{
-	u16 	rw;
-	u32 	mmsecTime; 
-	u32		shaftTime; 
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-	u16 	gain; 
-	u16		refAmp;
-	u16		refTime;
-	u16		len;
-};
+//struct RspHdrIM	// 0xAD50
+//{
+//	u16 	rw;
+//	u32 	mmsecTime; 
+//	u32		shaftTime; 
+//	u16		ax; 
+//	u16		ay; 
+//	u16		az; 
+//	u16		at;
+//	u16 	gain; 
+//	u16		refAmp;
+//	u16		refTime;
+//	u16		len;
+//};
 
 struct RspIM
 {
@@ -178,29 +177,29 @@ struct ReqDsp01_old	// чтение вектора
 
 //#pragma pack(1)
 
-struct ReqDsp01	// чтение вектора
-{
-	enum { VERSION = 1 };
-
-	u16 	rw;
-	u16		len;				// Длина структуры
-	u16		version;			// Версия структуры
-
-	u16 	mode;				// 0 - Режим цементомера; !=0 - режим имиджера
-	u16		ax; 
-	u16		ay; 
-	u16		az; 
-	u16		at;
-
-	SENS	sens[SENS_NUM];		// измерительный датчик
-
-	u16		wavesPerRoundCM;	// Количество волновых картин на оборот головки в режиме цементомера
-	u16		wavesPerRoundIM;	// Количество точек на оборот головки в режиме имиджера
-
-	u16		fireVoltage;		// Напряжение излучателя (В)
-
-	u16 	crc;  
-};
+//struct ReqDsp01	// чтение вектора
+//{
+//	enum { VERSION = 1 };
+//
+//	u16 	rw;
+//	u16		len;				// Длина структуры
+//	u16		version;			// Версия структуры
+//
+//	u16 	mode;				// 0 - Режим цементомера; !=0 - режим имиджера
+//	u16		ax; 
+//	u16		ay; 
+//	u16		az; 
+//	u16		at;
+//
+//	SENS	sens[SENS_NUM];		// измерительный датчик
+//
+//	u16		wavesPerRoundCM;	// Количество волновых картин на оборот головки в режиме цементомера
+//	u16		wavesPerRoundIM;	// Количество точек на оборот головки в режиме имиджера
+//
+//	u16		fireVoltage;		// Напряжение излучателя (В)
+//
+//	u16 	crc;  
+//};
 
 //#pragma pack()
 
@@ -208,28 +207,28 @@ struct ReqDsp01	// чтение вектора
 
 //#pragma pack(1)
 
-struct RspDsp01	// чтение вектора
-{
-	enum { VERSION = 1 };
-
-	u16		rw; 
-	u16		len;				// Длина структуры
-	u16		version;			// Версия структуры
-
-	u16		fireVoltage;		// Напряжение излучателя (В)
-	u16		motoVoltage;		// Напряжение двигателя (В)
-	u16 	crc;  
-};
+//struct RspDsp01	// чтение вектора
+//{
+//	enum { VERSION = 1 };
+//
+//	u16		rw; 
+//	u16		len;				// Длина структуры
+//	u16		version;			// Версия структуры
+//
+//	u16		fireVoltage;		// Напряжение излучателя (В)
+//	u16		motoVoltage;		// Напряжение двигателя (В)
+//	u16 	crc;  
+//};
 
 //pragma pack()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-struct  ReqDsp05 { u16 rw; u16 crc; };										// запрос контрольной суммы и длины программы во флэш-памяти
-struct  ReqDsp06 { u16 rw; u16 stAdr; u16 len; byte data[256]; u16 crc; }; // запись страницы во флэш
-struct  ReqDsp07 { u16 rw; word crc; };										// перезагрузить блэкфин
-struct  RspDsp05 { u16 rw; u16 flashLen; u16 flashCRC; u16 crc; };					// запрос контрольной суммы и длины программы во флэш-памяти
-struct  RspDsp06 { u16 rw; u16 res; u16 crc; };									// запись страницы во флэш
+//struct  ReqDsp05 { u16 rw; u16 crc; };										// запрос контрольной суммы и длины программы во флэш-памяти
+//struct  ReqDsp06 { u16 rw; u16 stAdr; u16 len; byte data[256]; u16 crc; }; // запись страницы во флэш
+//struct  ReqDsp07 { u16 rw; word crc; };										// перезагрузить блэкфин
+//struct  RspDsp05 { u16 rw; u16 flashLen; u16 flashCRC; u16 crc; };					// запрос контрольной суммы и длины программы во флэш-памяти
+//struct  RspDsp06 { u16 rw; u16 res; u16 crc; };									// запись страницы во флэш
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

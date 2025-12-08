@@ -11,6 +11,9 @@ curdir = $+ $(%cdrive):$(%cwd) $-
 hdir = cpp
 libdir = $(curdir)\..\..\..\G_LIBS
 bindir = $(%ARMCC50BIN)
+ghdir = $(curdir)\..\..\Include,$(curdir)\..\Include
+
+##################################################################################################
 
 !ifeq version Debug
 
@@ -95,8 +98,7 @@ libname = $(libdir)\$(targetcpu)_$(libsuffix).a
 ################################################################################################## --no_depend_system_headers 
 
 compiler_options = $(debug_compiler_options) $(cpu_compiler_options) --gnu --asm --interleave -g -c --diag_style=ide &
-	  --feedback "$(objdir)\$(target_name).fed"  &
-	 -D__MICROLIB -DCPU_$(targetcpu) --reduce_paths -J$(libdir)\cpp,"$(%ARMCC50INC)"
+	  --feedback "$(objdir)\$(target_name).fed" -D__MICROLIB -DCPU_$(targetcpu) --reduce_paths -J$(libdir)\cpp,"$(%ARMCC50INC)" -I$(ghdir)
 
 ##################################################################################################
 

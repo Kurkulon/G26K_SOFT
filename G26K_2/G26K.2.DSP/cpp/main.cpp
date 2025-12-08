@@ -213,7 +213,7 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		sv.filtr		= rs.filtr;
 		sv.fi_type		= rs.fi_Type;
 		sv.pack			= rs.pack;
-		sv.fragLen		= rs.fragLen;
+		sv.fragLen		= (rs.fragEnable) ? rs.fragLen : 0;
 		sv.delay		=0;
 
 		if (sv.deadTime != rs.deadTime /*|| sv.delay != rs.sd*/ || forced)
@@ -249,12 +249,12 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 
 	if (curDsc == 0)
 	{
-		rsp.rw = data[0];
-		rsp.len = sizeof(rsp);
-		rsp.version = rsp.VERSION;
-		rsp.fireVoltage = GetFireVoltage();
-		rsp.motoVoltage = GetMotoVoltage();
-		rsp.crc = GetCRC16(&rsp, sizeof(rsp)-2);
+		rsp.v01.rw = data[0];
+		rsp.v01.len = sizeof(rsp);
+		rsp.v01.version = rsp.VERSION;
+		rsp.v01.fireVoltage = GetFireVoltage();
+		rsp.v01.motoVoltage = GetMotoVoltage();
+		rsp.v01.crc = GetCRC16(&rsp, sizeof(rsp)-2);
 
 		wb->data = &rsp;			 
 		wb->len = sizeof(rsp);	 
@@ -957,7 +957,7 @@ static void SendReadyDataIM(DSCPPI *dsc, u16 len)
 	//rsp.hdr.gain		= dsc->gain;		//10. КУ
 	rsp.hdr.refAmp		= refAmp;
 	rsp.hdr.refTime		= refTime;
-	rsp.hdr.len			= len;				//11. Длина (макс 1024)
+	rsp.hdr.dataLen		= len;				//11. Длина (макс 1024)
 
 	dsc->dataLen = sizeof(rsp.hdr)/2 + len*2;
 
