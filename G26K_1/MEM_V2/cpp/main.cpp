@@ -1181,6 +1181,8 @@ static bool RequestMan_40(u16 *data, u16 reqlen, MTB* mtb)
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
+	mode41 = false;
+
 	//Ptr<MB> &r01 = curManVec40;
 	
 	//u16 sz = 18 + r01->rsp.CM.sl;
@@ -1299,6 +1301,8 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 	mtb->data2 = 0;
 	mtb->len2 = 0;
 
+	mode41 = true;
+
 	//Ptr<MB> &r01 = curManVec40;
 
 	//u16 sz = 18 + r01->rsp.CM.sl;
@@ -1310,9 +1314,9 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 		if (curManVec41.Valid())
 		{
 			RspDsp01 &rsp = *((RspDsp01*)(curManVec41->GetDataPtr()));
-			DEBUG_ASSERT(rsp.CM.hdr.rw & 1);
+			DEBUG_ASSERT(rsp.CM.hdr.rw == 0xAD41);
 
-			u16 sz = (rsp.CM.hdr.rw & 1) ? (curManVec41->len/2) : ((sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen));
+			u16 sz = curManVec41->len/2; // : ((sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen));
 
 			mtb->data2 = ((u16*)&rsp)+1;
 
@@ -1950,11 +1954,15 @@ static void UpdateMan()
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void CreatePacket41(Rsp41 *r41, PacketHdr41 *pkt, RspDsp01 *src)
+static void CreatePacket41(Ptr<MB> &mb, RspDsp01 *src)
 {
+	Rsp41 *r41 = (Rsp41*)(mb->GetDataPtr());
+
+	PacketHdr41 *pkt = (PacketHdr41*)(r41->data+(mb->len-sizeof(r41->hdr))/2);
+
 	r41->hdr.packCount += 1;
 
-	pkt->deltatime	= src->CM.hdr.mmsecTime - r41->hdr.shaftTime; 
+	pkt->deltatime	= src->CM.hdr.mmsecTime - r41->hdr.mmsecTime; 
 	pkt->angle		= src->CM.hdr.angle;	
 	pkt->fi_amp		= src->CM.hdr.fi_amp;	
 	pkt->fi_time	= src->CM.hdr.fi_time;
@@ -1967,13 +1975,18 @@ static void CreatePacket41(Rsp41 *r41, PacketHdr41 *pkt, RspDsp01 *src)
 
 	while (len > 1) *d.d++ = *s.d++, len -= 2;
 	while (len > 0) *d.w++ = *s.w++, len -= 1;
+
+	mb->len += pkt->packLen*2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-static void CreateRsp41(Rsp41 *r41, RspDsp01 *src)
+static void CreateRsp41(Ptr<MB> &mb, RspDsp01 *src)
 {
+	Rsp41 *r41 = (Rsp41*)(mb->GetDataPtr());
+
 	r41->hdr.rw			= src->CM.hdr.rw|1;
+	r41->hdr.mmsecTime	= src->CM.hdr.mmsecTime;
 	r41->hdr.shaftTime	= src->CM.hdr.shaftTime;
 	r41->hdr.sensType 	= src->CM.hdr.sensType;
 	r41->hdr.gain 		= src->CM.hdr.gain;
@@ -1983,9 +1996,9 @@ static void CreateRsp41(Rsp41 *r41, RspDsp01 *src)
 	r41->hdr.packType	= src->CM.hdr.packType;
 	r41->hdr.packCount	= 0;
 
-	PacketHdr41 *pkt = (PacketHdr41*)(r41->data);
+	mb->len = sizeof(r41->hdr);
 
-	CreatePacket41(r41, pkt, src);
+	CreatePacket41(mb, src);
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2000,8 +2013,8 @@ static void MainMode()
 {
 	static TM32 tm;
 	static RspDsp01 *rsp = 0;
-	static PacketHdr41 *curpkt = 0;
-	static Rsp41 *r41 = 0;
+	//static PacketHdr41 *curpkt = 0;
+	//static Rsp41 *r41 = 0;
 	//static u32 pktTime = 0;
 
 	Ptr<MB> &buf = buf_MainMode;
@@ -2020,6 +2033,8 @@ static void MainMode()
 				if (buf.Valid())
 				{
 					rsp = (RspDsp01*)(buf->GetDataPtr());
+
+					DEBUG_ASSERT(buf->len == ((rsp->CM.hdr.packType == 0) ? ((rsp->CM.hdr.sl*2 + sizeof(rsp->CM.hdr))) : (rsp->CM.hdr.packLen*2 + sizeof(rsp->CM.hdr))));
 					
 					mainModeState += (mode41) ? 2 : 1;
 				};
@@ -2060,19 +2075,21 @@ static void MainMode()
 		{
 			byte n = rsp->CM.hdr.sensType & 1;
 
+			DEBUG_ASSERT(buf->len == ((rsp->CM.hdr.packType == 0) ? ((rsp->CM.hdr.sl*2 + sizeof(rsp->CM.hdr))) : (rsp->CM.hdr.packLen*2 + sizeof(rsp->CM.hdr))));
+
 			if (n != 0)
 			{
-				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen;
+				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
 				
 				Ptr<MB> p41 = AllocMemBuffer(len);
 
 				if (p41.Valid())
 				{
-					Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
+					//Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
 
-					CreateRsp41(ref, rsp);
+					CreateRsp41(p41, rsp);
 
-					p41->len = len;
+					//p41->len = len;
 
 					manVec41[n] = p41;
 				};
@@ -2084,9 +2101,11 @@ static void MainMode()
 
 				if (pkt.Valid())
 				{
+					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
+
 					manPack41.Add(pkt);
 					pkt.Free();
-					curpkt = 0;
+					//curpkt = 0;
 				};
 
 				if (manPack41.GetCount() < 4)
@@ -2096,44 +2115,59 @@ static void MainMode()
 
 				if (pkt.Valid())
 				{
-					r41 = (Rsp41*)(buf->GetDataPtr());
+					//r41 = (Rsp41*)(pkt->GetDataPtr());
 
-					CreateRsp41(r41, rsp);
+					CreateRsp41(pkt, rsp);
 
-					pkt->len = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
+					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
+
+					//pkt->len = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
 				};
 			}
-			else if (pkt.Valid() && curpkt != 0)
+			else if (pkt.Valid())
 			{
 				u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
 
 				if (pkt->GetDataFreeLen() >= dlen)
 				{
-					CreatePacket41(r41, curpkt, rsp);
+					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
 
-					curpkt = (PacketHdr41*)(curpkt->data + curpkt->packLen);
-					pkt->len += dlen;
+					CreatePacket41(pkt, rsp);
+
+					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
+
+					//curpkt = (PacketHdr41*)(curpkt->data + curpkt->packLen);
+					//pkt->len += dlen;
 				}
 				else
 				{
+					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
+
 					manPack41.Add(pkt);
+
 					pkt = AllocMemBuffer(sizeof(Rsp41));
-					curpkt = (pkt.Valid()) ? ((PacketHdr41*)(rsp->CM.data + rsp->CM.hdr.packLen)) : 0;
+
+					if (pkt.Valid())
+					{
+						CreateRsp41(pkt, rsp);
+
+						DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
+					};
 				};
 			}
 			else
 			{
-				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen;
+				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
 
 				Ptr<MB> p41 = AllocMemBuffer(len);
 
 				if (p41.Valid())
 				{
-					Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
+					//Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
 
-					CreateRsp41(ref, rsp);
+					CreateRsp41(p41, rsp);
 
-					p41->len = len;
+					//p41->len = len;
 
 					manVec41[n] = p41;
 				};
@@ -2683,6 +2717,8 @@ static void UpdateDSP()
 				if (rq->crcOK)
 				{
 					RspDsp01 &rsp = *((RspDsp01*)(rq->rsp->GetDataPtr()));
+
+					DEBUG_ASSERT(rq->rsp->len == ((rsp.CM.hdr.packType == 0) ? ((rsp.CM.hdr.sl*2 + sizeof(rsp.CM.hdr))) : (rsp.CM.hdr.packLen*2 + sizeof(rsp.CM.hdr))));
 
 					bool c42 = (rsp.CM.hdr.rw & 0xFF) == 0x42;
 					bool c41 = (rsp.CM.hdr.rw & 0xFF) == 0x41;
