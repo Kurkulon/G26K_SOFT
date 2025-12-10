@@ -42,6 +42,7 @@ static volatile u32 shaftCount = 0;
 static volatile u32 shaftTime = 0;
 u16 shaftRPS = 0;
 volatile u16 curShaftCounter = 0;
+volatile u32 shaftCYCCNT = 0;
 
 
 //static void I2C_Init();
@@ -454,6 +455,8 @@ static __irq void ShaftIRQ()
 
 	shaftCounter++;
 	curShaftCounter++;
+
+	shaftCYCCNT = GetCYCCNT();
 
 	u32 tm = GetMilliseconds();
 	u32 dt = tm - shaftPrevTime;

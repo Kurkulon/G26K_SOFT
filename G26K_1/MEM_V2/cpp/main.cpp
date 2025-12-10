@@ -137,6 +137,9 @@ static Ptr<MB> curManVec50;
 static ListPtr<MB> manPack41;
 static Ptr<MB> curManVec41;
 
+static u32 countMan41 = 0;
+static u32 countPack41 = 0;
+
 static ListPtr<REQ> readyR01;
 
 static u16 mode = 0;
@@ -1309,10 +1312,34 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
-		curManVec41 = manPack41.Get();
+		byte i = sensInd&1;
+
+		if (i == 0)
+		{
+			curManVec41 = manPack41.Get();
+		};
+
+		if (!curManVec41.Valid())
+		{
+			curManVec41 = manVec41[i]; manVec41[i].Free();
+		};
+
+		if (!curManVec41.Valid())
+		{
+			i = (i+1)&1;
+
+			curManVec41 = manVec41[i]; manVec41[i].Free();
+		};
+
+		if (!curManVec41.Valid())
+		{
+			curManVec41 = manPack41.Get();
+		};
 
 		if (curManVec41.Valid())
 		{
+			countMan41++;
+
 			RspDsp01 &rsp = *((RspDsp01*)(curManVec41->GetDataPtr()));
 			DEBUG_ASSERT(rsp.CM.hdr.rw == 0xAD41);
 
@@ -1619,7 +1646,22 @@ static bool RequestMan(u16 *buf, u16 len, MTB* mtb)
 		case 0x00: 	r = RequestMan_00(buf, len, mtb); break;
 		case 0x10: 	r = RequestMan_10(buf, len, mtb); break;
 		case 0x20: 	r = RequestMan_20(buf, len, mtb); break;
-		case 0x30:	r = RequestMan_30(buf, len, mtb); break;
+		case 0x30:	
+		case 0x31:	
+		case 0x32:	
+		case 0x33:	
+		case 0x34:	
+		case 0x35:	
+		case 0x36:	
+		case 0x37:	
+		case 0x38:	
+		case 0x39:	
+		case 0x3A:	
+		case 0x3B:	
+		case 0x3C:	
+		case 0x3D:	
+		case 0x3E:	
+		case 0x3F:	r = RequestMan_30(buf, len, mtb); break;
 		case 0x40:	r = RequestMan_40(buf, len, mtb); break;
 		case 0x41:	r = RequestMan_41(buf, len, mtb); break;
 		case 0x50: 	r = RequestMan_50(buf, len, mtb); break;
@@ -1962,21 +2004,21 @@ static void CreatePacket41(Ptr<MB> &mb, RspDsp01 *src)
 
 	r41->hdr.packCount += 1;
 
-	pkt->deltatime	= src->CM.hdr.mmsecTime - r41->hdr.mmsecTime; 
-	pkt->angle		= src->CM.hdr.angle;	
-	pkt->fi_amp		= src->CM.hdr.fi_amp;	
-	pkt->fi_time	= src->CM.hdr.fi_time;
-	pkt->packLen	= src->CM.hdr.packLen;
+	pkt->hdr.deltatime	= src->CM.hdr.mmsecTime - r41->hdr.mmsecTime; 
+	pkt->hdr.angle		= src->CM.hdr.angle;	
+	pkt->hdr.fi_amp		= src->CM.hdr.fi_amp;	
+	pkt->hdr.fi_time	= src->CM.hdr.fi_time;
+	pkt->hdr.packLen	= src->CM.hdr.packLen;
 
 	ConstDataPointer s(src->CM.data);
 	DataPointer d(pkt->data);
 
-	u32 len = pkt->packLen;
+	u32 len = pkt->hdr.packLen;
 
 	while (len > 1) *d.d++ = *s.d++, len -= 2;
 	while (len > 0) *d.w++ = *s.w++, len -= 1;
 
-	mb->len += pkt->packLen*2;
+	mb->len += sizeof(pkt->hdr) + pkt->hdr.packLen*2;
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2005,6 +2047,9 @@ static void CreateRsp41(Ptr<MB> &mb, RspDsp01 *src)
 
 static u16 prevHeadCount = 0;
 static u16 firePacketCount = 0;
+static u32 firePackCount = 0;
+static u32 countPackNoAlloc1 = 0;
+static u32 countPackNoAlloc2 = 0;
 
 static Ptr<MB> buf_MainMode;
 static Ptr<MB> pkt_MainMode;
@@ -2077,6 +2122,8 @@ static void MainMode()
 
 			DEBUG_ASSERT(buf->len == ((rsp->CM.hdr.packType == 0) ? ((rsp->CM.hdr.sl*2 + sizeof(rsp->CM.hdr))) : (rsp->CM.hdr.packLen*2 + sizeof(rsp->CM.hdr))));
 
+			manVec40[n].Free();
+
 			if (n != 0)
 			{
 				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
@@ -2085,19 +2132,17 @@ static void MainMode()
 
 				if (p41.Valid())
 				{
-					//Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
-
 					CreateRsp41(p41, rsp);
-
-					//p41->len = len;
 
 					manVec41[n] = p41;
 				};
 			}
-			else if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount > mv.cmSPR)
+			else if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount >= mv.cmSPR)
 			{
 				prevHeadCount = rsp->CM.hdr.headCount;
 				firePacketCount = 0;
+
+				firePackCount++;
 
 				if (pkt.Valid())
 				{
@@ -2105,23 +2150,24 @@ static void MainMode()
 
 					manPack41.Add(pkt);
 					pkt.Free();
+					countPack41++;
 					//curpkt = 0;
 				};
 
-				if (manPack41.GetCount() < 4)
+				if (manPack41.GetCount() < 6)
 				{
 					pkt = AllocMemBuffer(sizeof(Rsp41));
 				};
 
 				if (pkt.Valid())
 				{
-					//r41 = (Rsp41*)(pkt->GetDataPtr());
-
 					CreateRsp41(pkt, rsp);
 
 					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
-
-					//pkt->len = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
+				}
+				else
+				{
+					countPackNoAlloc1++;
 				};
 			}
 			else if (pkt.Valid())
@@ -2135,15 +2181,13 @@ static void MainMode()
 					CreatePacket41(pkt, rsp);
 
 					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
-
-					//curpkt = (PacketHdr41*)(curpkt->data + curpkt->packLen);
-					//pkt->len += dlen;
 				}
 				else
 				{
 					DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
 
 					manPack41.Add(pkt);
+					countPack41++;
 
 					pkt = AllocMemBuffer(sizeof(Rsp41));
 
@@ -2152,6 +2196,10 @@ static void MainMode()
 						CreateRsp41(pkt, rsp);
 
 						DEBUG_ASSERT(*((u16*)(pkt->GetDataPtr())) == 0xAD41);
+					}
+					else
+					{
+						countPackNoAlloc2++;
 					};
 				};
 			}
@@ -2163,11 +2211,7 @@ static void MainMode()
 
 				if (p41.Valid())
 				{
-					//Rsp41 *ref = (Rsp41*)(p41->GetDataPtr());
-
 					CreateRsp41(p41, rsp);
-
-					//p41->len = len;
 
 					manVec41[n] = p41;
 				};

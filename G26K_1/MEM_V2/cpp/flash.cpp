@@ -8,6 +8,7 @@
 #include "hardware.h"
 //#include "hw_rtm.h"
 #include "hw_nand.h"
+#include "G_DSP.h"
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //#define NAND_SAMSUNG
@@ -103,7 +104,7 @@ static const bool forceEraseWrite = true;
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #define SMALL_BUF_LEN	512
-#define MEDIUM_BUF_LEN	1536
+#define MEDIUM_BUF_LEN	(sizeof(Rsp41)+16) //1536
 
 #ifndef WIN32
 #define HUGE_BUF_LEN	(MT29_PAGE_SIZE+MT29_SPARE_SIZE) // NAND Flash Page Size
@@ -111,7 +112,7 @@ static const bool forceEraseWrite = true;
 #define HUGE_BUF_LEN	0x4100    
 #endif
 #define	NUM_SMALL_BUF	16       
-#define	NUM_MEDIUM_BUF	8
+#define	NUM_MEDIUM_BUF	16
 #define	NUM_HUGE_BUF	8
 
 #include <MEM\mem_imp.h>
