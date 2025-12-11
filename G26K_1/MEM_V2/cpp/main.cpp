@@ -1295,7 +1295,7 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 	static u16 prevLen = 0;
 	static u16 maxLen = 200;
 
-	static byte sensInd = 0;
+	//static byte sensInd = 0;
 
 	rsp.rw = req.rw;
 
@@ -1312,29 +1312,7 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 
 	if (reqlen == 1 || (reqlen >= 2 && data[1] == 0))
 	{
-		byte i = sensInd&1;
-
-		if (i == 0)
-		{
-			curManVec41 = manPack41.Get();
-		};
-
-		if (!curManVec41.Valid())
-		{
-			curManVec41 = manVec41[i]; manVec41[i].Free();
-		};
-
-		if (!curManVec41.Valid())
-		{
-			i = (i+1)&1;
-
-			curManVec41 = manVec41[i]; manVec41[i].Free();
-		};
-
-		if (!curManVec41.Valid())
-		{
-			curManVec41 = manPack41.Get();
-		};
+		curManVec41 = manPack41.Get();
 
 		if (curManVec41.Valid())
 		{
@@ -1370,7 +1348,7 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 			};
 		};
 
-		sensInd = (sensInd + 1) & 1;
+		//sensInd = (sensInd + 1) & 1;
 	}
 	else if (curManVec41.Valid())
 	{
@@ -2124,7 +2102,7 @@ static void MainMode()
 
 			manVec40[n].Free();
 
-			if (n != 0)
+			if (n != 0 && manPack41.GetCount() < 6)
 			{
 				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
 				
@@ -2134,7 +2112,7 @@ static void MainMode()
 				{
 					CreateRsp41(p41, rsp);
 
-					manVec41[n] = p41;
+					manPack41.Add(p41);
 				};
 			}
 			else if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount >= mv.cmSPR)
