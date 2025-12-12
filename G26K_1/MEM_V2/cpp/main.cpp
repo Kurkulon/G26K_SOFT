@@ -189,6 +189,7 @@ static bool cmdWriteStart_00 = false;
 static bool cmdWriteStart_10 = false;
 static bool cmdWriteStart_20 = false;
 
+static u32 dspRejVec = 0;
 static u32 dspRcv40 = 0;
 static u32 dspRcv50 = 0;
 static u16 dspRcvCount = 0;
@@ -315,6 +316,8 @@ static void SetModeIM()
 bool CallBackDspReq01(Ptr<REQ> &q)
 {
 	RspDsp01 &rsp = *((RspDsp01*)q->rb.data);
+
+	bool c = false;
 	 
 	if (q->rb.recieved)
 	{
@@ -337,6 +340,8 @@ bool CallBackDspReq01(Ptr<REQ> &q)
 			
 			dspMMSEC = rsp.CM.hdr.mmsecTime;
 			shaftMMSEC = rsp.CM.hdr.shaftTime;
+
+			c = !q->crcOK;
 		}
 		else if (rsp.IM.hdr.rw == (dspReqWord|0x50))
 		{
@@ -365,6 +370,7 @@ bool CallBackDspReq01(Ptr<REQ> &q)
 				q->rsp->len = 0;
 				q->crcOK = false;
 				q->tryCount = 0;
+				c = false;
 			};
 		};
 	}
@@ -372,6 +378,7 @@ bool CallBackDspReq01(Ptr<REQ> &q)
 	{
 		q->crcOK = false;
 		notRcv02++;
+		c = false;
 	};
 
 	if (!q->crcOK)
@@ -383,6 +390,8 @@ bool CallBackDspReq01(Ptr<REQ> &q)
 		}
 		else
 		{
+			if (c) dspRejVec += 1;
+
 			dspStatus &= ~1; 
 
 			//q.Free();
@@ -1706,7 +1715,7 @@ static bool RequestMem_20(u16 *data, u16 len, MTB* mtb)
 	rsp.device = NandFlash_GetDeviceID();
 	rsp.session = NandFlash_Session_Get();
 	rsp.rcvVec = NandFlash_Vectors_Recieved_Get();
-	rsp.rejVec = NandFlash_Vectors_Rejected_Get();
+	rsp.rejVec = dspRejVec; //NandFlash_Vectors_Rejected_Get();
 	rsp.wrVec = NandFlash_Vectors_Saved_Get();
 	rsp.errVec = NandFlash_Vectors_Errors_Get();
 	*((__packed u64*)rsp.wrAdr) = NandFlash_Current_Adress_Get();
@@ -2028,6 +2037,7 @@ static u16 firePacketCount = 0;
 static u32 firePackCount = 0;
 static u32 countPackNoAlloc1 = 0;
 static u32 countPackNoAlloc2 = 0;
+static u32 countPackNoAlloc3 = 0;
 
 static Ptr<MB> buf_MainMode;
 static Ptr<MB> pkt_MainMode;
@@ -2183,6 +2193,8 @@ static void MainMode()
 			}
 			else
 			{
+				countPackNoAlloc3++;
+
 				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
 
 				Ptr<MB> p41 = AllocMemBuffer(len);
@@ -2191,7 +2203,7 @@ static void MainMode()
 				{
 					CreateRsp41(p41, rsp);
 
-					manVec41[n] = p41;
+					manPack41.Add(p41);
 				};
 			};
 
