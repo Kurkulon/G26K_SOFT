@@ -1355,10 +1355,14 @@ static void UpdateMode()
 
 				*rawdsc = *dsc;
 
+				*pPORTFIO_CLEAR = 1<<7;
+
 				RspHdrCM &rsp = *(RspHdrCM*)rawdsc->data;
 
 				rsp.rw = manReqWord|0x40;
 				rsp.packType = PACK_BIT12;
+
+				*pPORTFIO_SET = 1<<7;
 
 				Filtr_Data(*rawdsc, 0);
 

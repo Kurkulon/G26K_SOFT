@@ -128,7 +128,7 @@ static RequestQuery qdsp(&comdsp);
 //static R01 r02[8];
 
 static Ptr<MB> manVec40[2];
-static Ptr<MB> manVec41[2];
+static Ptr<MB> manRef41;
 
 static Ptr<MB> curManVec40;
 static Ptr<MB> manVec50;
@@ -2112,17 +2112,20 @@ static void MainMode()
 
 			manVec40[n].Free();
 
-			if (n != 0 && manPack41.GetCount() < 6)
+			if (n != 0)
 			{
-				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
-				
-				Ptr<MB> p41 = AllocMemBuffer(len);
-
-				if (p41.Valid())
+				if (manPack41.GetCount() < 6)
 				{
-					CreateRsp41(p41, rsp);
+					u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
+				
+					Ptr<MB> p41 = AllocMemBuffer(len);
 
-					manPack41.Add(p41);
+					if (p41.Valid())
+					{
+						CreateRsp41(p41, rsp);
+
+						manRef41 = p41;
+					};
 				};
 			}
 			else if (rsp->CM.hdr.headCount != prevHeadCount || firePacketCount >= mv.cmSPR)
@@ -2139,10 +2142,13 @@ static void MainMode()
 					manPack41.Add(pkt);
 					pkt.Free();
 					countPack41++;
+
+					if (manRef41.Valid()) manPack41.Add(manRef41), manRef41.Free();
+
 					//curpkt = 0;
 				};
 
-				if (manPack41.GetCount() < 6)
+				if (manPack41.GetCount() < 6 && rsp->CM.hdr.packLen <= MAX_WAVEPACKET_LEN)
 				{
 					pkt = AllocMemBuffer(sizeof(Rsp41));
 				};
@@ -2158,7 +2164,7 @@ static void MainMode()
 					countPackNoAlloc1++;
 				};
 			}
-			else if (pkt.Valid())
+			else if (pkt.Valid() && rsp->CM.hdr.packLen <= MAX_WAVEPACKET_LEN)
 			{
 				u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
 
@@ -2191,20 +2197,9 @@ static void MainMode()
 					};
 				};
 			}
-			else
+			else if (manPack41.Empty())
 			{
-				countPackNoAlloc3++;
-
-				u32 len = sizeof(RspHdr41)+sizeof(PacketHdr41)+rsp->CM.hdr.packLen*2;
-
-				Ptr<MB> p41 = AllocMemBuffer(len);
-
-				if (p41.Valid())
-				{
-					CreateRsp41(p41, rsp);
-
-					manPack41.Add(p41);
-				};
+				if (manRef41.Valid()) manPack41.Add(manRef41), manRef41.Free();
 			};
 
 			buf.Free();

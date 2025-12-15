@@ -45,7 +45,7 @@
 // TWI		- 
 
 
-#define PPI_BUF_NUM 8
+#define PPI_BUF_NUM 10
 
 
 #define StartPPI()	{ *pTIMER_ENABLE = TIMEN1;  }
