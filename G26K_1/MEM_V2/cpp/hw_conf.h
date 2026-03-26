@@ -25,6 +25,20 @@
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#define SMALL_BUF_LEN	512
+#define MEDIUM_BUF_LEN	0xC20	//(sizeof(Rsp41)+16) //1536
+
+#ifndef WIN32
+#define HUGE_BUF_LEN	(8192+256+32) // NAND Flash Page Size
+#else
+#define HUGE_BUF_LEN	0x4100    
+#endif
+#define	NUM_SMALL_BUF	16       
+#define	NUM_MEDIUM_BUF	16
+#define	NUM_HUGE_BUF	8
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 #define __CONCAT1(s1)						s1
 #define __CONCAT2(s1,s2)					s1##s2
 #define __CONCAT3(s1,s2,s3)					s1##s2##s3
