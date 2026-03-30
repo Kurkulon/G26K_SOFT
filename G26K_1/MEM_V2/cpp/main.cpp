@@ -456,6 +456,20 @@ Ptr<REQ> CreateDspReq01(u16 tryCount)
 	req.wavesPerRoundIM = mv.imSPR;
 	req.fireVoltage		= mv.fireVoltage;
 
+	if (mode41)
+	{
+		SENS &sens = req.sens[0];
+
+		sens.fragEnable = true;
+		sens.fi_Type = 1;
+
+		if (sens.pack == 0)		sens.pack = PACK_DCT0;
+		if (sens.fragTime < 10)	sens.fragTime = 10;
+	};
+
+	//req.sens[0].fragLen = (req.sens[0].fragLen*20 + req.sens[0].st/2) / req.sens[0].st;
+	//req.sens[1].fragLen = (req.sens[1].fragLen*20 + req.sens[1].st/2) / req.sens[1].st;
+
 	req.crc	= GetCRC16(&req, sizeof(ReqDsp01)-2);
 
 	return rq;
@@ -1558,7 +1572,7 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		case 0x08:	mv.sens1.filtr			= data[2];			break;
 		case 0x09:	mv.sens1.pack			= data[2];			break;
 		case 0x0A:	mv.sens1.fi_Type		= data[2];			break;
-		case 0x0B:	mv.sens1.fragLen		= data[2];			break;
+		case 0x0B:	mv.sens1.fragTime		= data[2];			break;
 		case 0x0C:	mv.sens1.fragEnable		= data[2];			break;
 
 
@@ -1572,7 +1586,7 @@ static bool RequestMan_90(u16 *data, u16 len, MTB* mtb)
 		case 0x18:	mv.refSens.filtr		= data[2];			break;
 		case 0x19:	mv.refSens.pack			= data[2];			break;
 		case 0x1A:	mv.refSens.fi_Type		= data[2];			break;
-		case 0x1B:	mv.refSens.fragLen		= data[2];			break;
+		case 0x1B:	mv.refSens.fragTime		= data[2];			break;
 		case 0x1C:	mv.refSens.fragEnable	= data[2];			break;
 
 //		case 0x20:	mv.filtrType			= data[2];			break;
@@ -1995,6 +2009,7 @@ static void CreatePacket41(Ptr<MB> &mb, RspDsp01 *src)
 	pkt->hdr.angle		= src->CM.hdr.angle;	
 	pkt->hdr.fi_amp		= src->CM.hdr.fi_amp;	
 	pkt->hdr.fi_time	= src->CM.hdr.fi_time;
+	pkt->hdr.sd			= src->CM.hdr.sd;
 	pkt->hdr.packLen	= src->CM.hdr.packLen;
 
 	ConstDataPointer s(src->CM.data);
@@ -2021,7 +2036,7 @@ static void CreateRsp41(Ptr<MB> &mb, RspDsp01 *src)
 	r41->hdr.gain 		= src->CM.hdr.gain;
 	r41->hdr.st	 		= src->CM.hdr.st;
 	r41->hdr.sl 		= src->CM.hdr.sl;
-	r41->hdr.sd 		= src->CM.hdr.sd;
+	//r41->hdr.sd 		= src->CM.hdr.sd;
 	r41->hdr.packType	= src->CM.hdr.packType;
 	r41->hdr.packCount	= 0;
 
@@ -2132,7 +2147,11 @@ static void MainMode()
 			{
 				prevHeadCount = rsp->CM.hdr.headCount;
 				firePacketCount = 0;
-
+				
+				#ifdef TEST_RSP41
+				rsp->CM.hdr.angle = firePacketCount * 100;
+				#endif
+				
 				firePackCount++;
 
 				if (pkt.Valid())
@@ -2166,6 +2185,10 @@ static void MainMode()
 			}
 			else if (pkt.Valid() && rsp->CM.hdr.packLen <= MAX_WAVEPACKET_LEN)
 			{
+				#ifdef TEST_RSP41
+				rsp->CM.hdr.angle = firePacketCount * 100;
+				#endif
+
 				u16 dlen = rsp->CM.hdr.packLen*2 + sizeof(PacketHdr41);
 
 				if (pkt->GetDataFreeLen() >= dlen)
@@ -3045,7 +3068,7 @@ static void InitMainVars()
 	mv.sens1.filtr			= 0;
 	mv.sens1.pack			= 0;
 	mv.sens1.fi_Type		= 0;
-	mv.sens1.fragLen		= 64;
+	mv.sens1.fragTime		= 30;
 	mv.sens1.fragEnable		= 0;
 
 	mv.refSens.gain			= 0; 
@@ -3058,7 +3081,7 @@ static void InitMainVars()
 	mv.refSens.filtr		= 0;
 	mv.refSens.pack			= 0;
 	mv.refSens.fi_Type		= 0;
-	mv.refSens.fragLen		= 64;
+	mv.refSens.fragTime		= 30;
 	mv.refSens.fragEnable	= 0;
 
 	mv.cmSPR				= 36;

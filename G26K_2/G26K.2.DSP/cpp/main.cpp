@@ -16,8 +16,6 @@ static byte build_date[512] = "\n" "G26K2BF592" "\n" __DATE__ "\n" __TIME__ "\n"
 
 static ComPort com;
 
-enum Pack { PACK_NO = 0, PACK_BIT12, PACK_ULAW, PACK_ADPCM, PACK_DCT0, PACK_DCT1, PACK_DCT2 };
-
 static u16 manReqWord = 0xAD00;
 static u16 manReqMask = 0xFF00;
 
@@ -61,6 +59,7 @@ struct SensVars
 	u16 st;
 	//u16 dctLB;
 	u16 dctRB;
+	u16 fragTime;
 };
 
 static SensVars sensVars[3] = {0}; //{{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
@@ -213,8 +212,16 @@ static bool RequestFunc_01(const u16 *data, u16 len, ComPort::WriteBuffer *wb)
 		sv.filtr		= rs.filtr;
 		sv.fi_type		= rs.fi_Type;
 		sv.pack			= rs.pack;
-		sv.fragLen		= (rs.fragEnable) ? rs.fragLen : 0;
-		sv.delay		=0;
+		//sv.fragLen		= (rs.fragEnable) ? rs.fragLen : 0;
+		sv.delay		= 0;
+
+		if (sv.fragTime != rs.fragTime || forced)
+		{
+			sv.fragTime = rs.fragTime;
+			sv.fragLen = (((sv.fragTime*20 + sv.st/2) / sv.st)+3) & ~3;
+		};
+
+		if (!rs.fragEnable) sv.fragLen = 0;
 
 		if (sv.deadTime != rs.deadTime /*|| sv.delay != rs.sd*/ || forced)
 		{
