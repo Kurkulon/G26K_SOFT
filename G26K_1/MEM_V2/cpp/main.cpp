@@ -140,6 +140,8 @@ static Ptr<MB> curManVec41;
 static u32 countMan41 = 0;
 static u32 countPack41 = 0;
 
+static u16 missRotCount41 = 0;
+
 static ListPtr<REQ> readyR01;
 
 static u16 mode = 0;
@@ -1341,10 +1343,12 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 		{
 			countMan41++;
 
-			RspDsp01 &rsp = *((RspDsp01*)(curManVec41->GetDataPtr()));
-			DEBUG_ASSERT(rsp.CM.hdr.rw == 0xAD41);
+			Rsp41 &rsp = *((Rsp41*)(curManVec41->GetDataPtr()));
+			DEBUG_ASSERT(rsp.hdr.rw == 0xAD41);
 
-			u16 sz = curManVec41->len/2; // : ((sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen));
+			rsp.hdr.missRotCount = missRotCount41; //missRotCount41 = 0;
+
+			u16 sz = curManVec41->len/2; 
 
 			mtb->data2 = ((u16*)&rsp)+1;
 
@@ -1375,7 +1379,7 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 	}
 	else if (curManVec41.Valid())
 	{
-		RspDsp01 &rsp = *((RspDsp01*)(curManVec41->GetDataPtr()));
+		Rsp41 &rsp = *((Rsp41*)(curManVec41->GetDataPtr()));
 
 		req41_count2++;
 
@@ -1388,7 +1392,7 @@ static bool RequestMan_41(u16 *data, u16 reqlen, MTB* mtb)
 			len = data[2];
 		};
 
-		u16 sz = (rsp.CM.hdr.rw & 1) ? (curManVec41->len/2) : ((sizeof(rsp.CM.hdr)-sizeof(rsp.CM.hdr.rw))/2 + ((rsp.CM.hdr.packType == 0) ? rsp.CM.hdr.sl : rsp.CM.hdr.packLen));
+		u16 sz = curManVec41->len/2;
 
 		if (sz >= off)
 		{
@@ -2029,16 +2033,17 @@ static void CreateRsp41(Ptr<MB> &mb, RspDsp01 *src)
 {
 	Rsp41 *r41 = (Rsp41*)(mb->GetDataPtr());
 
-	r41->hdr.rw			= src->CM.hdr.rw|1;
-	r41->hdr.mmsecTime	= src->CM.hdr.mmsecTime;
-	r41->hdr.shaftTime	= src->CM.hdr.shaftTime;
-	r41->hdr.sensType 	= src->CM.hdr.sensType;
-	r41->hdr.gain 		= src->CM.hdr.gain;
-	r41->hdr.st	 		= src->CM.hdr.st;
-	r41->hdr.sl 		= src->CM.hdr.sl;
-	//r41->hdr.sd 		= src->CM.hdr.sd;
-	r41->hdr.packType	= src->CM.hdr.packType;
-	r41->hdr.packCount	= 0;
+	r41->hdr.rw				= src->CM.hdr.rw|1;
+	r41->hdr.mmsecTime		= src->CM.hdr.mmsecTime;
+	r41->hdr.shaftTime		= src->CM.hdr.shaftTime;
+	r41->hdr.missRotCount	= missRotCount41;
+	r41->hdr.sensType 		= src->CM.hdr.sensType;
+	r41->hdr.gain 			= src->CM.hdr.gain;
+	r41->hdr.st	 			= src->CM.hdr.st;
+	r41->hdr.sl 			= src->CM.hdr.sl;
+	//r41->hdr.sd 			= src->CM.hdr.sd;
+	r41->hdr.packType		= src->CM.hdr.packType;
+	r41->hdr.packCount		= 0;
 
 	mb->len = sizeof(r41->hdr);
 
@@ -2181,6 +2186,7 @@ static void MainMode()
 				else
 				{
 					countPackNoAlloc1++;
+					missRotCount41++;
 				};
 			}
 			else if (pkt.Valid() && rsp->CM.hdr.packLen <= MAX_WAVEPACKET_LEN)
