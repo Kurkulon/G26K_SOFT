@@ -22,8 +22,8 @@
 #define NAND_WRITE_CRC_HW
 //#define NAND_WRITE_CRC_PIO
 
-#define NAND_ECC_LEN 256
-#define NAND_ECC_SPARE
+//#define NAND_ECC_LEN 256
+//#define NAND_ECC_SPARE
 //#define NAND_ECC_PAGE
 //#define NAND_ECC_PAGEBUF
 

@@ -129,7 +129,7 @@ __packed struct PacketHdr41
 
 #define MAX_WAVEPACKET_LEN	128
 #define MAX_RSP41_LEN		3072
-#define TEST_RSP41
+//#define TEST_RSP41
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -29,7 +29,7 @@ static const bool __WIN32__ = false;
 
 //#define __TEST__
 
-enum { VERSION		= 0x107 }; // Версия телеметрии
+enum { VERSION		= 0x108 }; // Версия телеметрии
 enum { FIRMWARE		= 0x108 }; // Версия прошивки
 
 extern "C" char _Firmware_str[];
